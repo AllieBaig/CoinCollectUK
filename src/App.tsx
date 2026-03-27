@@ -35,7 +35,8 @@ import {
   User,
   LayoutList,
   Trophy,
-  AlertTriangle
+  AlertTriangle,
+  Monitor
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
@@ -153,6 +154,7 @@ function CoinCollectorApp() {
   const [folders, setFolders] = useState<Folder[]>([]);
   const [preferences, setPreferences] = useState<UserPreferences>({
     isDarkMode: false,
+    themeMode: 'system',
     sortBy: 'recently-added',
     activeFolderId: 'all',
     showBottomMenu: true,
@@ -169,6 +171,7 @@ function CoinCollectorApp() {
   const [selectedCoin, setSelectedCoin] = useState<Coin | null>(null);
   const [editingCoin, setEditingCoin] = useState<Coin | null>(null);
   const [editingCoinId, setEditingCoinId] = useState<string | null>(null);
+  const [importProgress, setImportProgress] = useState<number | null>(null);
 
   const updateCoin = (updatedCoin: Coin) => {
     setCoins(prev => prev.map(c => c.id === updatedCoin.id ? updatedCoin : c));
@@ -191,12 +194,10 @@ function CoinCollectorApp() {
         if (parsed.preferences) {
           setPreferences({
             ...parsed.preferences,
+            themeMode: parsed.preferences.themeMode || 'system',
             showBottomMenu: parsed.preferences.showBottomMenu ?? true,
             isCompactUI: parsed.preferences.isCompactUI ?? false
           });
-          if (parsed.preferences.isDarkMode) {
-            document.documentElement.classList.add('dark');
-          }
         }
       } else {
         // Migration or first load
@@ -209,10 +210,7 @@ function CoinCollectorApp() {
         }
         setFolders(INITIAL_FOLDERS);
         
-        const savedTheme = localStorage.getItem('theme');
-        const isDark = savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches);
-        setPreferences(prev => ({ ...prev, isDarkMode: isDark }));
-        if (isDark) document.documentElement.classList.add('dark');
+        setPreferences(prev => ({ ...prev, themeMode: 'system' }));
       }
 
       // Online/Offline listeners
@@ -231,6 +229,35 @@ function CoinCollectorApp() {
     }
   }, []);
 
+  // Theme management
+  useEffect(() => {
+    const root = document.documentElement;
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    
+    const applyTheme = () => {
+      let isDark = false;
+      if (preferences.themeMode === 'system') {
+        isDark = mediaQuery.matches;
+      } else {
+        isDark = preferences.themeMode === 'dark';
+      }
+      
+      if (isDark) {
+        root.classList.add('dark');
+      } else {
+        root.classList.remove('dark');
+      }
+      setPreferences(prev => ({ ...prev, isDarkMode: isDark }));
+    };
+
+    applyTheme();
+    
+    if (preferences.themeMode === 'system') {
+      mediaQuery.addEventListener('change', applyTheme);
+      return () => mediaQuery.removeEventListener('change', applyTheme);
+    }
+  }, [preferences.themeMode]);
+
   // Save data
   useEffect(() => {
     if (coins.length > 0 || folders.length > 0) {
@@ -243,18 +270,6 @@ function CoinCollectorApp() {
       localStorage.setItem('uk-coin-collection-v2', JSON.stringify(state));
     }
   }, [coins, folders, preferences]);
-
-  const toggleTheme = () => {
-    const newMode = !preferences.isDarkMode;
-    setPreferences(prev => ({ ...prev, isDarkMode: newMode }));
-    if (newMode) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
-  };
 
   const toggleCollected = (id: string) => {
     setCoins(prev => prev.map(c => c.id === id ? { ...c, isCollected: !c.isCollected } : c));
@@ -306,7 +321,10 @@ function CoinCollectorApp() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `uk-coins-backup-${new Date().toISOString().split('T')[0]}.json`;
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0];
+    const timeStr = now.toTimeString().split(' ')[0].replace(/:/g, '-');
+    a.download = `uk-coins-backup-${dateStr}-${timeStr}.json`;
     a.click();
   };
 
@@ -314,20 +332,40 @@ function CoinCollectorApp() {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    setImportProgress(0);
     const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const imported: AppState = JSON.parse(e.target?.result as string);
-        if (imported.coins && Array.isArray(imported.coins)) {
-          setCoins(imported.coins);
-          if (imported.folders) setFolders(imported.folders);
-          if (imported.preferences) setPreferences(imported.preferences);
-          alert('Data imported successfully!');
-        }
-      } catch (err) {
-        alert('Invalid backup file.');
+    
+    reader.onprogress = (e) => {
+      if (e.lengthComputable) {
+        const progress = Math.round((e.loaded / e.total) * 100);
+        setImportProgress(progress);
       }
     };
+
+    reader.onload = (e) => {
+      setImportProgress(100);
+      setTimeout(() => {
+        try {
+          const imported: AppState = JSON.parse(e.target?.result as string);
+          if (imported.coins && Array.isArray(imported.coins)) {
+            setCoins(imported.coins);
+            if (imported.folders) setFolders(imported.folders);
+            if (imported.preferences) setPreferences(imported.preferences);
+            alert('Data imported successfully!');
+          }
+        } catch (err) {
+          alert('Invalid backup file.');
+        } finally {
+          setImportProgress(null);
+        }
+      }, 500);
+    };
+    
+    reader.onerror = () => {
+      alert('Error reading file.');
+      setImportProgress(null);
+    };
+
     reader.readAsText(file);
   };
 
@@ -830,20 +868,47 @@ function CoinCollectorApp() {
                 </div>
 
                 <div className="space-y-6">
+                  {importProgress !== null && (
+                    <div className="bg-blue-500/10 p-6 rounded-3xl border border-blue-500/20">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-xs font-black text-blue-600 uppercase tracking-widest">Importing Data...</span>
+                        <span className="text-xs font-black text-blue-600">{importProgress}%</span>
+                      </div>
+                      <div className="w-full h-2 bg-blue-100 dark:bg-blue-900/30 rounded-full overflow-hidden">
+                        <motion.div 
+                          initial={{ width: 0 }}
+                          animate={{ width: `${importProgress}%` }}
+                          className="h-full bg-blue-500"
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   <div className="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-3xl space-y-4">
                     <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Preferences</h3>
-                    <button 
-                      onClick={toggleTheme}
-                      className="w-full flex items-center justify-between p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm"
-                    >
-                      <div className="flex items-center gap-3">
-                        {preferences.isDarkMode ? <Sun className="w-5 h-5 text-amber-500" /> : <Moon className="w-5 h-5 text-indigo-500" />}
-                        <span className="font-bold">{preferences.isDarkMode ? 'Light Mode' : 'Dark Mode'}</span>
+                    
+                    <div className="space-y-2">
+                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Theme Mode</label>
+                      <div className="grid grid-cols-3 gap-2 p-1 bg-white dark:bg-slate-800 rounded-2xl shadow-sm">
+                        {(['light', 'dark', 'system'] as const).map((mode) => (
+                          <button
+                            key={mode}
+                            onClick={() => setPreferences(prev => ({ ...prev, themeMode: mode }))}
+                            className={cn(
+                              "flex flex-col items-center gap-1 py-3 rounded-xl transition-all",
+                              preferences.themeMode === mode 
+                                ? "bg-amber-500 text-white shadow-lg shadow-amber-500/20" 
+                                : "text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700"
+                            )}
+                          >
+                            {mode === 'light' && <Sun className="w-5 h-5" />}
+                            {mode === 'dark' && <Moon className="w-5 h-5" />}
+                            {mode === 'system' && <Monitor className="w-5 h-5" />}
+                            <span className="text-[10px] font-black uppercase tracking-widest">{mode}</span>
+                          </button>
+                        ))}
                       </div>
-                      <div className={cn("w-12 h-6 rounded-full p-1 transition-colors", preferences.isDarkMode ? "bg-amber-500" : "bg-slate-200")}>
-                        <div className={cn("w-4 h-4 bg-white rounded-full transition-transform", preferences.isDarkMode ? "translate-x-6" : "translate-x-0")} />
-                      </div>
-                    </button>
+                    </div>
 
                     <button 
                       onClick={() => setPreferences(prev => ({ ...prev, showBottomMenu: !prev.showBottomMenu }))}
@@ -1343,9 +1408,29 @@ function CoinCollectorApp() {
                       amountPaid,
                       purchaseDate: formData.get('purchaseDate') as string || undefined,
                       folderId: formData.get('folderId') as string || undefined,
-                      isCollected: !!amountPaid || editingCoin.isCollected
+                      isCollected: !!amountPaid || editingCoin.isCollected,
+                      imageUrl: newCoinImage || editingCoin.imageUrl
                     });
+                    setNewCoinImage(null);
                   }} className="space-y-5">
+                    <div className="flex justify-center mb-6">
+                      <button 
+                        type="button"
+                        onClick={() => coinImageInputRef.current?.click()}
+                        className="w-32 h-32 rounded-3xl bg-slate-100 dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-700 flex flex-col items-center justify-center gap-2 overflow-hidden group hover:border-amber-500 transition-all"
+                      >
+                        {newCoinImage || editingCoin.imageUrl ? (
+                          <img src={newCoinImage || editingCoin.imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                        ) : (
+                          <>
+                            <Camera className="w-8 h-8 text-slate-400 group-hover:text-amber-500" />
+                            <span className="text-[10px] font-black text-slate-400 uppercase">Add Photo</span>
+                          </>
+                        )}
+                      </button>
+                      <input type="file" ref={coinImageInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
+                    </div>
+
                     <div>
                       <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Coin Title</label>
                       <input name="title" required defaultValue={editingCoin.title} className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold" />

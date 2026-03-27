@@ -24,6 +24,7 @@ export interface Folder {
 
 export interface UserPreferences {
   isDarkMode: boolean;
+  themeMode: 'light' | 'dark' | 'system';
   sortBy: 'recently-added' | 'recently-opened-folder' | 'title';
   activeFolderId: string | 'all';
   showBottomMenu: boolean;
