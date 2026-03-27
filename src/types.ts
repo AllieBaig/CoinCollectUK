@@ -8,6 +8,9 @@ export interface Coin {
   category: '50p' | '£2' | '£1' | 'Other';
   folderId?: string;
   addedAt: string;
+  imageUrl?: string;
+  amountPaid?: number;
+  purchaseDate?: string;
 }
 
 export interface Folder {

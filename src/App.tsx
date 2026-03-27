@@ -27,7 +27,11 @@ import {
   LayoutGrid,
   Clock,
   Type as TypeIcon,
-  MoreHorizontal
+  MoreHorizontal,
+  Camera,
+  Image as ImageIcon,
+  PoundSterling,
+  Calendar
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
@@ -240,8 +244,39 @@ export default function App() {
     const total = coins.length;
     const collected = coins.filter(c => c.isCollected).length;
     const percentage = total > 0 ? Math.round((collected / total) * 100) : 0;
-    return { total, collected, percentage };
+    const totalSpent = coins.reduce((acc, c) => acc + (c.amountPaid || 0), 0);
+    return { total, collected, percentage, totalSpent };
   }, [coins]);
+
+  const monthlyTotals = useMemo(() => {
+    const totals: Record<string, number> = {};
+    coins.forEach(coin => {
+      if (coin.amountPaid && coin.purchaseDate) {
+        const date = new Date(coin.purchaseDate);
+        const monthYear = date.toLocaleString('default', { month: 'long', year: 'numeric' });
+        totals[monthYear] = (totals[monthYear] || 0) + coin.amountPaid;
+      }
+    });
+    return Object.entries(totals).sort((a, b) => {
+      const dateA = new Date(a[0]);
+      const dateB = new Date(b[0]);
+      return dateB.getTime() - dateA.getTime();
+    });
+  }, [coins]);
+
+  const [newCoinImage, setNewCoinImage] = useState<string | null>(null);
+  const coinImageInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setNewCoinImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   if (hasError) {
     return (
@@ -323,20 +358,37 @@ export default function App() {
 
         <main className="max-w-5xl mx-auto px-4 py-6">
           {/* Progress Card */}
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm mb-8">
-            <div className="flex justify-between items-end mb-3">
-              <div>
-                <h2 className="text-sm text-slate-500 font-bold uppercase tracking-wider mb-1">Collection Progress</h2>
-                <p className="text-2xl font-black">{stats.collected} / {stats.total} <span className="text-sm font-normal text-slate-400">Coins</span></p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+            <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
+              <div className="flex justify-between items-end mb-3">
+                <div>
+                  <h2 className="text-sm text-slate-500 font-bold uppercase tracking-wider mb-1">Collection Progress</h2>
+                  <p className="text-2xl font-black">{stats.collected} / {stats.total} <span className="text-sm font-normal text-slate-400">Coins</span></p>
+                </div>
+                <span className="text-3xl font-black text-amber-500">{stats.percentage}%</span>
               </div>
-              <span className="text-3xl font-black text-amber-500">{stats.percentage}%</span>
+              <div className="w-full h-4 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: `${stats.percentage}%` }}
+                  className="h-full bg-gradient-to-r from-amber-400 to-amber-600"
+                />
+              </div>
             </div>
-            <div className="w-full h-4 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-              <motion.div 
-                initial={{ width: 0 }}
-                animate={{ width: `${stats.percentage}%` }}
-                className="h-full bg-gradient-to-r from-amber-400 to-amber-600"
-              />
+
+            <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+              <div>
+                <h2 className="text-sm text-slate-500 font-bold uppercase tracking-wider mb-1">Total Investment</h2>
+                <p className="text-3xl font-black text-emerald-500">£{stats.totalSpent.toFixed(2)}</p>
+              </div>
+              <div className="flex gap-2 overflow-x-auto no-scrollbar pt-2">
+                {monthlyTotals.slice(0, 3).map(([month, total]) => (
+                  <div key={month} className="bg-slate-50 dark:bg-slate-800 px-3 py-1 rounded-full whitespace-nowrap">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase mr-2">{month}</span>
+                    <span className="text-xs font-black">£{total.toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -434,13 +486,26 @@ export default function App() {
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.9 }}
                   className={cn(
-                    "group relative bg-white dark:bg-slate-900 rounded-3xl border transition-all duration-300 overflow-hidden",
+                    "group relative bg-white dark:bg-slate-900 rounded-3xl border transition-all duration-300 overflow-hidden flex flex-col",
                     coin.isCollected 
                       ? "border-emerald-500/30 shadow-lg shadow-emerald-500/5" 
                       : "border-slate-200 dark:border-slate-800 hover:border-amber-500/50"
                   )}
                 >
-                  <div className="p-6">
+                  {coin.imageUrl && (
+                    <div className="h-48 w-full overflow-hidden bg-slate-100 dark:bg-slate-800 relative">
+                      <img 
+                        src={coin.imageUrl} 
+                        alt={coin.title} 
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                        referrerPolicy="no-referrer"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
+                        <span className="text-white text-xs font-bold uppercase tracking-widest">{coin.denomination}</span>
+                      </div>
+                    </div>
+                  )}
+                  <div className="p-6 flex-1 flex flex-col">
                     <div className="flex justify-between items-start mb-4">
                       <div className="flex flex-col flex-1 mr-2">
                         <span className="text-[10px] font-black text-amber-500 uppercase tracking-[0.2em] mb-1">
@@ -482,11 +547,26 @@ export default function App() {
                       </button>
                     </div>
 
-                    <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 mb-6 italic leading-relaxed">
+                    <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 mb-4 italic leading-relaxed">
                       {coin.summary}
                     </p>
 
-                    <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
+                    {coin.amountPaid !== undefined && (
+                      <div className="flex items-center gap-4 mb-6 text-xs font-bold">
+                        <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                          <PoundSterling className="w-3.5 h-3.5" />
+                          <span>{coin.amountPaid.toFixed(2)}</span>
+                        </div>
+                        {coin.purchaseDate && (
+                          <div className="flex items-center gap-1.5 text-slate-400">
+                            <Calendar className="w-3.5 h-3.5" />
+                            <span>{new Date(coin.purchaseDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="mt-auto flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
                       <div className="flex items-center gap-2">
                         <span className={cn(
                           "text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider",
@@ -694,46 +774,81 @@ export default function App() {
                     </button>
                   </div>
 
-                  <form onSubmit={(e) => {
-                    e.preventDefault();
-                    const formData = new FormData(e.currentTarget);
-                    const newCoin: Coin = {
-                      id: `custom-${Date.now()}`,
-                      title: formData.get('title') as string,
-                      denomination: formData.get('denomination') as string,
-                      year: parseInt(formData.get('year') as string),
-                      summary: formData.get('summary') as string,
-                      isCollected: false,
-                      category: 'Other',
-                      folderId: formData.get('folderId') as string || undefined,
-                      addedAt: new Date().toISOString()
-                    };
-                    setCoins(prev => [newCoin, ...prev]);
-                    setIsAddModalOpen(false);
-                  }} className="space-y-5">
-                    <div>
-                      <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Coin Title</label>
-                      <input name="title" required placeholder="e.g. Peter Rabbit" className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <form onSubmit={(e) => {
+                      e.preventDefault();
+                      const formData = new FormData(e.currentTarget);
+                      const amountPaid = formData.get('amountPaid') ? parseFloat(formData.get('amountPaid') as string) : undefined;
+                      const purchaseDate = formData.get('purchaseDate') as string || undefined;
+                      
+                      const newCoin: Coin = {
+                        id: `custom-${Date.now()}`,
+                        title: formData.get('title') as string,
+                        denomination: formData.get('denomination') as string,
+                        year: parseInt(formData.get('year') as string),
+                        summary: formData.get('summary') as string,
+                        isCollected: !!amountPaid || false,
+                        category: 'Other',
+                        folderId: formData.get('folderId') as string || undefined,
+                        addedAt: new Date().toISOString(),
+                        imageUrl: newCoinImage || undefined,
+                        amountPaid,
+                        purchaseDate
+                      };
+                      setCoins(prev => [newCoin, ...prev]);
+                      setIsAddModalOpen(false);
+                      setNewCoinImage(null);
+                    }} className="space-y-5">
+                      <div className="flex justify-center mb-6">
+                        <button 
+                          type="button"
+                          onClick={() => coinImageInputRef.current?.click()}
+                          className="w-32 h-32 rounded-3xl bg-slate-100 dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-700 flex flex-col items-center justify-center gap-2 overflow-hidden group hover:border-amber-500 transition-all"
+                        >
+                          {newCoinImage ? (
+                            <img src={newCoinImage} alt="Preview" className="w-full h-full object-cover" />
+                          ) : (
+                            <>
+                              <Camera className="w-8 h-8 text-slate-400 group-hover:text-amber-500" />
+                              <span className="text-[10px] font-black text-slate-400 uppercase">Add Photo</span>
+                            </>
+                          )}
+                        </button>
+                        <input type="file" ref={coinImageInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
+                      </div>
+
                       <div>
-                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Denomination</label>
-                        <input name="denomination" required placeholder="e.g. 50p" className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold" />
+                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Coin Title</label>
+                        <input name="title" required placeholder="e.g. Peter Rabbit" className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Denomination</label>
+                          <input name="denomination" required placeholder="e.g. 50p" className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Year</label>
+                          <input name="year" type="number" required placeholder="e.g. 2023" className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold" />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Amount Paid (£)</label>
+                          <input name="amountPaid" type="number" step="0.01" placeholder="0.00" className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Purchase Date</label>
+                          <input name="purchaseDate" type="date" defaultValue={new Date().toISOString().split('T')[0]} className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold" />
+                        </div>
                       </div>
                       <div>
-                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Year</label>
-                        <input name="year" type="number" required placeholder="e.g. 2023" className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold" />
+                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Folder</label>
+                        <select name="folderId" className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold appearance-none">
+                          <option value="">No Folder</option>
+                          {folders.map(f => (
+                            <option key={f.id} value={f.id}>{f.icon} {f.name}</option>
+                          ))}
+                        </select>
                       </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Folder</label>
-                      <select name="folderId" className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold appearance-none">
-                        <option value="">No Folder</option>
-                        {folders.map(f => (
-                          <option key={f.id} value={f.id}>{f.icon} {f.name}</option>
-                        ))}
-                      </select>
-                    </div>
                     <div>
                       <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Summary (2 sentences)</label>
                       <textarea name="summary" required rows={3} placeholder="A brief description..." className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none resize-none font-medium text-sm" />
