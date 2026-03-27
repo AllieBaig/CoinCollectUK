@@ -11,6 +11,7 @@ export interface Coin {
   imageUrl?: string;
   amountPaid?: number;
   purchaseDate?: string;
+  points?: number;
 }
 
 export interface Folder {
@@ -18,12 +19,15 @@ export interface Folder {
   name: string;
   icon: string;
   lastOpenedAt: string;
+  addedAt: string;
 }
 
 export interface UserPreferences {
   isDarkMode: boolean;
   sortBy: 'recently-added' | 'recently-opened-folder' | 'title';
   activeFolderId: string | 'all';
+  showBottomMenu: boolean;
+  isCompactUI: boolean;
 }
 
 export interface AppState {

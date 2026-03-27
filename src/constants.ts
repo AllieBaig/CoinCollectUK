@@ -3,10 +3,10 @@ import { Coin, Folder } from './types';
 const now = new Date().toISOString();
 
 export const INITIAL_FOLDERS: Folder[] = [
-  { id: 'folder-commemorative', name: 'Commemorative', icon: '🏆', lastOpenedAt: now },
-  { id: 'folder-rare', name: 'Rare Finds', icon: '💎', lastOpenedAt: now },
-  { id: 'folder-circulating', name: 'Circulating', icon: '🔄', lastOpenedAt: now },
-  { id: 'folder-purchased', name: 'Coins Purchased', icon: '🛍️', lastOpenedAt: now }
+  { id: 'folder-commemorative', name: 'Commemorative', icon: '🏆', lastOpenedAt: now, addedAt: now },
+  { id: 'folder-rare', name: 'Rare Finds', icon: '💎', lastOpenedAt: now, addedAt: now },
+  { id: 'folder-circulating', name: 'Circulating', icon: '🔄', lastOpenedAt: now, addedAt: now },
+  { id: 'folder-purchased', name: 'Coins Purchased', icon: '🛍️', lastOpenedAt: now, addedAt: now }
 ];
 
 export const INITIAL_COINS: Coin[] = [

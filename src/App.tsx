@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, Component, ErrorInfo, ReactNode } from 'react';
 import { 
   Moon, 
   Sun, 
@@ -31,20 +31,132 @@ import {
   Camera,
   Image as ImageIcon,
   PoundSterling,
-  Calendar
+  Calendar,
+  User,
+  LayoutList,
+  Trophy,
+  AlertTriangle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
 import { Coin, AppState, Folder, UserPreferences } from './types';
 import { INITIAL_COINS, INITIAL_FOLDERS } from './constants';
 
+// Error Boundary Component
+interface ErrorBoundaryProps {
+  children: ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+}
+
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  public state: ErrorBoundaryState;
+  public props: ErrorBoundaryProps;
+
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false };
+    this.props = props;
+  }
+
+  static getDerivedStateFromError(_: Error): ErrorBoundaryState {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("Uncaught error:", error, errorInfo);
+  }
+
+  handleExport = () => {
+    const data = localStorage.getItem('uk-coin-collection-v2');
+    if (data) {
+      const blob = new Blob([data], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `uk-coins-emergency-backup.json`;
+      a.click();
+    } else {
+      alert("No data found in local storage to export.");
+    }
+  };
+
+  handleSafeMode = () => {
+    if (window.confirm("Safe Mode will reset your preferences but keep your coins. Continue?")) {
+      const data = localStorage.getItem('uk-coin-collection-v2');
+      if (data) {
+        const parsed = JSON.parse(data);
+        parsed.preferences = {
+          isDarkMode: false,
+          activeFolderId: 'all',
+          sortBy: 'recently-added',
+          showBottomMenu: true,
+          isCompactUI: false
+        };
+        localStorage.setItem('uk-coin-collection-v2', JSON.stringify(parsed));
+      }
+      window.location.reload();
+    }
+  };
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6 text-center">
+          <AlertTriangle className="w-16 h-16 text-red-500 mb-4" />
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Something went wrong</h1>
+          <p className="text-gray-600 mb-8 max-w-md">
+            The app encountered an unexpected error. You can try exporting your data or entering Safe Mode.
+          </p>
+          <div className="flex flex-col gap-4 w-full max-w-xs">
+            <button
+              onClick={this.handleExport}
+              className="flex items-center justify-center gap-2 bg-blue-600 text-white py-3 px-6 rounded-xl font-medium shadow-lg hover:bg-blue-700 transition-colors"
+            >
+              <Download className="w-5 h-5" />
+              Export Data
+            </button>
+            <button
+              onClick={this.handleSafeMode}
+              className="flex items-center justify-center gap-2 bg-gray-800 text-white py-3 px-6 rounded-xl font-medium shadow-lg hover:bg-gray-900 transition-colors"
+            >
+              <RefreshCw className="w-5 h-5" />
+              Use Safe Mode
+            </button>
+            <button
+              onClick={() => window.location.reload()}
+              className="text-blue-600 font-medium hover:underline"
+            >
+              Try Refreshing
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 export default function App() {
+  return (
+    <ErrorBoundary>
+      <CoinCollectorApp />
+    </ErrorBoundary>
+  );
+}
+
+function CoinCollectorApp() {
   const [coins, setCoins] = useState<Coin[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [preferences, setPreferences] = useState<UserPreferences>({
     isDarkMode: false,
     sortBy: 'recently-added',
-    activeFolderId: 'all'
+    activeFolderId: 'all',
+    showBottomMenu: true,
+    isCompactUI: false
   });
   
   const [searchQuery, setSearchQuery] = useState('');
@@ -52,7 +164,16 @@ export default function App() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isAddFolderModalOpen, setIsAddFolderModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isPhotoLibraryOpen, setIsPhotoLibraryOpen] = useState(false);
+  const [selectedCoin, setSelectedCoin] = useState<Coin | null>(null);
+  const [editingCoin, setEditingCoin] = useState<Coin | null>(null);
   const [editingCoinId, setEditingCoinId] = useState<string | null>(null);
+
+  const updateCoin = (updatedCoin: Coin) => {
+    setCoins(prev => prev.map(c => c.id === updatedCoin.id ? updatedCoin : c));
+    setEditingCoin(null);
+  };
   const [hasError, setHasError] = useState(false);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
@@ -68,7 +189,11 @@ export default function App() {
         setCoins(parsed.coins || INITIAL_COINS);
         setFolders(parsed.folders || INITIAL_FOLDERS);
         if (parsed.preferences) {
-          setPreferences(parsed.preferences);
+          setPreferences({
+            ...parsed.preferences,
+            showBottomMenu: parsed.preferences.showBottomMenu ?? true,
+            isCompactUI: parsed.preferences.isCompactUI ?? false
+          });
           if (parsed.preferences.isDarkMode) {
             document.documentElement.classList.add('dark');
           }
@@ -151,7 +276,8 @@ export default function App() {
       id: `folder-${Date.now()}`,
       name,
       icon,
-      lastOpenedAt: new Date().toISOString()
+      lastOpenedAt: new Date().toISOString(),
+      addedAt: new Date().toISOString()
     };
     setFolders(prev => [newFolder, ...prev]);
     setIsAddFolderModalOpen(false);
@@ -217,6 +343,9 @@ export default function App() {
     if (preferences.sortBy === 'recently-opened-folder') {
       return [...folders].sort((a, b) => new Date(b.lastOpenedAt).getTime() - new Date(a.lastOpenedAt).getTime());
     }
+    if (preferences.sortBy === 'recently-added') {
+      return [...folders].sort((a, b) => new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime());
+    }
     return folders;
   }, [folders, preferences.sortBy]);
 
@@ -245,7 +374,8 @@ export default function App() {
     const collected = coins.filter(c => c.isCollected).length;
     const percentage = total > 0 ? Math.round((collected / total) * 100) : 0;
     const totalSpent = coins.reduce((acc, c) => acc + (c.amountPaid || 0), 0);
-    return { total, collected, percentage, totalSpent };
+    const totalPoints = coins.reduce((acc, c) => acc + (c.isCollected ? (c.points || 10) : 0), 0);
+    return { total, collected, percentage, totalSpent, totalPoints };
   }, [coins]);
 
   const monthlyTotals = useMemo(() => {
@@ -323,32 +453,24 @@ export default function App() {
             </div>
 
             <div className="flex items-center gap-2">
-              <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-full">
-                <button 
-                  onClick={() => setPreferences(prev => ({ ...prev, sortBy: 'recently-added' }))}
-                  className={cn("p-1.5 rounded-full transition-all", preferences.sortBy === 'recently-added' ? "bg-white dark:bg-slate-700 shadow-sm text-amber-500" : "text-slate-400")}
-                  title="Sort by Recently Added"
-                >
-                  <Clock className="w-4 h-4" />
-                </button>
-                <button 
-                  onClick={() => setPreferences(prev => ({ ...prev, sortBy: 'recently-opened-folder' }))}
-                  className={cn("p-1.5 rounded-full transition-all", preferences.sortBy === 'recently-opened-folder' ? "bg-white dark:bg-slate-700 shadow-sm text-amber-500" : "text-slate-400")}
-                  title="Sort by Recently Opened Folder"
-                >
-                  <FolderIcon className="w-4 h-4" />
-                </button>
-                <button 
-                  onClick={() => setPreferences(prev => ({ ...prev, sortBy: 'title' }))}
-                  className={cn("p-1.5 rounded-full transition-all", preferences.sortBy === 'title' ? "bg-white dark:bg-slate-700 shadow-sm text-amber-500" : "text-slate-400")}
-                  title="Sort by Title"
-                >
-                  <TypeIcon className="w-4 h-4" />
-                </button>
-              </div>
+              <button 
+                onClick={() => setIsPhotoLibraryOpen(true)}
+                className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                title="Photo Library"
+              >
+                <ImageIcon className="w-5 h-5" />
+              </button>
+              <button 
+                onClick={() => setIsProfileOpen(true)}
+                className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                title="Profile"
+              >
+                <User className="w-5 h-5" />
+              </button>
               <button 
                 onClick={() => setIsSettingsOpen(true)}
                 className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                title="Settings"
               >
                 <Settings className="w-5 h-5" />
               </button>
@@ -358,14 +480,20 @@ export default function App() {
 
         <main className="max-w-5xl mx-auto px-4 py-6">
           {/* Progress Card */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+          <div className="mb-8">
             <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
               <div className="flex justify-between items-end mb-3">
                 <div>
                   <h2 className="text-sm text-slate-500 font-bold uppercase tracking-wider mb-1">Collection Progress</h2>
                   <p className="text-2xl font-black">{stats.collected} / {stats.total} <span className="text-sm font-normal text-slate-400">Coins</span></p>
                 </div>
-                <span className="text-3xl font-black text-amber-500">{stats.percentage}%</span>
+                <div className="flex flex-col items-end">
+                  <span className="text-3xl font-black text-amber-500">{stats.percentage}%</span>
+                  <div className="flex items-center gap-1 text-xs font-bold text-amber-600">
+                    <Trophy className="w-3 h-3" />
+                    <span>{stats.totalPoints} pts</span>
+                  </div>
+                </div>
               </div>
               <div className="w-full h-4 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                 <motion.div 
@@ -373,21 +501,6 @@ export default function App() {
                   animate={{ width: `${stats.percentage}%` }}
                   className="h-full bg-gradient-to-r from-amber-400 to-amber-600"
                 />
-              </div>
-            </div>
-
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
-              <div>
-                <h2 className="text-sm text-slate-500 font-bold uppercase tracking-wider mb-1">Total Investment</h2>
-                <p className="text-3xl font-black text-emerald-500">£{stats.totalSpent.toFixed(2)}</p>
-              </div>
-              <div className="flex gap-2 overflow-x-auto no-scrollbar pt-2">
-                {monthlyTotals.slice(0, 3).map(([month, total]) => (
-                  <div key={month} className="bg-slate-50 dark:bg-slate-800 px-3 py-1 rounded-full whitespace-nowrap">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase mr-2">{month}</span>
-                    <span className="text-xs font-black">£{total.toFixed(2)}</span>
-                  </div>
-                ))}
               </div>
             </div>
           </div>
@@ -476,7 +589,12 @@ export default function App() {
           </div>
 
           {/* Coin Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className={cn(
+            "grid gap-6",
+            preferences.isCompactUI 
+              ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4" 
+              : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+          )}>
             <AnimatePresence mode="popLayout">
               {filteredCoins.map((coin) => (
                 <motion.div
@@ -485,15 +603,20 @@ export default function App() {
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.9 }}
+                  onClick={() => setSelectedCoin(coin)}
                   className={cn(
-                    "group relative bg-white dark:bg-slate-900 rounded-3xl border transition-all duration-300 overflow-hidden flex flex-col",
+                    "group relative bg-white dark:bg-slate-900 rounded-3xl border transition-all duration-300 overflow-hidden flex flex-col cursor-pointer",
                     coin.isCollected 
                       ? "border-emerald-500/30 shadow-lg shadow-emerald-500/5" 
-                      : "border-slate-200 dark:border-slate-800 hover:border-amber-500/50"
+                      : "border-slate-200 dark:border-slate-800 hover:border-amber-500/50",
+                    preferences.isCompactUI && "rounded-2xl"
                   )}
                 >
                   {coin.imageUrl && (
-                    <div className="h-48 w-full overflow-hidden bg-slate-100 dark:bg-slate-800 relative">
+                    <div className={cn(
+                      "w-full overflow-hidden bg-slate-100 dark:bg-slate-800 relative",
+                      preferences.isCompactUI ? "h-32" : "h-48"
+                    )}>
                       <img 
                         src={coin.imageUrl} 
                         alt={coin.title} 
@@ -501,57 +624,50 @@ export default function App() {
                         referrerPolicy="no-referrer"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
-                        <span className="text-white text-xs font-bold uppercase tracking-widest">{coin.denomination}</span>
+                        <span className="text-white text-[10px] font-bold uppercase tracking-widest">{coin.denomination}</span>
                       </div>
                     </div>
                   )}
-                  <div className="p-6 flex-1 flex flex-col">
+                  <div className={cn(
+                    "flex-1 flex flex-col",
+                    preferences.isCompactUI ? "p-4" : "p-6"
+                  )}>
                     <div className="flex justify-between items-start mb-4">
                       <div className="flex flex-col flex-1 mr-2">
                         <span className="text-[10px] font-black text-amber-500 uppercase tracking-[0.2em] mb-1">
                           {coin.denomination} • {coin.year}
                         </span>
-                        {editingCoinId === coin.id ? (
-                          <input 
-                            autoFocus
-                            defaultValue={coin.title}
-                            onBlur={(e) => updateCoinTitle(coin.id, e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') updateCoinTitle(coin.id, e.currentTarget.value);
-                              if (e.key === 'Escape') setEditingCoinId(null);
-                            }}
-                            className="bg-slate-100 dark:bg-slate-800 border-none rounded-lg px-2 py-1 text-lg font-bold outline-none focus:ring-2 focus:ring-amber-500 w-full"
-                          />
-                        ) : (
-                          <h3 className="text-lg font-bold flex items-center gap-2 leading-tight">
-                            {coin.title}
-                            <button 
-                              onClick={() => setEditingCoinId(coin.id)}
-                              className="opacity-0 group-hover:opacity-100 p-1 hover:text-amber-500 transition-all"
-                            >
-                              <Edit2 className="w-3 h-3" />
-                            </button>
-                          </h3>
-                        )}
+                        <h3 className={cn(
+                          "font-bold flex items-center gap-2 leading-tight",
+                          preferences.isCompactUI ? "text-sm" : "text-lg"
+                        )}>
+                          {coin.title}
+                        </h3>
                       </div>
                       <button 
-                        onClick={() => toggleCollected(coin.id)}
+                        onClick={(e) => { e.stopPropagation(); toggleCollected(coin.id); }}
                         className={cn(
-                          "w-12 h-12 rounded-2xl flex items-center justify-center transition-all shrink-0",
+                          "rounded-2xl flex items-center justify-center transition-all shrink-0",
+                          preferences.isCompactUI ? "w-8 h-8 rounded-xl" : "w-12 h-12 rounded-2xl",
                           coin.isCollected 
                             ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20" 
                             : "bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-emerald-500"
                         )}
                       >
-                        {coin.isCollected ? <CheckCircle2 className="w-7 h-7" /> : <Circle className="w-7 h-7" />}
+                        {coin.isCollected 
+                          ? <CheckCircle2 className={preferences.isCompactUI ? "w-5 h-5" : "w-7 h-7"} /> 
+                          : <Circle className={preferences.isCompactUI ? "w-5 h-5" : "w-7 h-7"} />
+                        }
                       </button>
                     </div>
 
-                    <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 mb-4 italic leading-relaxed">
-                      {coin.summary}
-                    </p>
+                    {!preferences.isCompactUI && (
+                      <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 mb-4 italic leading-relaxed">
+                        {coin.summary}
+                      </p>
+                    )}
 
-                    {coin.amountPaid !== undefined && (
+                    {coin.amountPaid !== undefined && !preferences.isCompactUI && (
                       <div className="flex items-center gap-4 mb-6 text-xs font-bold">
                         <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
                           <PoundSterling className="w-3.5 h-3.5" />
@@ -566,7 +682,10 @@ export default function App() {
                       </div>
                     )}
 
-                    <div className="mt-auto flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
+                    <div className={cn(
+                      "mt-auto flex items-center justify-between border-t border-slate-100 dark:border-slate-800",
+                      preferences.isCompactUI ? "pt-2" : "pt-4"
+                    )}>
                       <div className="flex items-center gap-2">
                         <span className={cn(
                           "text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider",
@@ -576,18 +695,26 @@ export default function App() {
                         )}>
                           {coin.isCollected ? 'Collected' : 'Missing'}
                         </span>
-                        {coin.folderId && (
+                        {coin.folderId && !preferences.isCompactUI && (
                           <span className="text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
                             {folders.find(f => f.id === coin.folderId)?.name || 'Folder'}
                           </span>
                         )}
                       </div>
-                      <button 
-                        onClick={() => deleteCoin(coin.id)}
-                        className="p-2 text-slate-300 hover:text-red-500 transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); setEditingCoin(coin); }}
+                          className="p-2 text-slate-300 hover:text-amber-500 transition-colors"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); deleteCoin(coin.id); }}
+                          className="p-2 text-slate-300 hover:text-red-500 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </motion.div>
@@ -609,13 +736,71 @@ export default function App() {
           )}
         </main>
 
-        {/* Floating Add Button */}
-        <button 
-          onClick={() => setIsAddModalOpen(true)}
-          className="fixed bottom-6 right-6 w-16 h-16 bg-amber-500 text-white rounded-full shadow-2xl shadow-amber-500/40 flex items-center justify-center z-40 hover:scale-110 active:scale-95 transition-all"
-        >
-          <Plus className="w-8 h-8" />
-        </button>
+        {/* Bottom Navigation */}
+        {preferences.showBottomMenu && (
+          <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 pb-safe">
+            <div className="max-w-5xl mx-auto px-6 py-3 flex items-center justify-between">
+              <button 
+                onClick={() => openFolder('all')}
+                className={cn(
+                  "flex flex-col items-center gap-1 transition-colors",
+                  preferences.activeFolderId === 'all' ? "text-amber-500" : "text-slate-400"
+                )}
+              >
+                <LayoutGrid className="w-6 h-6" />
+                <span className="text-[10px] font-bold uppercase tracking-widest">Home</span>
+              </button>
+              <button 
+                onClick={() => setIsPhotoLibraryOpen(true)}
+                className={cn(
+                  "flex flex-col items-center gap-1 transition-colors",
+                  isPhotoLibraryOpen ? "text-amber-500" : "text-slate-400"
+                )}
+              >
+                <ImageIcon className="w-6 h-6" />
+                <span className="text-[10px] font-bold uppercase tracking-widest">Photos</span>
+              </button>
+              <div className="relative -top-8">
+                <button 
+                  onClick={() => setIsAddModalOpen(true)}
+                  className="w-14 h-14 bg-amber-500 text-white rounded-full shadow-xl shadow-amber-500/40 flex items-center justify-center hover:scale-110 active:scale-95 transition-all"
+                >
+                  <Plus className="w-8 h-8" />
+                </button>
+              </div>
+              <button 
+                onClick={() => setIsProfileOpen(true)}
+                className={cn(
+                  "flex flex-col items-center gap-1 transition-colors",
+                  isProfileOpen ? "text-amber-500" : "text-slate-400"
+                )}
+              >
+                <User className="w-6 h-6" />
+                <span className="text-[10px] font-bold uppercase tracking-widest">Profile</span>
+              </button>
+              <button 
+                onClick={() => setIsSettingsOpen(true)}
+                className={cn(
+                  "flex flex-col items-center gap-1 transition-colors",
+                  isSettingsOpen ? "text-amber-500" : "text-slate-400"
+                )}
+              >
+                <Settings className="w-6 h-6" />
+                <span className="text-[10px] font-bold uppercase tracking-widest">Settings</span>
+              </button>
+            </div>
+          </nav>
+        )}
+
+        {/* Floating Add Button (Fallback if bottom menu is disabled) */}
+        {!preferences.showBottomMenu && (
+          <button 
+            onClick={() => setIsAddModalOpen(true)}
+            className="fixed bottom-6 right-6 w-16 h-16 bg-amber-500 text-white rounded-full shadow-2xl shadow-amber-500/40 flex items-center justify-center z-40 hover:scale-110 active:scale-95 transition-all"
+          >
+            <Plus className="w-8 h-8" />
+          </button>
+        )}
 
         {/* Settings Bottom Sheet */}
         <AnimatePresence>
@@ -657,6 +842,32 @@ export default function App() {
                       </div>
                       <div className={cn("w-12 h-6 rounded-full p-1 transition-colors", preferences.isDarkMode ? "bg-amber-500" : "bg-slate-200")}>
                         <div className={cn("w-4 h-4 bg-white rounded-full transition-transform", preferences.isDarkMode ? "translate-x-6" : "translate-x-0")} />
+                      </div>
+                    </button>
+
+                    <button 
+                      onClick={() => setPreferences(prev => ({ ...prev, showBottomMenu: !prev.showBottomMenu }))}
+                      className="w-full flex items-center justify-between p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm"
+                    >
+                      <div className="flex items-center gap-3">
+                        <LayoutList className="w-5 h-5 text-slate-500" />
+                        <span className="font-bold">Bottom Menu</span>
+                      </div>
+                      <div className={cn("w-12 h-6 rounded-full p-1 transition-colors", preferences.showBottomMenu ? "bg-amber-500" : "bg-slate-200")}>
+                        <div className={cn("w-4 h-4 bg-white rounded-full transition-transform", preferences.showBottomMenu ? "translate-x-6" : "translate-x-0")} />
+                      </div>
+                    </button>
+
+                    <button 
+                      onClick={() => setPreferences(prev => ({ ...prev, isCompactUI: !prev.isCompactUI }))}
+                      className="w-full flex items-center justify-between p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm"
+                    >
+                      <div className="flex items-center gap-3">
+                        <LayoutGrid className="w-5 h-5 text-slate-500" />
+                        <span className="font-bold">Compact UI</span>
+                      </div>
+                      <div className={cn("w-12 h-6 rounded-full p-1 transition-colors", preferences.isCompactUI ? "bg-amber-500" : "bg-slate-200")}>
+                        <div className={cn("w-4 h-4 bg-white rounded-full transition-transform", preferences.isCompactUI ? "translate-x-6" : "translate-x-0")} />
                       </div>
                     </button>
                   </div>
@@ -863,7 +1074,315 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        {/* Add Folder Modal */}
+        {/* Profile Modal */}
+        <AnimatePresence>
+          {isProfileOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsProfileOpen(false)}
+                className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+              />
+              <motion.div 
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-[40px] shadow-2xl overflow-hidden"
+              >
+                <div className="p-8">
+                  <div className="flex justify-between items-center mb-8">
+                    <h2 className="text-2xl font-black">My Profile</h2>
+                    <button onClick={() => setIsProfileOpen(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full">
+                      <X className="w-6 h-6" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-4 p-6 bg-slate-50 dark:bg-slate-800 rounded-3xl">
+                      <div className="w-16 h-16 bg-amber-500 rounded-2xl flex items-center justify-center text-white text-2xl font-black">
+                        {"unisontrack@gmail.com".charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Collector</p>
+                        <h3 className="text-xl font-black">unisontrack@gmail.com</h3>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="p-6 bg-emerald-500/10 rounded-3xl border border-emerald-500/20">
+                        <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">Total Spent</p>
+                        <p className="text-2xl font-black text-emerald-600">£{stats.totalSpent.toFixed(2)}</p>
+                      </div>
+                      <div className="p-6 bg-amber-500/10 rounded-3xl border border-amber-500/20">
+                        <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1">Total Points</p>
+                        <p className="text-2xl font-black text-amber-600">{stats.totalPoints} pts</p>
+                      </div>
+                    </div>
+
+                    <div className="bg-slate-50 dark:bg-slate-800 p-6 rounded-3xl">
+                      <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Monthly Spending</h4>
+                      <div className="space-y-3">
+                        {monthlyTotals.map(([month, total]) => (
+                          <div key={month} className="flex justify-between items-center">
+                            <span className="text-sm font-bold text-slate-500">{month}</span>
+                            <span className="text-sm font-black">£{total.toFixed(2)}</span>
+                          </div>
+                        ))}
+                        {monthlyTotals.length === 0 && <p className="text-xs text-slate-400 italic">No purchase history yet.</p>}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* Photo Library Modal */}
+        <AnimatePresence>
+          {isPhotoLibraryOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsPhotoLibraryOpen(false)}
+                className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+              />
+              <motion.div 
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                className="relative w-full max-w-4xl bg-white dark:bg-slate-900 rounded-[40px] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+              >
+                <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                  <h2 className="text-2xl font-black">Photo Library</h2>
+                  <button onClick={() => setIsPhotoLibraryOpen(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full">
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+                <div className="p-8 overflow-y-auto flex-1">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                    {coins.filter(c => c.imageUrl).map(coin => (
+                      <div 
+                        key={coin.id} 
+                        onClick={() => { setSelectedCoin(coin); setIsPhotoLibraryOpen(false); }}
+                        className="aspect-square rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 cursor-pointer group relative"
+                      >
+                        <img src={coin.imageUrl} alt={coin.title} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-2 text-center">
+                          <span className="text-white text-[10px] font-bold uppercase tracking-widest">{coin.title}</span>
+                        </div>
+                      </div>
+                    ))}
+                    {coins.filter(c => c.imageUrl).length === 0 && (
+                      <div className="col-span-full py-20 text-center text-slate-400">
+                        <ImageIcon className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                        <p className="font-bold">No photos in your library yet.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* Coin Detail Modal */}
+        <AnimatePresence>
+          {selectedCoin && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setSelectedCoin(null)}
+                className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+              />
+              <motion.div 
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-[40px] shadow-2xl overflow-hidden"
+              >
+                {selectedCoin.imageUrl && (
+                  <div className="h-64 w-full relative">
+                    <img src={selectedCoin.imageUrl} alt={selectedCoin.title} className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                    <button 
+                      onClick={() => setSelectedCoin(null)}
+                      className="absolute top-6 right-6 p-2 bg-black/20 backdrop-blur-md text-white rounded-full hover:bg-black/40 transition-colors"
+                    >
+                      <X className="w-6 h-6" />
+                    </button>
+                    <div className="absolute bottom-6 left-8 right-8">
+                      <span className="text-amber-400 text-xs font-black uppercase tracking-[0.2em] mb-1 block">
+                        {selectedCoin.denomination} • {selectedCoin.year}
+                      </span>
+                      <h2 className="text-3xl font-black text-white">{selectedCoin.title}</h2>
+                    </div>
+                  </div>
+                )}
+                <div className="p-8">
+                  {!selectedCoin.imageUrl && (
+                    <div className="flex justify-between items-start mb-6">
+                      <div>
+                        <span className="text-amber-500 text-xs font-black uppercase tracking-[0.2em] mb-1 block">
+                          {selectedCoin.denomination} • {selectedCoin.year}
+                        </span>
+                        <h2 className="text-3xl font-black">{selectedCoin.title}</h2>
+                      </div>
+                      <button onClick={() => setSelectedCoin(null)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full">
+                        <X className="w-6 h-6" />
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-4">
+                      <div className={cn(
+                        "px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest",
+                        selectedCoin.isCollected 
+                          ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20" 
+                          : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+                      )}>
+                        {selectedCoin.isCollected ? 'Collected' : 'Missing'}
+                      </div>
+                      <div className="flex items-center gap-1.5 px-4 py-2 bg-amber-500/10 text-amber-600 rounded-xl border border-amber-500/20 text-xs font-black uppercase tracking-widest">
+                        <Trophy className="w-3.5 h-3.5" />
+                        <span>{selectedCoin.isCollected ? (selectedCoin.points || 10) : 0} Points</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Summary</h4>
+                      <p className="text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
+                        {selectedCoin.summary}
+                      </p>
+                    </div>
+
+                    {selectedCoin.amountPaid !== undefined && (
+                      <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                        <div>
+                          <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Price Paid</h4>
+                          <p className="text-xl font-black text-emerald-500">£{selectedCoin.amountPaid.toFixed(2)}</p>
+                        </div>
+                        {selectedCoin.purchaseDate && (
+                          <div>
+                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Date</h4>
+                            <p className="text-sm font-bold">{new Date(selectedCoin.purchaseDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="flex gap-3 pt-4">
+                      <button 
+                        onClick={() => { toggleCollected(selectedCoin.id); setSelectedCoin(prev => prev ? { ...prev, isCollected: !prev.isCollected } : null); }}
+                        className={cn(
+                          "flex-1 py-4 rounded-2xl font-black uppercase tracking-widest transition-all",
+                          selectedCoin.isCollected 
+                            ? "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400" 
+                            : "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20"
+                        )}
+                      >
+                        {selectedCoin.isCollected ? 'Mark as Missing' : 'Mark as Collected'}
+                      </button>
+                      <button 
+                        onClick={() => { setEditingCoin(selectedCoin); setSelectedCoin(null); }}
+                        className="p-4 bg-slate-100 dark:bg-slate-800 rounded-2xl text-slate-600 dark:text-slate-400 hover:text-amber-500 transition-colors"
+                      >
+                        <Edit2 className="w-6 h-6" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* Edit Coin Modal */}
+        <AnimatePresence>
+          {editingCoin && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setEditingCoin(null)}
+                className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+              />
+              <motion.div 
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-[40px] shadow-2xl overflow-hidden"
+              >
+                <div className="p-8">
+                  <div className="flex justify-between items-center mb-8">
+                    <h2 className="text-2xl font-black">Edit Coin</h2>
+                    <button onClick={() => setEditingCoin(null)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full">
+                      <X className="w-6 h-6" />
+                    </button>
+                  </div>
+
+                  <form onSubmit={(e) => {
+                    e.preventDefault();
+                    const formData = new FormData(e.currentTarget);
+                    const amountPaid = formData.get('amountPaid') ? parseFloat(formData.get('amountPaid') as string) : undefined;
+                    
+                    updateCoin({
+                      ...editingCoin,
+                      title: formData.get('title') as string,
+                      denomination: formData.get('denomination') as string,
+                      year: parseInt(formData.get('year') as string),
+                      summary: formData.get('summary') as string,
+                      amountPaid,
+                      purchaseDate: formData.get('purchaseDate') as string || undefined,
+                      folderId: formData.get('folderId') as string || undefined,
+                      isCollected: !!amountPaid || editingCoin.isCollected
+                    });
+                  }} className="space-y-5">
+                    <div>
+                      <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Coin Title</label>
+                      <input name="title" required defaultValue={editingCoin.title} className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Denomination</label>
+                        <input name="denomination" required defaultValue={editingCoin.denomination} className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Year</label>
+                        <input name="year" type="number" required defaultValue={editingCoin.year} className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Amount Paid (£)</label>
+                        <input name="amountPaid" type="number" step="0.01" defaultValue={editingCoin.amountPaid} className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Purchase Date</label>
+                        <input name="purchaseDate" type="date" defaultValue={editingCoin.purchaseDate} className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Summary</label>
+                      <textarea name="summary" required rows={3} defaultValue={editingCoin.summary} className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none resize-none font-medium text-sm" />
+                    </div>
+                    <button type="submit" className="w-full py-5 bg-amber-500 hover:bg-amber-600 text-white font-black rounded-2xl shadow-xl shadow-amber-500/30 transition-all mt-4 uppercase tracking-widest">
+                      Save Changes
+                    </button>
+                  </form>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
         <AnimatePresence>
           {isAddFolderModalOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
