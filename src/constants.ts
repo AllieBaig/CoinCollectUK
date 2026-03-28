@@ -17,6 +17,7 @@ export const INITIAL_COINS: Coin[] = [
     year: 2009,
     summary: 'The rarest 50p in circulation, featuring the famous Chinese Pagoda at the Royal Botanic Gardens. Only 210,000 were minted, making it a holy grail for collectors.',
     isCollected: false,
+    isRare: true,
     category: '50p',
     folderId: 'folder-rare',
     addedAt: now
@@ -74,6 +75,30 @@ export const INITIAL_COINS: Coin[] = [
     isCollected: false,
     category: '£1',
     folderId: 'folder-circulating',
+    addedAt: now
+  },
+  {
+    id: '50p-olympic-football',
+    title: 'Olympic Football',
+    denomination: '50p',
+    year: 2011,
+    summary: 'Explains the offside rule in football. Part of the 29-coin series released for the London 2012 Olympics.',
+    isCollected: false,
+    isRare: true,
+    category: '50p',
+    folderId: 'folder-rare',
+    addedAt: now
+  },
+  {
+    id: '2-commonwealth-games-scotland',
+    title: 'Commonwealth Games Scotland',
+    denomination: '£2',
+    year: 2002,
+    summary: 'One of the rarest £2 coins, representing Scotland in the 2002 Commonwealth Games series.',
+    isCollected: false,
+    isRare: true,
+    category: '£2',
+    folderId: 'folder-rare',
     addedAt: now
   }
 ];

@@ -37,4 +37,5 @@ export interface AppState {
   folders: Folder[];
   preferences: UserPreferences;
   lastUpdated: string;
+  recoveryCode?: string;
 }

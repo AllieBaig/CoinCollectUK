@@ -172,7 +172,18 @@ function CoinCollectorApp() {
   const [editingCoin, setEditingCoin] = useState<Coin | null>(null);
   const [editingCoinId, setEditingCoinId] = useState<string | null>(null);
   const [importProgress, setImportProgress] = useState<number | null>(null);
+  const [recoveryCode, setRecoveryCode] = useState<string>('');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
+
+  const generateRecoveryCode = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let code = '';
+    for (let i = 0; i < 12; i++) {
+      if (i > 0 && i % 4 === 0) code += '-';
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+  };
 
   const showToast = (message: string, type: 'success' | 'info' = 'success') => {
     setToast({ message, type });
@@ -197,6 +208,7 @@ function CoinCollectorApp() {
         const parsed: AppState = JSON.parse(savedData);
         setCoins(parsed.coins || INITIAL_COINS);
         setFolders(parsed.folders || INITIAL_FOLDERS);
+        setRecoveryCode(parsed.recoveryCode || generateRecoveryCode());
         if (parsed.preferences) {
           setPreferences({
             ...parsed.preferences,
@@ -215,6 +227,7 @@ function CoinCollectorApp() {
           setCoins(INITIAL_COINS);
         }
         setFolders(INITIAL_FOLDERS);
+        setRecoveryCode(generateRecoveryCode());
         
         setPreferences(prev => ({ ...prev, themeMode: 'system' }));
       }
@@ -271,11 +284,12 @@ function CoinCollectorApp() {
         coins,
         folders,
         preferences,
+        recoveryCode,
         lastUpdated: new Date().toISOString()
       };
       localStorage.setItem('uk-coin-collection-v2', JSON.stringify(state));
     }
-  }, [coins, folders, preferences]);
+  }, [coins, folders, preferences, recoveryCode]);
 
   const toggleCollected = (id: string) => {
     setCoins(prev => prev.map(c => c.id === id ? { ...c, isCollected: !c.isCollected } : c));
@@ -322,7 +336,7 @@ function CoinCollectorApp() {
   };
 
   const exportData = () => {
-    const state: AppState = { coins, folders, preferences, lastUpdated: new Date().toISOString() };
+    const state: AppState = { coins, folders, preferences, recoveryCode, lastUpdated: new Date().toISOString() };
     const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -357,6 +371,7 @@ function CoinCollectorApp() {
             setCoins(imported.coins);
             if (imported.folders) setFolders(imported.folders);
             if (imported.preferences) setPreferences(imported.preferences);
+            if (imported.recoveryCode) setRecoveryCode(imported.recoveryCode);
             alert('Data imported successfully!');
           }
         } catch (err) {
@@ -384,14 +399,9 @@ function CoinCollectorApp() {
   };
 
   const sortedFolders = useMemo(() => {
-    if (preferences.sortBy === 'recently-opened-folder') {
-      return [...folders].sort((a, b) => new Date(b.lastOpenedAt).getTime() - new Date(a.lastOpenedAt).getTime());
-    }
-    if (preferences.sortBy === 'recently-added') {
-      return [...folders].sort((a, b) => new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime());
-    }
-    return folders;
-  }, [folders, preferences.sortBy]);
+    // Default to recently opened for folders
+    return [...folders].sort((a, b) => new Date(b.lastOpenedAt).getTime() - new Date(a.lastOpenedAt).getTime());
+  }, [folders]);
 
   const filteredCoins = useMemo(() => {
     let result = coins.filter(coin => {
@@ -399,15 +409,22 @@ function CoinCollectorApp() {
                            coin.denomination.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesFilter = filter === 'all' ? true : 
                            filter === 'collected' ? coin.isCollected : !coin.isCollected;
-      const matchesFolder = preferences.activeFolderId === 'all' ? true : coin.folderId === preferences.activeFolderId;
+      
+      let matchesFolder = preferences.activeFolderId === 'all' ? true : coin.folderId === preferences.activeFolderId;
+      
+      // Smart Folder: Coins Purchased
+      if (preferences.activeFolderId === 'folder-purchased') {
+        matchesFolder = (coin.amountPaid || 0) > 0;
+      }
       
       return matchesSearch && matchesFilter && matchesFolder;
     });
 
-    if (preferences.sortBy === 'recently-added') {
-      result.sort((a, b) => new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime());
-    } else if (preferences.sortBy === 'title') {
+    // Default to recently added for coins
+    if (preferences.sortBy === 'title') {
       result.sort((a, b) => a.title.localeCompare(b.title));
+    } else {
+      result.sort((a, b) => new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime());
     }
 
     return result;
@@ -1074,6 +1091,53 @@ function CoinCollectorApp() {
           )}
         </AnimatePresence>
 
+        {/* Add Folder Modal */}
+        <AnimatePresence>
+          {isAddFolderModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsAddFolderModalOpen(false)}
+                className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+              />
+              <motion.div 
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-[40px] shadow-2xl overflow-hidden"
+              >
+                <div className="p-8">
+                  <div className="flex justify-between items-center mb-8">
+                    <h2 className="text-2xl font-black">New Folder</h2>
+                    <button onClick={() => setIsAddFolderModalOpen(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full">
+                      <X className="w-6 h-6" />
+                    </button>
+                  </div>
+                  <form onSubmit={(e) => {
+                    e.preventDefault();
+                    const formData = new FormData(e.currentTarget);
+                    addFolder(formData.get('name') as string, formData.get('icon') as string);
+                  }} className="space-y-6">
+                    <div>
+                      <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Folder Name</label>
+                      <input name="name" required placeholder="e.g. My Rare Coins" className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Emoji Icon</label>
+                      <input name="icon" required placeholder="e.g. 💎" className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold text-2xl text-center" />
+                    </div>
+                    <button type="submit" className="w-full py-5 bg-amber-500 hover:bg-amber-600 text-white font-black rounded-2xl shadow-xl shadow-amber-500/30 transition-all uppercase tracking-widest">
+                      Create Folder
+                    </button>
+                  </form>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
         {/* Add Coin Modal */}
         <AnimatePresence>
           {isAddModalOpen && (
@@ -1223,6 +1287,16 @@ function CoinCollectorApp() {
                   </div>
 
                     <div className="space-y-6">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-10 h-10 bg-amber-500 rounded-xl flex items-center justify-center text-white">
+                          <User className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <h3 className="text-xl font-black">Device Profile</h3>
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Local Storage Only</p>
+                        </div>
+                      </div>
+
                       <div className="p-6 bg-slate-50 dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700">
                         <div className="flex justify-between items-center mb-4">
                           <div>
@@ -1257,11 +1331,11 @@ function CoinCollectorApp() {
 
                       <div className="flex items-center gap-4 p-6 bg-slate-50 dark:bg-slate-800 rounded-3xl">
                       <div className="w-16 h-16 bg-amber-500 rounded-2xl flex items-center justify-center text-white text-2xl font-black">
-                        {"unisontrack@gmail.com".charAt(0).toUpperCase()}
+                        {stats.currentLevel.name.charAt(0)}
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Collector</p>
-                        <h3 className="text-xl font-black">unisontrack@gmail.com</h3>
+                        <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">{stats.currentLevel.name}</p>
+                        <h3 className="text-xl font-black">Local Collector</h3>
                       </div>
                     </div>
 
@@ -1274,6 +1348,29 @@ function CoinCollectorApp() {
                         <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1">Collected</p>
                         <p className="text-2xl font-black text-amber-600">{stats.collected} <span className="text-xs">coins</span></p>
                       </div>
+                    </div>
+
+                    <div className="bg-slate-50 dark:bg-slate-800 p-6 rounded-3xl">
+                      <div className="flex justify-between items-center mb-4">
+                        <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">Recovery Code</h4>
+                        <button 
+                          onClick={() => {
+                            navigator.clipboard.writeText(recoveryCode);
+                            showToast('Recovery code copied!');
+                          }}
+                          className="text-[10px] font-black text-amber-500 uppercase tracking-widest hover:underline"
+                        >
+                          Copy
+                        </button>
+                      </div>
+                      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 text-center">
+                        <code className="text-lg font-mono font-black tracking-wider text-slate-700 dark:text-slate-300">
+                          {recoveryCode}
+                        </code>
+                      </div>
+                      <p className="text-[9px] text-slate-400 mt-3 font-bold text-center">
+                        Keep this code safe. It can be used to recover your collection on another device.
+                      </p>
                     </div>
 
                     <div className="bg-slate-50 dark:bg-slate-800 p-6 rounded-3xl">
