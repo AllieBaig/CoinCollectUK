@@ -36,7 +36,9 @@ import {
   LayoutList,
   Trophy,
   AlertTriangle,
-  Monitor
+  Monitor,
+  ShieldAlert,
+  Check
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
@@ -85,53 +87,56 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   };
 
   handleSafeMode = () => {
-    if (window.confirm("Safe Mode will reset your preferences but keep your coins. Continue?")) {
-      const data = localStorage.getItem('uk-coin-collection-v2');
-      if (data) {
-        const parsed = JSON.parse(data);
-        parsed.preferences = {
-          isDarkMode: false,
-          activeFolderId: 'all',
-          sortBy: 'recently-added',
-          showBottomMenu: true,
-          isCompactUI: false
-        };
-        localStorage.setItem('uk-coin-collection-v2', JSON.stringify(parsed));
-      }
-      window.location.reload();
-    }
+    localStorage.setItem('uk-coin-collection-safe-mode', 'true');
+    window.location.reload();
   };
 
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6 text-center">
-          <AlertTriangle className="w-16 h-16 text-red-500 mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Something went wrong</h1>
-          <p className="text-gray-600 mb-8 max-w-md">
-            The app encountered an unexpected error. You can try exporting your data or entering Safe Mode.
-          </p>
-          <div className="flex flex-col gap-4 w-full max-w-xs">
-            <button
-              onClick={this.handleExport}
-              className="flex items-center justify-center gap-2 bg-blue-600 text-white py-3 px-6 rounded-xl font-medium shadow-lg hover:bg-blue-700 transition-colors"
-            >
-              <Download className="w-5 h-5" />
-              Export Data
-            </button>
-            <button
-              onClick={this.handleSafeMode}
-              className="flex items-center justify-center gap-2 bg-gray-800 text-white py-3 px-6 rounded-xl font-medium shadow-lg hover:bg-gray-900 transition-colors"
-            >
-              <RefreshCw className="w-5 h-5" />
-              Use Safe Mode
-            </button>
-            <button
-              onClick={() => window.location.reload()}
-              className="text-blue-600 font-medium hover:underline"
-            >
-              Try Refreshing
-            </button>
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-6 font-sans">
+          <div className="max-w-md w-full bg-white dark:bg-slate-900 rounded-[40px] shadow-2xl p-10 text-center space-y-8 border border-slate-200 dark:border-slate-800">
+            <div className="w-20 h-20 bg-red-500/10 rounded-3xl flex items-center justify-center text-red-500 mx-auto">
+              <AlertTriangle className="w-10 h-10" />
+            </div>
+            
+            <div className="space-y-3">
+              <h1 className="text-3xl font-black tracking-tight">App Encountered a Problem</h1>
+              <p className="text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+                Something went wrong. Don't worry, your coin collection data is safe. You can try entering Safe Mode or export your data as a backup.
+              </p>
+            </div>
+
+            <div className="grid gap-3">
+              <button 
+                onClick={this.handleSafeMode}
+                className="w-full py-5 bg-amber-500 hover:bg-amber-600 text-white font-black rounded-2xl shadow-xl shadow-amber-500/30 transition-all uppercase tracking-widest flex items-center justify-center gap-3"
+              >
+                <RefreshCw className="w-5 h-5" />
+                Enter Safe Mode
+              </button>
+              
+              <button 
+                onClick={this.handleExport}
+                className="w-full py-5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-black rounded-2xl transition-all uppercase tracking-widest flex items-center justify-center gap-3"
+              >
+                <Download className="w-5 h-5" />
+                Export Emergency Backup
+              </button>
+
+              <button 
+                onClick={() => window.location.reload()}
+                className="w-full py-5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-black uppercase tracking-widest text-xs transition-all"
+              >
+                Try Normal Restart
+              </button>
+            </div>
+
+            <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                Safe Mode loads a minimal version of the app
+              </p>
+            </div>
           </div>
         </div>
       );
@@ -202,6 +207,7 @@ function CoinCollectorApp() {
     setCoins(prev => prev.map(c => c.id === updatedCoin.id ? updatedCoin : c));
     setEditingCoin(null);
   };
+  const [isSafeMode, setIsSafeMode] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
@@ -210,7 +216,17 @@ function CoinCollectorApp() {
   // Initialize data
   useEffect(() => {
     try {
-      const savedData = localStorage.getItem('uk-coin-collection-v2');
+      const safeModeActive = localStorage.getItem('uk-coin-collection-safe-mode') === 'true';
+      setIsSafeMode(safeModeActive);
+
+      let savedData = localStorage.getItem('uk-coin-collection-v2');
+      
+      if (safeModeActive) {
+        // In safe mode, try to load from the last known working state or the manual safe backup
+        const lastWorking = localStorage.getItem('uk-coin-collection-last-working');
+        const manualSafe = localStorage.getItem('uk-coin-collection-safe');
+        savedData = lastWorking || manualSafe || savedData;
+      }
       
       if (savedData) {
         const parsed: AppState = JSON.parse(savedData);
@@ -292,7 +308,7 @@ function CoinCollectorApp() {
     }
   }, [preferences.themeMode]);
 
-  // Save data
+  // Save data and update last working state
   useEffect(() => {
     if (coins.length > 0 || folders.length > 0) {
       const state: AppState = {
@@ -306,9 +322,31 @@ function CoinCollectorApp() {
         lastLuckySpinDate,
         lastUpdated: new Date().toISOString()
       };
-      localStorage.setItem('uk-coin-collection-v2', JSON.stringify(state));
+      const stateStr = JSON.stringify(state);
+      localStorage.setItem('uk-coin-collection-v2', stateStr);
+      
+      // Update last working state if not in safe mode
+      if (!isSafeMode) {
+        localStorage.setItem('uk-coin-collection-last-working', stateStr);
+      }
     }
-  }, [coins, folders, preferences, recoveryCode, streak, missions, achievements, lastLuckySpinDate]);
+  }, [coins, folders, preferences, recoveryCode, streak, missions, achievements, lastLuckySpinDate, isSafeMode]);
+
+  // Daily Backup Logic
+  useEffect(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const lastBackupDate = localStorage.getItem('uk-coin-collection-last-backup-date');
+    
+    if (lastBackupDate !== today && !isSafeMode) {
+      const savedData = localStorage.getItem('uk-coin-collection-v2');
+      if (savedData) {
+        localStorage.setItem(`uk-coin-collection-backup-${today}`, savedData);
+        localStorage.setItem('uk-coin-collection-last-backup-date', today);
+        // Keep only the most recent daily backup by removing old ones if needed
+        // For simplicity, we just store it. In a real app we might prune.
+      }
+    }
+  }, [isSafeMode]);
 
   // Streak logic
   useEffect(() => {
@@ -620,6 +658,90 @@ function CoinCollectorApp() {
       reader.readAsDataURL(file);
     }
   };
+
+  const exitSafeMode = () => {
+    localStorage.removeItem('uk-coin-collection-safe-mode');
+    window.location.reload();
+  };
+
+  if (isSafeMode) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-sans p-6 flex flex-col items-center">
+        <div className="max-w-2xl w-full space-y-8">
+          {/* Safe Mode Header */}
+          <div className="bg-amber-500 text-white p-6 rounded-[32px] shadow-xl shadow-amber-500/20 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
+                <ShieldAlert className="w-6 h-6" />
+              </div>
+              <div>
+                <h1 className="text-xl font-black uppercase tracking-tight">Safe Mode Active</h1>
+                <p className="text-xs font-bold text-white/80 uppercase tracking-widest">Minimal Recovery Version</p>
+              </div>
+            </div>
+            <button 
+              onClick={exitSafeMode}
+              className="px-6 py-3 bg-white text-amber-600 font-black rounded-2xl shadow-lg hover:bg-slate-50 transition-all uppercase tracking-widest text-xs"
+            >
+              Exit Safe Mode
+            </button>
+          </div>
+
+          <div className="bg-white dark:bg-slate-900 p-8 rounded-[40px] border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-black tracking-tight">Your Collection</h2>
+              <button 
+                onClick={exportData}
+                className="flex items-center gap-2 px-6 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black rounded-2xl shadow-lg transition-all uppercase tracking-widest text-xs"
+              >
+                <Download className="w-4 h-4" />
+                Export Data
+              </button>
+            </div>
+
+            <p className="text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+              You are in Safe Mode because the app encountered a problem. Your coin data is preserved. You can view your coins and export them for safety.
+            </p>
+
+            <div className="grid gap-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+              {coins.length === 0 ? (
+                <div className="text-center py-12 text-slate-400 font-bold uppercase tracking-widest text-sm">No coins found</div>
+              ) : (
+                coins.map(coin => (
+                  <div key={coin.id} className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      {coin.image ? (
+                        <img src={coin.image} alt={coin.title} className="w-12 h-12 rounded-xl object-cover" referrerPolicy="no-referrer" />
+                      ) : (
+                        <div className="w-12 h-12 bg-slate-200 dark:bg-slate-700 rounded-xl flex items-center justify-center text-slate-400">
+                          <ImageIcon className="w-6 h-6" />
+                        </div>
+                      )}
+                      <div>
+                        <h3 className="font-black text-sm">{coin.title}</h3>
+                        <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">{coin.denomination} • {coin.year}</p>
+                      </div>
+                    </div>
+                    {coin.isCollected && (
+                      <div className="w-8 h-8 bg-green-500/10 text-green-500 rounded-full flex items-center justify-center">
+                        <Check className="w-4 h-4" />
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          <div className="text-center">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+              UK Coin Collector Recovery System v1.0
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (hasError) {
     return (
