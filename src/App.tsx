@@ -40,7 +40,9 @@ import {
   ShieldAlert,
   Check,
   ShoppingBag,
-  Table
+  Table,
+  ShoppingCart,
+  DollarSign
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
@@ -159,6 +161,100 @@ export default function App() {
 function CoinCollectorApp() {
   const [coins, setCoins] = useState<Coin[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
+  
+  const convertData = (data: any): AppState | null => {
+    try {
+      // Case 1: Raw array of coins (Very old format)
+      if (Array.isArray(data)) {
+        return {
+          version: 3,
+          coins: data.map(c => ({
+            id: c.id || Math.random().toString(36).substr(2, 9),
+            title: c.title || c.name || 'Untitled Coin',
+            denomination: c.denomination || 'Unknown',
+            year: c.year || new Date().getFullYear(),
+            summary: c.summary || c.description || '',
+            isCollected: c.isCollected !== undefined ? c.isCollected : true,
+            isRare: c.isRare || false,
+            category: c.category || 'Other',
+            folderId: c.folderId || 'all',
+            addedAt: c.addedAt || c.date || new Date().toISOString(),
+            imageUrl: c.imageUrl || '',
+            amountPaid: c.amountPaid !== undefined ? c.amountPaid : (c.price || 0),
+            purchaseDate: c.purchaseDate || c.date || new Date().toISOString()
+          })),
+          folders: INITIAL_FOLDERS,
+          preferences: {
+            isDarkMode: false,
+            themeMode: 'system',
+            sortBy: 'recently-added',
+            activeFolderId: 'all',
+            showBottomMenu: true,
+            isCompactUI: false,
+            isTextMode: false,
+            enableBgRemoval: true,
+            isPurchaseMode: false,
+            showPriceInNormalMode: true
+          },
+          lastUpdated: new Date().toISOString(),
+          streak: { count: 0, lastVisitDate: new Date().toISOString() },
+          missions: [],
+          achievements: []
+        };
+      }
+
+      // Case 2: Object with different keys or missing version
+      if (typeof data === 'object' && data !== null) {
+        const coins = data.coins || data.coinList || [];
+        const folders = data.folders || INITIAL_FOLDERS;
+        const preferences = data.preferences || {
+          isDarkMode: false,
+          themeMode: 'system',
+          sortBy: 'recently-added',
+          activeFolderId: 'all',
+          showBottomMenu: true,
+          isCompactUI: false,
+          isTextMode: false,
+          enableBgRemoval: true,
+          isPurchaseMode: false,
+          showPriceInNormalMode: true
+        };
+
+        return {
+          version: 3,
+          coins: coins.map((c: any) => ({
+            id: c.id || Math.random().toString(36).substr(2, 9),
+            title: c.title || c.name || 'Untitled Coin',
+            denomination: c.denomination || 'Unknown',
+            year: c.year || new Date().getFullYear(),
+            summary: c.summary || c.description || '',
+            isCollected: c.isCollected !== undefined ? c.isCollected : true,
+            isRare: c.isRare || false,
+            category: c.category || 'Other',
+            folderId: c.folderId || 'all',
+            addedAt: c.addedAt || c.date || new Date().toISOString(),
+            imageUrl: c.imageUrl || '',
+            amountPaid: c.amountPaid !== undefined ? c.amountPaid : (c.price || 0),
+            purchaseDate: c.purchaseDate || c.date || new Date().toISOString()
+          })),
+          folders: folders,
+          preferences: preferences,
+          lastUpdated: data.lastUpdated || new Date().toISOString(),
+          recoveryCode: data.recoveryCode,
+          streak: data.streak || { count: 0, lastVisitDate: new Date().toISOString() },
+          missions: data.missions || [],
+          achievements: data.achievements || [],
+          lastLuckySpinDate: data.lastLuckySpinDate
+        };
+      }
+
+      return null;
+    } catch (err) {
+      console.error('Conversion error:', err);
+      return null;
+    }
+  };
+
   const [preferences, setPreferences] = useState<UserPreferences>({
     isDarkMode: false,
     themeMode: 'system',
@@ -233,7 +329,18 @@ function CoinCollectorApp() {
       }
       
       if (savedData) {
-        const parsed: AppState = JSON.parse(savedData);
+        let parsed: any = JSON.parse(savedData);
+        
+        // If version is missing or old, convert it
+        if (!parsed.version || parsed.version < 3) {
+          const converted = convertData(parsed);
+          if (converted) {
+            parsed = converted;
+            // Save converted data back to storage
+            localStorage.setItem('uk-coin-collection-v2', JSON.stringify(converted));
+          }
+        }
+
         setCoins(parsed.coins || INITIAL_COINS);
         setFolders(parsed.folders || INITIAL_FOLDERS);
         setRecoveryCode(parsed.recoveryCode || generateRecoveryCode());
@@ -259,12 +366,26 @@ function CoinCollectorApp() {
         const oldData = localStorage.getItem('uk-coin-collection');
         if (oldData) {
           const parsed = JSON.parse(oldData);
-          setCoins(parsed.coins || INITIAL_COINS);
+          const converted = convertData(parsed);
+          if (converted) {
+            setCoins(converted.coins);
+            setFolders(converted.folders);
+            setPreferences(converted.preferences);
+            setRecoveryCode(converted.recoveryCode || generateRecoveryCode());
+            setStreak(converted.streak);
+            setMissions(converted.missions);
+            setAchievements(converted.achievements);
+            setLastLuckySpinDate(converted.lastLuckySpinDate);
+          } else {
+            setCoins(parsed.coins || INITIAL_COINS);
+            setFolders(INITIAL_FOLDERS);
+            setRecoveryCode(generateRecoveryCode());
+          }
         } else {
           setCoins(INITIAL_COINS);
+          setFolders(INITIAL_FOLDERS);
+          setRecoveryCode(generateRecoveryCode());
         }
-        setFolders(INITIAL_FOLDERS);
-        setRecoveryCode(generateRecoveryCode());
         
         setPreferences(prev => ({ ...prev, themeMode: 'system' }));
       }
@@ -318,6 +439,7 @@ function CoinCollectorApp() {
   useEffect(() => {
     if (coins.length > 0 || folders.length > 0) {
       const state: AppState = {
+        version: 3,
         coins,
         folders,
         preferences,
@@ -499,6 +621,7 @@ function CoinCollectorApp() {
 
   const exportData = () => {
     const state: AppState = { 
+      version: 3,
       coins, 
       folders, 
       preferences, 
@@ -538,8 +661,11 @@ function CoinCollectorApp() {
       setImportProgress(100);
       setTimeout(() => {
         try {
-          const imported: AppState = JSON.parse(e.target?.result as string);
-          if (imported.coins && Array.isArray(imported.coins)) {
+          const rawData = JSON.parse(e.target?.result as string);
+          
+          // Check if it's the current version
+          if (rawData.version === 3 && rawData.coins && Array.isArray(rawData.coins)) {
+            const imported: AppState = rawData;
             setCoins(imported.coins);
             if (imported.folders) setFolders(imported.folders);
             if (imported.preferences) setPreferences(imported.preferences);
@@ -549,11 +675,38 @@ function CoinCollectorApp() {
             if (imported.achievements) setAchievements(imported.achievements);
             if (imported.lastLuckySpinDate) setLastLuckySpinDate(imported.lastLuckySpinDate);
             alert('Data imported successfully!');
+          } else {
+            // Old data detected
+            if (window.confirm('Old data format detected. Would you like to convert it to the new version? A backup of your current data will be saved first.')) {
+              // Backup current data
+              const currentState: AppState = { 
+                version: 3,
+                coins, folders, preferences, recoveryCode, streak, missions, achievements, lastLuckySpinDate,
+                lastUpdated: new Date().toISOString() 
+              };
+              localStorage.setItem('uk-coin-collection-pre-conversion-backup', JSON.stringify(currentState));
+
+              const converted = convertData(rawData);
+              if (converted) {
+                setCoins(converted.coins);
+                setFolders(converted.folders);
+                setPreferences(converted.preferences);
+                if (converted.recoveryCode) setRecoveryCode(converted.recoveryCode);
+                if (converted.streak) setStreak(converted.streak);
+                if (converted.missions) setMissions(converted.missions);
+                if (converted.achievements) setAchievements(converted.achievements);
+                if (converted.lastLuckySpinDate) setLastLuckySpinDate(converted.lastLuckySpinDate);
+                alert('Conversion successful! Your data has been updated to the new format.');
+              } else {
+                alert('Conversion failed. The file format is not recognized.');
+              }
+            }
           }
         } catch (err) {
-          alert('Invalid backup file.');
+          alert('Invalid JSON file.');
         } finally {
           setImportProgress(null);
+          if (event.target) event.target.value = ''; // Reset input
         }
       }, 500);
     };
@@ -570,6 +723,8 @@ function CoinCollectorApp() {
     if (window.confirm('Clear all data? This cannot be undone.')) {
       localStorage.removeItem('uk-coin-collection-v2');
       localStorage.removeItem('uk-coin-collection');
+      localStorage.removeItem('uk-coin-collection-safe');
+      localStorage.removeItem('uk-coin-collection-pre-conversion-backup');
       window.location.reload();
     }
   };
@@ -1346,6 +1501,56 @@ function CoinCollectorApp() {
                     <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Preferences</h3>
                     
                     <div className="space-y-4">
+                      <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">App Modes</h3>
+                      
+                      <div className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-500">
+                            <ShoppingCart className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold">Purchase Mode</p>
+                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Optimized for shop use</p>
+                          </div>
+                        </div>
+                        <button 
+                          onClick={() => setPreferences(prev => ({ ...prev, isPurchaseMode: !prev.isPurchaseMode }))}
+                          className={cn(
+                            "w-12 h-6 rounded-full transition-colors relative",
+                            preferences.isPurchaseMode ? "bg-amber-500" : "bg-slate-200 dark:bg-slate-700"
+                          )}
+                        >
+                          <motion.div 
+                            animate={{ x: preferences.isPurchaseMode ? 24 : 4 }}
+                            className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm"
+                          />
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-500">
+                            <DollarSign className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold">Show Coin Prices</p>
+                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Display value in normal mode</p>
+                          </div>
+                        </div>
+                        <button 
+                          onClick={() => setPreferences(prev => ({ ...prev, showPriceInNormalMode: !prev.showPriceInNormalMode }))}
+                          className={cn(
+                            "w-12 h-6 rounded-full transition-colors relative",
+                            preferences.showPriceInNormalMode ? "bg-emerald-500" : "bg-slate-200 dark:bg-slate-700"
+                          )}
+                        >
+                          <motion.div 
+                            animate={{ x: preferences.showPriceInNormalMode ? 24 : 4 }}
+                            className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm"
+                          />
+                        </button>
+                      </div>
+
                       <div className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-500">
@@ -1505,11 +1710,18 @@ function CoinCollectorApp() {
                       </button>
                       <button 
                         onClick={() => fileInputRef.current?.click()}
-                        className="flex flex-col items-center gap-2 p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm hover:bg-amber-50"
+                        className="flex flex-col items-center gap-2 p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm hover:bg-blue-50"
                       >
                         <Upload className="w-6 h-6 text-blue-500" />
                         <span className="text-xs font-bold">Import</span>
                         <input type="file" ref={fileInputRef} onChange={importData} accept=".json" className="hidden" />
+                      </button>
+                      <button 
+                        onClick={() => fileInputRef.current?.click()}
+                        className="flex flex-col items-center gap-2 p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm hover:bg-purple-50"
+                      >
+                        <RefreshCw className="w-6 h-6 text-purple-500" />
+                        <span className="text-xs font-bold">Convert Data</span>
                       </button>
                       <button 
                         onClick={() => window.location.reload()}
@@ -1519,12 +1731,7 @@ function CoinCollectorApp() {
                         <span className="text-xs font-bold">Refresh App</span>
                       </button>
                       <button 
-                        onClick={() => {
-                          if (window.confirm('Clear all app data? This cannot be undone.')) {
-                            localStorage.clear();
-                            window.location.reload();
-                          }
-                        }}
+                        onClick={clearCache}
                         className="flex flex-col items-center gap-2 p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm hover:bg-red-50"
                       >
                         <Trash2 className="w-6 h-6 text-red-500" />
@@ -1539,6 +1746,7 @@ function CoinCollectorApp() {
                       <button 
                         onClick={() => {
                           const state: AppState = { 
+                            version: 3,
                             coins, 
                             folders, 
                             preferences, 

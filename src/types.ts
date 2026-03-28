@@ -54,6 +54,7 @@ export interface UserPreferences {
 }
 
 export interface AppState {
+  version?: number;
   coins: Coin[];
   folders: Folder[];
   preferences: UserPreferences;
