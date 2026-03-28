@@ -38,7 +38,9 @@ import {
   AlertTriangle,
   Monitor,
   ShieldAlert,
-  Check
+  Check,
+  ShoppingBag,
+  Table
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
@@ -165,7 +167,9 @@ function CoinCollectorApp() {
     showBottomMenu: true,
     isCompactUI: false,
     isTextMode: false,
-    enableBgRemoval: true
+    enableBgRemoval: true,
+    isPurchaseMode: false,
+    showPriceInNormalMode: true
   });
   
   const [searchQuery, setSearchQuery] = useState('');
@@ -245,7 +249,9 @@ function CoinCollectorApp() {
             showBottomMenu: parsed.preferences.showBottomMenu ?? true,
             isCompactUI: parsed.preferences.isCompactUI ?? false,
             isTextMode: parsed.preferences.isTextMode ?? false,
-            enableBgRemoval: parsed.preferences.enableBgRemoval ?? true
+            enableBgRemoval: parsed.preferences.enableBgRemoval ?? true,
+            isPurchaseMode: parsed.preferences.isPurchaseMode ?? false,
+            showPriceInNormalMode: parsed.preferences.showPriceInNormalMode ?? true
           });
         }
       } else {
@@ -788,20 +794,24 @@ function CoinCollectorApp() {
             </div>
 
             <div className="flex items-center gap-2">
-              <button 
-                onClick={() => setIsPhotoLibraryOpen(true)}
-                className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                title="Photo Library"
-              >
-                <ImageIcon className="w-5 h-5" />
-              </button>
-              <button 
-                onClick={() => setIsProfileOpen(true)}
-                className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                title="Profile"
-              >
-                <User className="w-5 h-5" />
-              </button>
+              {!preferences.isPurchaseMode && (
+                <>
+                  <button 
+                    onClick={() => setIsPhotoLibraryOpen(true)}
+                    className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    title="Photo Library"
+                  >
+                    <ImageIcon className="w-5 h-5" />
+                  </button>
+                  <button 
+                    onClick={() => setIsProfileOpen(true)}
+                    className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    title="Profile"
+                  >
+                    <User className="w-5 h-5" />
+                  </button>
+                </>
+              )}
               <button 
                 onClick={() => setIsSettingsOpen(true)}
                 className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
@@ -814,7 +824,106 @@ function CoinCollectorApp() {
         </header>
 
         <main className="max-w-5xl mx-auto px-4 py-6">
-          {/* Progress Card */}
+          {preferences.isPurchaseMode ? (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-emerald-500/20">
+                    <ShoppingBag className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-black uppercase tracking-tight">Purchase Mode</h2>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Senior-Friendly View</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setPreferences(prev => ({ ...prev, isPurchaseMode: false }))}
+                  className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold rounded-xl text-xs uppercase tracking-widest"
+                >
+                  Exit
+                </button>
+              </div>
+
+              <div className="relative mb-6">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-slate-400" />
+                <input 
+                  type="text"
+                  placeholder="Quick search..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-14 pr-4 py-5 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl focus:ring-4 focus:ring-emerald-500/20 outline-none transition-all shadow-sm text-xl font-bold"
+                />
+              </div>
+
+              <div className="bg-white dark:bg-slate-900 rounded-[32px] border-2 border-slate-200 dark:border-slate-800 overflow-hidden shadow-xl">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 dark:bg-slate-800/50 border-b-2 border-slate-200 dark:border-slate-800">
+                      <th className="px-6 py-5 text-lg font-black uppercase tracking-widest text-slate-400">Coin</th>
+                      <th className="px-6 py-5 text-lg font-black uppercase tracking-widest text-slate-400">Year</th>
+                      <th className="px-6 py-5 text-lg font-black uppercase tracking-widest text-slate-400 text-right">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredCoins.map((coin) => (
+                      <tr 
+                        key={coin.id} 
+                        onClick={() => setSelectedCoin(coin)}
+                        className={cn(
+                          "border-b border-slate-100 dark:border-slate-800 active:bg-slate-50 dark:active:bg-slate-800/50 transition-colors",
+                          !coin.isCollected && "bg-amber-50/30 dark:bg-amber-900/5"
+                        )}
+                      >
+                        <td className="px-6 py-6">
+                          <div className="flex flex-col">
+                            <span className="text-2xl font-black text-slate-900 dark:text-white">{coin.denomination}</span>
+                            <span className="text-sm font-bold text-slate-500 uppercase tracking-wider">{coin.title}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-6">
+                          <span className="text-2xl font-black text-slate-700 dark:text-slate-300">{coin.year}</span>
+                        </td>
+                        <td className="px-6 py-6 text-right">
+                          <div className="flex justify-end">
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); toggleCollected(coin.id); }}
+                              className={cn(
+                                "flex items-center gap-2 px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-sm transition-all active:scale-95",
+                                coin.isCollected 
+                                  ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20" 
+                                  : "bg-amber-500 text-white shadow-lg shadow-amber-500/20"
+                              )}
+                            >
+                              {coin.isCollected ? (
+                                <>
+                                  <CheckCircle2 className="w-5 h-5" />
+                                  <span>Owned</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Plus className="w-5 h-5" />
+                                  <span>Need</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {filteredCoins.length === 0 && (
+                      <tr>
+                        <td colSpan={3} className="px-6 py-20 text-center text-slate-400 font-bold uppercase tracking-widest">
+                          No coins found matching filters
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Progress Card */}
           <div className="mb-8">
             <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
               <div className="flex justify-between items-end mb-3">
@@ -968,7 +1077,7 @@ function CoinCollectorApp() {
                         <p className="text-xs text-slate-500 line-clamp-1">{coin.summary}</p>
                       </div>
                       <div className="flex items-center gap-4">
-                        {coin.amountPaid !== undefined && (
+                        {coin.amountPaid !== undefined && preferences.showPriceInNormalMode && (
                           <span className="text-xs font-bold text-emerald-600">£{coin.amountPaid.toFixed(2)}</span>
                         )}
                         <button 
@@ -1050,7 +1159,7 @@ function CoinCollectorApp() {
                           </p>
                         )}
 
-                        {coin.amountPaid !== undefined && !preferences.isCompactUI && (
+                        {coin.amountPaid !== undefined && !preferences.isCompactUI && preferences.showPriceInNormalMode && (
                           <div className="flex items-center gap-4 mb-6 text-xs font-bold">
                             <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
                               <PoundSterling className="w-3.5 h-3.5" />
@@ -1119,10 +1228,12 @@ function CoinCollectorApp() {
               </button>
             </div>
           )}
+            </>
+          )}
         </main>
 
         {/* Bottom Navigation */}
-        {preferences.showBottomMenu && (
+        {preferences.showBottomMenu && !preferences.isPurchaseMode && (
           <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 pb-safe">
             <div className="max-w-5xl mx-auto px-6 py-3 flex items-center justify-between">
               <button 
@@ -1235,6 +1346,54 @@ function CoinCollectorApp() {
                     <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Preferences</h3>
                     
                     <div className="space-y-4">
+                      <div className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-500">
+                            <ShoppingBag className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold">Purchase Mode</p>
+                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Optimized for shop use</p>
+                          </div>
+                        </div>
+                        <button 
+                          onClick={() => setPreferences(prev => ({ ...prev, isPurchaseMode: !prev.isPurchaseMode }))}
+                          className={cn(
+                            "w-12 h-6 rounded-full transition-colors relative",
+                            preferences.isPurchaseMode ? "bg-emerald-500" : "bg-slate-200 dark:bg-slate-700"
+                          )}
+                        >
+                          <motion.div 
+                            animate={{ x: preferences.isPurchaseMode ? 24 : 4 }}
+                            className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm"
+                          />
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-500">
+                            <PoundSterling className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold">Show Price</p>
+                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Display in normal mode</p>
+                          </div>
+                        </div>
+                        <button 
+                          onClick={() => setPreferences(prev => ({ ...prev, showPriceInNormalMode: !prev.showPriceInNormalMode }))}
+                          className={cn(
+                            "w-12 h-6 rounded-full transition-colors relative",
+                            preferences.showPriceInNormalMode ? "bg-amber-500" : "bg-slate-200 dark:bg-slate-700"
+                          )}
+                        >
+                          <motion.div 
+                            animate={{ x: preferences.showPriceInNormalMode ? 24 : 4 }}
+                            className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm"
+                          />
+                        </button>
+                      </div>
+
                       <div className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-500">

@@ -49,6 +49,8 @@ export interface UserPreferences {
   isCompactUI: boolean;
   isTextMode: boolean;
   enableBgRemoval: boolean;
+  isPurchaseMode: boolean;
+  showPriceInNormalMode: boolean;
 }
 
 export interface AppState {
