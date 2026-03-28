@@ -5,6 +5,7 @@ export interface Coin {
   year: number;
   summary: string;
   isCollected: boolean;
+  isRare?: boolean;
   category: '50p' | '£2' | '£1' | 'Other';
   folderId?: string;
   addedAt: string;

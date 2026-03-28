@@ -172,6 +172,12 @@ function CoinCollectorApp() {
   const [editingCoin, setEditingCoin] = useState<Coin | null>(null);
   const [editingCoinId, setEditingCoinId] = useState<string | null>(null);
   const [importProgress, setImportProgress] = useState<number | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'info' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   const updateCoin = (updatedCoin: Coin) => {
     setCoins(prev => prev.map(c => c.id === updatedCoin.id ? updatedCoin : c));
@@ -412,8 +418,28 @@ function CoinCollectorApp() {
     const collected = coins.filter(c => c.isCollected).length;
     const percentage = total > 0 ? Math.round((collected / total) * 100) : 0;
     const totalSpent = coins.reduce((acc, c) => acc + (c.amountPaid || 0), 0);
-    const totalPoints = coins.reduce((acc, c) => acc + (c.isCollected ? (c.points || 10) : 0), 0);
-    return { total, collected, percentage, totalSpent, totalPoints };
+    const totalPoints = coins.reduce((acc, c) => {
+      if (!c.isCollected) return acc;
+      const basePoints = c.points || 10;
+      const rarityMultiplier = c.isRare ? 5 : 1;
+      return acc + (basePoints * rarityMultiplier);
+    }, 0);
+
+    const levels = [
+      { name: 'Beginner', min: 0, max: 200 },
+      { name: 'Collector', min: 201, max: 1000 },
+      { name: 'Specialist', min: 1001, max: 3000 },
+      { name: 'Expert', min: 3001, max: 7000 },
+      { name: 'Master', min: 7001, max: Infinity }
+    ];
+
+    const currentLevel = levels.find(l => totalPoints >= l.min && totalPoints <= l.max) || levels[0];
+    const nextLevel = levels[levels.indexOf(currentLevel) + 1];
+    const progressToNext = nextLevel 
+      ? Math.min(100, Math.round(((totalPoints - currentLevel.min) / (nextLevel.min - currentLevel.min)) * 100))
+      : 100;
+
+    return { total, collected, percentage, totalSpent, totalPoints, currentLevel, nextLevel, progressToNext };
   }, [coins]);
 
   const monthlyTotals = useMemo(() => {
@@ -523,7 +549,12 @@ function CoinCollectorApp() {
               <div className="flex justify-between items-end mb-3">
                 <div>
                   <h2 className="text-sm text-slate-500 font-bold uppercase tracking-wider mb-1">Collection Progress</h2>
-                  <p className="text-2xl font-black">{stats.collected} / {stats.total} <span className="text-sm font-normal text-slate-400">Coins</span></p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-2xl font-black">{stats.collected} / {stats.total} <span className="text-sm font-normal text-slate-400">Coins</span></p>
+                    <span className="px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-600 text-[10px] font-black rounded-full uppercase tracking-widest">
+                      {stats.currentLevel.name}
+                    </span>
+                  </div>
                 </div>
                 <div className="flex flex-col items-end">
                   <span className="text-3xl font-black text-amber-500">{stats.percentage}%</span>
@@ -644,12 +675,24 @@ function CoinCollectorApp() {
                   onClick={() => setSelectedCoin(coin)}
                   className={cn(
                     "group relative bg-white dark:bg-slate-900 rounded-3xl border transition-all duration-300 overflow-hidden flex flex-col cursor-pointer",
-                    coin.isCollected 
-                      ? "border-emerald-500/30 shadow-lg shadow-emerald-500/5" 
-                      : "border-slate-200 dark:border-slate-800 hover:border-amber-500/50",
+                    coin.isRare 
+                      ? "border-amber-500/50 shadow-xl shadow-amber-500/10 ring-2 ring-amber-500/10" 
+                      : coin.isCollected 
+                        ? "border-emerald-500/30 shadow-lg shadow-emerald-500/5" 
+                        : "border-slate-200 dark:border-slate-800 hover:border-amber-500/50",
                     preferences.isCompactUI && "rounded-2xl"
                   )}
                 >
+                  {coin.isRare && (
+                    <div className="absolute top-3 left-3 z-10 bg-amber-500 text-white p-1.5 rounded-xl shadow-lg shadow-amber-500/30">
+                      <Trophy className="w-4 h-4" />
+                    </div>
+                  )}
+                  {coins.filter(c => c.title === coin.title && c.denomination === coin.denomination).length > 1 && (
+                    <div className="absolute top-3 right-14 z-10 bg-blue-500 text-white px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20">
+                      x{coins.filter(c => c.title === coin.title && c.denomination === coin.denomination).length}
+                    </div>
+                  )}
                   {coin.imageUrl && (
                     <div className={cn(
                       "w-full overflow-hidden bg-slate-100 dark:bg-slate-800 relative",
@@ -680,6 +723,7 @@ function CoinCollectorApp() {
                           preferences.isCompactUI ? "text-sm" : "text-lg"
                         )}>
                           {coin.title}
+                          {coin.isRare && <Trophy className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />}
                         </h3>
                       </div>
                       <button 
@@ -957,17 +1001,22 @@ function CoinCollectorApp() {
                       </button>
                       <button 
                         onClick={() => window.location.reload()}
-                        className="flex flex-col items-center gap-2 p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm hover:bg-amber-50"
+                        className="flex flex-col items-center gap-2 p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm hover:bg-emerald-50"
                       >
                         <RefreshCw className="w-6 h-6 text-emerald-500" />
-                        <span className="text-xs font-bold">Refresh</span>
+                        <span className="text-xs font-bold">Refresh App</span>
                       </button>
                       <button 
-                        onClick={clearCache}
+                        onClick={() => {
+                          if (window.confirm('Clear all app data? This cannot be undone.')) {
+                            localStorage.clear();
+                            window.location.reload();
+                          }
+                        }}
                         className="flex flex-col items-center gap-2 p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm hover:bg-red-50"
                       >
                         <Trash2 className="w-6 h-6 text-red-500" />
-                        <span className="text-xs font-bold text-red-500">Reset</span>
+                        <span className="text-xs font-bold text-red-500">Clear Cache</span>
                       </button>
                     </div>
                   </div>
@@ -1063,6 +1112,7 @@ function CoinCollectorApp() {
                         year: parseInt(formData.get('year') as string),
                         summary: formData.get('summary') as string,
                         isCollected: !!amountPaid || false,
+                        isRare: formData.get('isRare') === 'on',
                         category: 'Other',
                         folderId: formData.get('folderId') as string || undefined,
                         addedAt: new Date().toISOString(),
@@ -1073,6 +1123,7 @@ function CoinCollectorApp() {
                       setCoins(prev => [newCoin, ...prev]);
                       setIsAddModalOpen(false);
                       setNewCoinImage(null);
+                      showToast('Coin added to collection!');
                     }} className="space-y-5">
                       <div className="flex justify-center mb-6">
                         <button 
@@ -1115,6 +1166,13 @@ function CoinCollectorApp() {
                           <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Purchase Date</label>
                           <input name="purchaseDate" type="date" defaultValue={new Date().toISOString().split('T')[0]} className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold" />
                         </div>
+                      </div>
+                      <div className="flex items-center gap-3 p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl">
+                        <input type="checkbox" name="isRare" id="isRare" className="w-5 h-5 accent-amber-500 rounded" />
+                        <label htmlFor="isRare" className="text-sm font-bold flex items-center gap-2">
+                          <AlertTriangle className="w-4 h-4 text-amber-500" />
+                          Mark as Rare Coin (5x Points)
+                        </label>
                       </div>
                       <div>
                         <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Folder</label>
@@ -1164,8 +1222,40 @@ function CoinCollectorApp() {
                     </button>
                   </div>
 
-                  <div className="space-y-6">
-                    <div className="flex items-center gap-4 p-6 bg-slate-50 dark:bg-slate-800 rounded-3xl">
+                    <div className="space-y-6">
+                      <div className="p-6 bg-slate-50 dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700">
+                        <div className="flex justify-between items-center mb-4">
+                          <div>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Current Level</p>
+                            <h4 className="text-2xl font-black text-amber-500">{stats.currentLevel.name}</h4>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Points</p>
+                            <p className="text-xl font-black">{stats.totalPoints} pts</p>
+                          </div>
+                        </div>
+                        
+                        {stats.nextLevel && (
+                          <div className="space-y-2">
+                            <div className="flex justify-between text-[10px] font-black uppercase tracking-widest">
+                              <span className="text-slate-400">Next: {stats.nextLevel.name}</span>
+                              <span className="text-amber-500">{stats.progressToNext}%</span>
+                            </div>
+                            <div className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                              <motion.div 
+                                initial={{ width: 0 }}
+                                animate={{ width: `${stats.progressToNext}%` }}
+                                className="h-full bg-amber-500"
+                              />
+                            </div>
+                            <p className="text-[9px] text-slate-400 text-center font-bold">
+                              {stats.nextLevel.min - stats.totalPoints} more points to level up
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-4 p-6 bg-slate-50 dark:bg-slate-800 rounded-3xl">
                       <div className="w-16 h-16 bg-amber-500 rounded-2xl flex items-center justify-center text-white text-2xl font-black">
                         {"unisontrack@gmail.com".charAt(0).toUpperCase()}
                       </div>
@@ -1181,8 +1271,8 @@ function CoinCollectorApp() {
                         <p className="text-2xl font-black text-emerald-600">£{stats.totalSpent.toFixed(2)}</p>
                       </div>
                       <div className="p-6 bg-amber-500/10 rounded-3xl border border-amber-500/20">
-                        <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1">Total Points</p>
-                        <p className="text-2xl font-black text-amber-600">{stats.totalPoints} pts</p>
+                        <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1">Collected</p>
+                        <p className="text-2xl font-black text-amber-600">{stats.collected} <span className="text-xs">coins</span></p>
                       </div>
                     </div>
 
@@ -1234,8 +1324,16 @@ function CoinCollectorApp() {
                       <div 
                         key={coin.id} 
                         onClick={() => { setSelectedCoin(coin); setIsPhotoLibraryOpen(false); }}
-                        className="aspect-square rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 cursor-pointer group relative"
+                        className={cn(
+                          "aspect-square rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 cursor-pointer group relative",
+                          coin.isRare && "ring-2 ring-amber-500 ring-offset-2 dark:ring-offset-slate-900"
+                        )}
                       >
+                        {coin.isRare && (
+                          <div className="absolute top-2 left-2 z-10 bg-amber-500 text-white p-1 rounded-lg shadow-lg">
+                            <Trophy className="w-3 h-3" />
+                          </div>
+                        )}
                         <img src={coin.imageUrl} alt={coin.title} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-2 text-center">
                           <span className="text-white text-[10px] font-bold uppercase tracking-widest">{coin.title}</span>
@@ -1283,9 +1381,16 @@ function CoinCollectorApp() {
                       <X className="w-6 h-6" />
                     </button>
                     <div className="absolute bottom-6 left-8 right-8">
-                      <span className="text-amber-400 text-xs font-black uppercase tracking-[0.2em] mb-1 block">
-                        {selectedCoin.denomination} • {selectedCoin.year}
-                      </span>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-amber-400 text-xs font-black uppercase tracking-[0.2em]">
+                          {selectedCoin.denomination} • {selectedCoin.year}
+                        </span>
+                        {selectedCoin.isRare && (
+                          <span className="bg-amber-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest flex items-center gap-1">
+                            <Trophy className="w-2 h-2" /> Rare
+                          </span>
+                        )}
+                      </div>
                       <h2 className="text-3xl font-black text-white">{selectedCoin.title}</h2>
                     </div>
                   </div>
@@ -1294,9 +1399,16 @@ function CoinCollectorApp() {
                   {!selectedCoin.imageUrl && (
                     <div className="flex justify-between items-start mb-6">
                       <div>
-                        <span className="text-amber-500 text-xs font-black uppercase tracking-[0.2em] mb-1 block">
-                          {selectedCoin.denomination} • {selectedCoin.year}
-                        </span>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-amber-500 text-xs font-black uppercase tracking-[0.2em]">
+                            {selectedCoin.denomination} • {selectedCoin.year}
+                          </span>
+                          {selectedCoin.isRare && (
+                            <span className="bg-amber-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest flex items-center gap-1">
+                              <Trophy className="w-2 h-2" /> Rare
+                            </span>
+                          )}
+                        </div>
                         <h2 className="text-3xl font-black">{selectedCoin.title}</h2>
                       </div>
                       <button onClick={() => setSelectedCoin(null)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full">
@@ -1327,6 +1439,26 @@ function CoinCollectorApp() {
                         {selectedCoin.summary}
                       </p>
                     </div>
+
+                    {coins.filter(c => c.title === selectedCoin.title && c.denomination === selectedCoin.denomination).length > 1 && (
+                      <div>
+                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Duplicate History</h4>
+                        <div className="space-y-2">
+                          {coins
+                            .filter(c => c.title === selectedCoin.title && c.denomination === selectedCoin.denomination)
+                            .sort((a, b) => new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime())
+                            .map((dup, idx) => (
+                              <div key={dup.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-xl text-xs">
+                                <div className="flex items-center gap-2">
+                                  <span className="w-5 h-5 flex items-center justify-center bg-slate-200 dark:bg-slate-700 rounded-full font-bold">{idx + 1}</span>
+                                  <span className="font-bold">{new Date(dup.purchaseDate || dup.addedAt).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}</span>
+                                </div>
+                                <span className="font-black text-emerald-500">£{(dup.amountPaid || 0).toFixed(2)}</span>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    )}
 
                     {selectedCoin.amountPaid !== undefined && (
                       <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-100 dark:border-slate-800">
@@ -1409,9 +1541,11 @@ function CoinCollectorApp() {
                       purchaseDate: formData.get('purchaseDate') as string || undefined,
                       folderId: formData.get('folderId') as string || undefined,
                       isCollected: !!amountPaid || editingCoin.isCollected,
-                      imageUrl: newCoinImage || editingCoin.imageUrl
+                      imageUrl: newCoinImage || editingCoin.imageUrl,
+                      isRare: formData.get('isRare') === 'on'
                     });
                     setNewCoinImage(null);
+                    showToast('Coin updated!');
                   }} className="space-y-5">
                     <div className="flex justify-center mb-6">
                       <button 
@@ -1454,6 +1588,13 @@ function CoinCollectorApp() {
                         <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Purchase Date</label>
                         <input name="purchaseDate" type="date" defaultValue={editingCoin.purchaseDate} className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold" />
                       </div>
+                    </div>
+                    <div className="flex items-center gap-3 p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl">
+                      <input type="checkbox" name="isRare" id="editIsRare" defaultChecked={editingCoin.isRare} className="w-5 h-5 accent-amber-500 rounded" />
+                      <label htmlFor="editIsRare" className="text-sm font-bold flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 text-amber-500" />
+                        Rare Coin (5x Points)
+                      </label>
                     </div>
                     <div>
                       <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Summary</label>
@@ -1506,6 +1647,20 @@ function CoinCollectorApp() {
                 </div>
               </motion.div>
             </div>
+          )}
+        </AnimatePresence>
+        {/* Toast Notification */}
+        <AnimatePresence>
+          {toast && (
+            <motion.div
+              initial={{ opacity: 0, y: 50, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.9 }}
+              className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[100] px-6 py-3 bg-slate-900 text-white rounded-full shadow-2xl flex items-center gap-3 border border-slate-700"
+            >
+              <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+              <span className="text-sm font-bold">{toast.message}</span>
+            </motion.div>
           )}
         </AnimatePresence>
       </div>
