@@ -23,6 +23,23 @@ export interface Folder {
   addedAt: string;
 }
 
+export interface Achievement {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  earnedAt?: string;
+}
+
+export interface Mission {
+  id: string;
+  title: string;
+  description: string;
+  points: number;
+  isCompleted: boolean;
+  type: 'daily' | 'weekly';
+}
+
 export interface UserPreferences {
   isDarkMode: boolean;
   themeMode: 'light' | 'dark' | 'system';
@@ -30,6 +47,8 @@ export interface UserPreferences {
   activeFolderId: string | 'all';
   showBottomMenu: boolean;
   isCompactUI: boolean;
+  isTextMode: boolean;
+  enableBgRemoval: boolean;
 }
 
 export interface AppState {
@@ -38,4 +57,11 @@ export interface AppState {
   preferences: UserPreferences;
   lastUpdated: string;
   recoveryCode?: string;
+  streak: {
+    count: number;
+    lastVisitDate: string;
+  };
+  missions: Mission[];
+  achievements: Achievement[];
+  lastLuckySpinDate?: string;
 }

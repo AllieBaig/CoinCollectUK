@@ -40,7 +40,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
-import { Coin, AppState, Folder, UserPreferences } from './types';
+import { Coin, AppState, Folder, UserPreferences, Mission, Achievement } from './types';
 import { INITIAL_COINS, INITIAL_FOLDERS } from './constants';
 
 // Error Boundary Component
@@ -158,7 +158,9 @@ function CoinCollectorApp() {
     sortBy: 'recently-added',
     activeFolderId: 'all',
     showBottomMenu: true,
-    isCompactUI: false
+    isCompactUI: false,
+    isTextMode: false,
+    enableBgRemoval: true
   });
   
   const [searchQuery, setSearchQuery] = useState('');
@@ -174,6 +176,12 @@ function CoinCollectorApp() {
   const [importProgress, setImportProgress] = useState<number | null>(null);
   const [recoveryCode, setRecoveryCode] = useState<string>('');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
+
+  // Gamification state
+  const [streak, setStreak] = useState({ count: 0, lastVisitDate: '' });
+  const [missions, setMissions] = useState<Mission[]>([]);
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [lastLuckySpinDate, setLastLuckySpinDate] = useState<string | undefined>(undefined);
 
   const generateRecoveryCode = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -209,12 +217,19 @@ function CoinCollectorApp() {
         setCoins(parsed.coins || INITIAL_COINS);
         setFolders(parsed.folders || INITIAL_FOLDERS);
         setRecoveryCode(parsed.recoveryCode || generateRecoveryCode());
+        setStreak(parsed.streak || { count: 0, lastVisitDate: '' });
+        setMissions(parsed.missions || []);
+        setAchievements(parsed.achievements || []);
+        setLastLuckySpinDate(parsed.lastLuckySpinDate);
+
         if (parsed.preferences) {
           setPreferences({
             ...parsed.preferences,
             themeMode: parsed.preferences.themeMode || 'system',
             showBottomMenu: parsed.preferences.showBottomMenu ?? true,
-            isCompactUI: parsed.preferences.isCompactUI ?? false
+            isCompactUI: parsed.preferences.isCompactUI ?? false,
+            isTextMode: parsed.preferences.isTextMode ?? false,
+            enableBgRemoval: parsed.preferences.enableBgRemoval ?? true
           });
         }
       } else {
@@ -285,11 +300,87 @@ function CoinCollectorApp() {
         folders,
         preferences,
         recoveryCode,
+        streak,
+        missions,
+        achievements,
+        lastLuckySpinDate,
         lastUpdated: new Date().toISOString()
       };
       localStorage.setItem('uk-coin-collection-v2', JSON.stringify(state));
     }
-  }, [coins, folders, preferences, recoveryCode]);
+  }, [coins, folders, preferences, recoveryCode, streak, missions, achievements, lastLuckySpinDate]);
+
+  // Streak logic
+  useEffect(() => {
+    const today = new Date().toISOString().split('T')[0];
+    if (streak.lastVisitDate !== today) {
+      const lastDate = streak.lastVisitDate ? new Date(streak.lastVisitDate) : null;
+      const todayDate = new Date(today);
+      
+      let newCount = 1;
+      if (lastDate) {
+        const diffTime = Math.abs(todayDate.getTime() - lastDate.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays === 1) {
+          newCount = streak.count + 1;
+        } else if (diffDays === 0) {
+          newCount = streak.count;
+        }
+      }
+      
+      setStreak({ count: newCount, lastVisitDate: today });
+      if (newCount > streak.count) {
+        showToast(`Daily Streak: ${newCount} Days!`, 'info');
+      }
+    }
+  }, []);
+
+  // Mission generation
+  useEffect(() => {
+    if (missions.length === 0) {
+      const initialMissions: Mission[] = [
+        { id: 'm1', title: 'Daily Collector', description: 'Add a coin to your collection', points: 50, isCompleted: false, type: 'daily' },
+        { id: 'm2', title: 'Folder Explorer', description: 'Open any folder', points: 20, isCompleted: false, type: 'daily' },
+        { id: 'm3', title: 'Rare Hunter', description: 'Find a rare coin', points: 200, isCompleted: false, type: 'weekly' }
+      ];
+      setMissions(initialMissions);
+    }
+  }, [missions]);
+
+  // Achievement logic
+  useEffect(() => {
+    const newAchievements: Achievement[] = [...achievements];
+    let changed = false;
+
+    const collectedCount = coins.filter(c => c.isCollected).length;
+    const rareCount = coins.filter(c => c.isCollected && c.isRare).length;
+
+    if (collectedCount >= 1 && !newAchievements.find(a => a.id === 'first-coin')) {
+      newAchievements.push({ id: 'first-coin', title: 'First Coin', description: 'Collected your first coin', icon: '🪙', earnedAt: new Date().toISOString() });
+      showToast('Achievement Unlocked: First Coin!', 'success');
+      changed = true;
+    }
+    if (collectedCount >= 10 && !newAchievements.find(a => a.id === 'collector-10')) {
+      newAchievements.push({ id: 'collector-10', title: 'Collector X', description: 'Collected 10 coins', icon: '🔟', earnedAt: new Date().toISOString() });
+      showToast('Achievement Unlocked: Collector X!', 'success');
+      changed = true;
+    }
+    if (rareCount >= 1 && !newAchievements.find(a => a.id === 'rare-finder')) {
+      newAchievements.push({ id: 'rare-finder', title: 'Rare Finder', description: 'Found a rare coin', icon: '💎', earnedAt: new Date().toISOString() });
+      showToast('Achievement Unlocked: Rare Finder!', 'success');
+      changed = true;
+    }
+    if (streak.count >= 7 && !newAchievements.find(a => a.id === 'streak-7')) {
+      newAchievements.push({ id: 'streak-7', title: 'Week Warrior', description: '7-day login streak', icon: '🔥', earnedAt: new Date().toISOString() });
+      showToast('Achievement Unlocked: Week Warrior!', 'success');
+      changed = true;
+    }
+
+    if (changed) {
+      setAchievements(newAchievements);
+    }
+  }, [coins, streak.count]);
 
   const toggleCollected = (id: string) => {
     setCoins(prev => prev.map(c => c.id === id ? { ...c, isCollected: !c.isCollected } : c));
@@ -335,8 +426,45 @@ function CoinCollectorApp() {
     }
   };
 
+  const handleLuckySpin = () => {
+    const today = new Date().toISOString().split('T')[0];
+    if (lastLuckySpinDate === today) {
+      showToast('Already spun today!', 'info');
+      return;
+    }
+    
+    const rewards = [50, 100, 200, 500];
+    const reward = rewards[Math.floor(Math.random() * rewards.length)];
+    
+    const bonusCoin: Coin = {
+      id: `bonus-${Date.now()}`,
+      title: 'Lucky Spin Reward',
+      denomination: 'Bonus',
+      year: new Date().getFullYear(),
+      summary: `You won ${reward} points from the Lucky Spin!`,
+      isCollected: true,
+      points: reward / 10,
+      addedAt: new Date().toISOString(),
+      category: 'Other'
+    };
+    
+    setCoins(prev => [...prev, bonusCoin]);
+    setLastLuckySpinDate(today);
+    showToast(`Lucky Spin: You won ${reward} points!`, 'success');
+  };
+
   const exportData = () => {
-    const state: AppState = { coins, folders, preferences, recoveryCode, lastUpdated: new Date().toISOString() };
+    const state: AppState = { 
+      coins, 
+      folders, 
+      preferences, 
+      recoveryCode, 
+      streak, 
+      missions, 
+      achievements, 
+      lastLuckySpinDate,
+      lastUpdated: new Date().toISOString() 
+    };
     const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -372,6 +500,10 @@ function CoinCollectorApp() {
             if (imported.folders) setFolders(imported.folders);
             if (imported.preferences) setPreferences(imported.preferences);
             if (imported.recoveryCode) setRecoveryCode(imported.recoveryCode);
+            if (imported.streak) setStreak(imported.streak);
+            if (imported.missions) setMissions(imported.missions);
+            if (imported.achievements) setAchievements(imported.achievements);
+            if (imported.lastLuckySpinDate) setLastLuckySpinDate(imported.lastLuckySpinDate);
             alert('Data imported successfully!');
           }
         } catch (err) {
@@ -443,11 +575,11 @@ function CoinCollectorApp() {
     }, 0);
 
     const levels = [
-      { name: 'Beginner', min: 0, max: 200 },
-      { name: 'Collector', min: 201, max: 1000 },
-      { name: 'Specialist', min: 1001, max: 3000 },
-      { name: 'Expert', min: 3001, max: 7000 },
-      { name: 'Master', min: 7001, max: Infinity }
+      { name: 'Beginner', min: 0, max: 500 },
+      { name: 'Collector', min: 501, max: 2000 },
+      { name: 'Specialist', min: 2001, max: 5000 },
+      { name: 'Expert', min: 5001, max: 15000 },
+      { name: 'Master', min: 15001, max: Infinity }
     ];
 
     const currentLevel = levels.find(l => totalPoints >= l.min && totalPoints <= l.max) || levels[0];
@@ -679,7 +811,8 @@ function CoinCollectorApp() {
             "grid gap-6",
             preferences.isCompactUI 
               ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4" 
-              : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+              : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3",
+            preferences.isTextMode && "grid-cols-1 gap-0"
           )}>
             <AnimatePresence mode="popLayout">
               {filteredCoins.map((coin) => (
@@ -697,125 +830,156 @@ function CoinCollectorApp() {
                       : coin.isCollected 
                         ? "border-emerald-500/30 shadow-lg shadow-emerald-500/5" 
                         : "border-slate-200 dark:border-slate-800 hover:border-amber-500/50",
-                    preferences.isCompactUI && "rounded-2xl"
+                    preferences.isCompactUI && "rounded-2xl",
+                    preferences.isTextMode && "rounded-none border-0 border-b border-slate-100 dark:border-slate-800 p-4 bg-transparent dark:bg-transparent"
                   )}
                 >
-                  {coin.isRare && (
-                    <div className="absolute top-3 left-3 z-10 bg-amber-500 text-white p-1.5 rounded-xl shadow-lg shadow-amber-500/30">
-                      <Trophy className="w-4 h-4" />
-                    </div>
-                  )}
-                  {coins.filter(c => c.title === coin.title && c.denomination === coin.denomination).length > 1 && (
-                    <div className="absolute top-3 right-14 z-10 bg-blue-500 text-white px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20">
-                      x{coins.filter(c => c.title === coin.title && c.denomination === coin.denomination).length}
-                    </div>
-                  )}
-                  {coin.imageUrl && (
-                    <div className={cn(
-                      "w-full overflow-hidden bg-slate-100 dark:bg-slate-800 relative",
-                      preferences.isCompactUI ? "h-32" : "h-48"
-                    )}>
-                      <img 
-                        src={coin.imageUrl} 
-                        alt={coin.title} 
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                        referrerPolicy="no-referrer"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
-                        <span className="text-white text-[10px] font-bold uppercase tracking-widest">{coin.denomination}</span>
-                      </div>
-                    </div>
-                  )}
-                  <div className={cn(
-                    "flex-1 flex flex-col",
-                    preferences.isCompactUI ? "p-4" : "p-6"
-                  )}>
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="flex flex-col flex-1 mr-2">
-                        <span className="text-[10px] font-black text-amber-500 uppercase tracking-[0.2em] mb-1">
-                          {coin.denomination} • {coin.year}
-                        </span>
-                        <h3 className={cn(
-                          "font-bold flex items-center gap-2 leading-tight",
-                          preferences.isCompactUI ? "text-sm" : "text-lg"
-                        )}>
-                          {coin.title}
-                          {coin.isRare && <Trophy className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />}
-                        </h3>
-                      </div>
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); toggleCollected(coin.id); }}
-                        className={cn(
-                          "rounded-2xl flex items-center justify-center transition-all shrink-0",
-                          preferences.isCompactUI ? "w-8 h-8 rounded-xl" : "w-12 h-12 rounded-2xl",
-                          coin.isCollected 
-                            ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20" 
-                            : "bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-emerald-500"
-                        )}
-                      >
-                        {coin.isCollected 
-                          ? <CheckCircle2 className={preferences.isCompactUI ? "w-5 h-5" : "w-7 h-7"} /> 
-                          : <Circle className={preferences.isCompactUI ? "w-5 h-5" : "w-7 h-7"} />
-                        }
-                      </button>
-                    </div>
-
-                    {!preferences.isCompactUI && (
-                      <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 mb-4 italic leading-relaxed">
-                        {coin.summary}
-                      </p>
-                    )}
-
-                    {coin.amountPaid !== undefined && !preferences.isCompactUI && (
-                      <div className="flex items-center gap-4 mb-6 text-xs font-bold">
-                        <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
-                          <PoundSterling className="w-3.5 h-3.5" />
-                          <span>{coin.amountPaid.toFixed(2)}</span>
+                  {preferences.isTextMode ? (
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest">{coin.denomination}</span>
+                          <span className="text-[10px] font-bold text-slate-400">{coin.year}</span>
+                          {coin.isRare && <Trophy className="w-3 h-3 text-amber-500" />}
                         </div>
-                        {coin.purchaseDate && (
-                          <div className="flex items-center gap-1.5 text-slate-400">
-                            <Calendar className="w-3.5 h-3.5" />
-                            <span>{new Date(coin.purchaseDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
+                        <h3 className="font-bold text-sm">{coin.title}</h3>
+                        <p className="text-xs text-slate-500 line-clamp-1">{coin.summary}</p>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        {coin.amountPaid !== undefined && (
+                          <span className="text-xs font-bold text-emerald-600">£{coin.amountPaid.toFixed(2)}</span>
+                        )}
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); toggleCollected(coin.id); }}
+                          className={cn(
+                            "w-8 h-8 rounded-full flex items-center justify-center transition-all",
+                            coin.isCollected ? "bg-emerald-500 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-400"
+                          )}
+                        >
+                          {coin.isCollected ? <CheckCircle2 className="w-5 h-5" /> : <Circle className="w-5 h-5" />}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      {coin.isRare && (
+                        <div className="absolute top-3 left-3 z-10 bg-amber-500 text-white p-1.5 rounded-xl shadow-lg shadow-amber-500/30">
+                          <Trophy className="w-4 h-4" />
+                        </div>
+                      )}
+                      {coins.filter(c => c.title === coin.title && c.denomination === coin.denomination).length > 1 && (
+                        <div className="absolute top-3 right-14 z-10 bg-blue-500 text-white px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20">
+                          x{coins.filter(c => c.title === coin.title && c.denomination === coin.denomination).length}
+                        </div>
+                      )}
+                      {coin.imageUrl && (
+                        <div className={cn(
+                          "w-full overflow-hidden bg-slate-100 dark:bg-slate-800 relative",
+                          preferences.isCompactUI ? "h-32" : "h-48"
+                        )}>
+                          <img 
+                            src={coin.imageUrl} 
+                            alt={coin.title} 
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                            referrerPolicy="no-referrer"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
+                            <span className="text-white text-[10px] font-bold uppercase tracking-widest">{coin.denomination}</span>
+                          </div>
+                        </div>
+                      )}
+                      <div className={cn(
+                        "flex-1 flex flex-col",
+                        preferences.isCompactUI ? "p-4" : "p-6"
+                      )}>
+                        <div className="flex justify-between items-start mb-4">
+                          <div className="flex flex-col flex-1 mr-2">
+                            <span className="text-[10px] font-black text-amber-500 uppercase tracking-[0.2em] mb-1">
+                              {coin.denomination} • {coin.year}
+                            </span>
+                            <h3 className={cn(
+                              "font-bold flex items-center gap-2 leading-tight",
+                              preferences.isCompactUI ? "text-sm" : "text-lg"
+                            )}>
+                              {coin.title}
+                              {coin.isRare && <Trophy className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />}
+                            </h3>
+                          </div>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); toggleCollected(coin.id); }}
+                            className={cn(
+                              "rounded-2xl flex items-center justify-center transition-all shrink-0",
+                              preferences.isCompactUI ? "w-8 h-8 rounded-xl" : "w-12 h-12 rounded-2xl",
+                              coin.isCollected 
+                                ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20" 
+                                : "bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-emerald-500"
+                            )}
+                          >
+                            {coin.isCollected 
+                              ? <CheckCircle2 className={preferences.isCompactUI ? "w-5 h-5" : "w-7 h-7"} /> 
+                              : <Circle className={preferences.isCompactUI ? "w-5 h-5" : "w-7 h-7"} />
+                            }
+                          </button>
+                        </div>
+
+                        {!preferences.isCompactUI && (
+                          <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 mb-4 italic leading-relaxed">
+                            {coin.summary}
+                          </p>
+                        )}
+
+                        {coin.amountPaid !== undefined && !preferences.isCompactUI && (
+                          <div className="flex items-center gap-4 mb-6 text-xs font-bold">
+                            <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                              <PoundSterling className="w-3.5 h-3.5" />
+                              <span>{coin.amountPaid.toFixed(2)}</span>
+                            </div>
+                            {coin.purchaseDate && (
+                              <div className="flex items-center gap-1.5 text-slate-400">
+                                <Calendar className="w-3.5 h-3.5" />
+                                <span>{new Date(coin.purchaseDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
+                              </div>
+                            )}
                           </div>
                         )}
-                      </div>
-                    )}
 
-                    <div className={cn(
-                      "mt-auto flex items-center justify-between border-t border-slate-100 dark:border-slate-800",
-                      preferences.isCompactUI ? "pt-2" : "pt-4"
-                    )}>
-                      <div className="flex items-center gap-2">
-                        <span className={cn(
-                          "text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider",
-                          coin.isCollected 
-                            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" 
-                            : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
+                        <div className={cn(
+                          "mt-auto flex items-center justify-between border-t border-slate-100 dark:border-slate-800",
+                          preferences.isCompactUI ? "pt-2" : "pt-4"
                         )}>
-                          {coin.isCollected ? 'Collected' : 'Missing'}
-                        </span>
-                        {coin.folderId && !preferences.isCompactUI && (
-                          <span className="text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-                            {folders.find(f => f.id === coin.folderId)?.name || 'Folder'}
-                          </span>
-                        )}
+                          <div className="flex items-center gap-2">
+                            <span className={cn(
+                              "text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider",
+                              coin.isCollected 
+                                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" 
+                                : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
+                            )}>
+                              {coin.isCollected ? 'Collected' : 'Missing'}
+                            </span>
+                            {coin.folderId && !preferences.isCompactUI && (
+                              <span className="text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                                {folders.find(f => f.id === coin.folderId)?.name || 'Folder'}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); setEditingCoin(coin); }}
+                              className="p-2 text-slate-300 hover:text-amber-500 transition-colors"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); deleteCoin(coin.id); }}
+                              className="p-2 text-slate-300 hover:text-red-500 transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); setEditingCoin(coin); }}
-                          className="p-2 text-slate-300 hover:text-amber-500 transition-colors"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); deleteCoin(coin.id); }}
-                          className="p-2 text-slate-300 hover:text-red-500 transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+                    </>
+                  )}
                 </motion.div>
               ))}
             </AnimatePresence>
@@ -948,6 +1112,56 @@ function CoinCollectorApp() {
                   <div className="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-3xl space-y-4">
                     <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Preferences</h3>
                     
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-500">
+                            <TypeIcon className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold">Text Mode UI</p>
+                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Simple text-only layout</p>
+                          </div>
+                        </div>
+                        <button 
+                          onClick={() => setPreferences(prev => ({ ...prev, isTextMode: !prev.isTextMode }))}
+                          className={cn(
+                            "w-12 h-6 rounded-full transition-colors relative",
+                            preferences.isTextMode ? "bg-blue-500" : "bg-slate-200 dark:bg-slate-700"
+                          )}
+                        >
+                          <motion.div 
+                            animate={{ x: preferences.isTextMode ? 24 : 4 }}
+                            className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm"
+                          />
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-purple-500/10 rounded-xl flex items-center justify-center text-purple-500">
+                            <ImageIcon className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold">Background Removal</p>
+                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Enable image processing</p>
+                          </div>
+                        </div>
+                        <button 
+                          onClick={() => setPreferences(prev => ({ ...prev, enableBgRemoval: !prev.enableBgRemoval }))}
+                          className={cn(
+                            "w-12 h-6 rounded-full transition-colors relative",
+                            preferences.enableBgRemoval ? "bg-purple-500" : "bg-slate-200 dark:bg-slate-700"
+                          )}
+                        >
+                          <motion.div 
+                            animate={{ x: preferences.enableBgRemoval ? 24 : 4 }}
+                            className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm"
+                          />
+                        </button>
+                      </div>
+                    </div>
+                    
                     <div className="space-y-2">
                       <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Theme Mode</label>
                       <div className="grid grid-cols-3 gap-2 p-1 bg-white dark:bg-slate-800 rounded-2xl shadow-sm">
@@ -1043,7 +1257,17 @@ function CoinCollectorApp() {
                     <div className="grid grid-cols-2 gap-4">
                       <button 
                         onClick={() => {
-                          const state: AppState = { coins, folders, preferences, lastUpdated: new Date().toISOString() };
+                          const state: AppState = { 
+                            coins, 
+                            folders, 
+                            preferences, 
+                            recoveryCode, 
+                            streak, 
+                            missions, 
+                            achievements, 
+                            lastLuckySpinDate,
+                            lastUpdated: new Date().toISOString() 
+                          };
                           localStorage.setItem('uk-coin-collection-safe', JSON.stringify(state));
                           alert('Safe version saved locally!');
                         }}
@@ -1060,6 +1284,11 @@ function CoinCollectorApp() {
                             setCoins(parsed.coins);
                             setFolders(parsed.folders);
                             setPreferences(parsed.preferences);
+                            if (parsed.recoveryCode) setRecoveryCode(parsed.recoveryCode);
+                            if (parsed.streak) setStreak(parsed.streak);
+                            if (parsed.missions) setMissions(parsed.missions);
+                            if (parsed.achievements) setAchievements(parsed.achievements);
+                            if (parsed.lastLuckySpinDate) setLastLuckySpinDate(parsed.lastLuckySpinDate);
                             alert('Safe version restored!');
                           } else if (!safeData) {
                             alert('No safe version found.');
@@ -1287,20 +1516,25 @@ function CoinCollectorApp() {
                   </div>
 
                     <div className="space-y-6">
-                      <div className="flex items-center gap-3 mb-2">
-                        <div className="w-10 h-10 bg-amber-500 rounded-xl flex items-center justify-center text-white">
-                          <User className="w-6 h-6" />
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-amber-500 rounded-xl flex items-center justify-center text-white">
+                            <User className="w-6 h-6" />
+                          </div>
+                          <div>
+                            <h3 className="text-xl font-black">Local Collector</h3>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Device Profile</p>
+                          </div>
                         </div>
-                        <div>
-                          <h3 className="text-xl font-black">Device Profile</h3>
-                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Local Storage Only</p>
+                        <div className="flex items-center gap-2 bg-amber-500/10 px-3 py-1.5 rounded-full border border-amber-500/20">
+                          <span className="text-amber-600 text-xs font-black uppercase tracking-widest">🔥 {streak.count} Day Streak</span>
                         </div>
                       </div>
 
                       <div className="p-6 bg-slate-50 dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700">
                         <div className="flex justify-between items-center mb-4">
                           <div>
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Current Level</p>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Current Rank</p>
                             <h4 className="text-2xl font-black text-amber-500">{stats.currentLevel.name}</h4>
                           </div>
                           <div className="text-right">
@@ -1327,6 +1561,57 @@ function CoinCollectorApp() {
                             </p>
                           </div>
                         )}
+                      </div>
+
+                      <button 
+                        onClick={handleLuckySpin}
+                        disabled={lastLuckySpinDate === new Date().toISOString().split('T')[0]}
+                        className={cn(
+                          "w-full py-4 rounded-2xl font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2",
+                          lastLuckySpinDate === new Date().toISOString().split('T')[0]
+                            ? "bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed"
+                            : "bg-gradient-to-r from-amber-400 to-amber-600 text-white shadow-lg shadow-amber-500/30 hover:scale-[1.02] active:scale-95"
+                        )}
+                      >
+                        <RefreshCw className={cn("w-5 h-5", lastLuckySpinDate !== new Date().toISOString().split('T')[0] && "animate-spin-slow")} />
+                        {lastLuckySpinDate === new Date().toISOString().split('T')[0] ? "Lucky Spin Claimed" : "Daily Lucky Spin"}
+                      </button>
+
+                      <div className="space-y-4">
+                        <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest ml-2">Active Missions</h4>
+                        <div className="space-y-2">
+                          {missions.map(mission => (
+                            <div key={mission.id} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                              <div>
+                                <p className="text-sm font-bold">{mission.title}</p>
+                                <p className="text-[10px] text-slate-400 font-bold">{mission.description}</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-xs font-black text-amber-500">+{mission.points} pts</p>
+                                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{mission.type}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest ml-2">Achievements</h4>
+                        <div className="grid grid-cols-4 gap-3">
+                          {achievements.map(achievement => (
+                            <div key={achievement.id} className="flex flex-col items-center gap-1">
+                              <div className="w-12 h-12 bg-amber-500/10 rounded-2xl flex items-center justify-center text-2xl border border-amber-500/20">
+                                {achievement.icon}
+                              </div>
+                              <span className="text-[8px] font-black text-center uppercase tracking-tighter text-slate-500">{achievement.title}</span>
+                            </div>
+                          ))}
+                          {achievements.length === 0 && (
+                            <div className="col-span-4 py-4 text-center text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                              No achievements yet
+                            </div>
+                          )}
+                        </div>
                       </div>
 
                       <div className="flex items-center gap-4 p-6 bg-slate-50 dark:bg-slate-800 rounded-3xl">
