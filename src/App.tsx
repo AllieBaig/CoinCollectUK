@@ -42,7 +42,11 @@ import {
   ShoppingBag,
   Table,
   ShoppingCart,
-  DollarSign
+  DollarSign,
+  ChevronDown,
+  Star,
+  Database,
+  ArrowUpDown
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
@@ -162,6 +166,55 @@ function CoinCollectorApp() {
   const [coins, setCoins] = useState<Coin[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
   
+  const SettingSection = ({ 
+    title, 
+    icon: Icon, 
+    isOpen, 
+    onToggle, 
+    children 
+  }: { 
+    title: string; 
+    icon: any; 
+    isOpen: boolean; 
+    onToggle: () => void; 
+    children: React.ReactNode 
+  }) => (
+    <div className="border-b border-slate-100 dark:border-slate-800 last:border-0">
+      <button 
+        onClick={onToggle}
+        className="w-full flex items-center justify-between py-4 px-2 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors rounded-2xl"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-500">
+            <Icon className="w-5 h-5" />
+          </div>
+          <span className="font-black text-lg tracking-tight">{title}</span>
+        </div>
+        <motion.div
+          animate={{ rotate: isOpen ? 180 : 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          <ChevronDown className="w-5 h-5 text-slate-400" />
+        </motion.div>
+      </button>
+      <AnimatePresence initial={false}>
+        {isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="overflow-hidden"
+          >
+            <div className="pb-6 pt-2 px-2 space-y-4">
+              {children}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+
   const convertData = (data: any): AppState | null => {
     try {
       // Case 1: Raw array of coins (Very old format)
@@ -281,6 +334,7 @@ function CoinCollectorApp() {
   const [importProgress, setImportProgress] = useState<number | null>(null);
   const [recoveryCode, setRecoveryCode] = useState<string>('');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
+  const [openSettingSection, setOpenSettingSection] = useState<string | null>('display');
 
   // Gamification state
   const [streak, setStreak] = useState({ count: 0, lastVisitDate: '' });
@@ -1462,7 +1516,7 @@ function CoinCollectorApp() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 onClick={() => setIsSettingsOpen(false)}
-                className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm"
+                className="fixed inset-0 z-50 bg-slate-950/40 backdrop-blur-[2px]"
               />
               <motion.div 
                 initial={{ y: '100%' }}
@@ -1473,16 +1527,16 @@ function CoinCollectorApp() {
               >
                 <div className="w-12 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full mx-auto mb-8" />
                 
-                <div className="flex justify-between items-center mb-8">
-                  <h2 className="text-3xl font-black">Settings</h2>
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-black">Settings</h2>
                   <button onClick={() => setIsSettingsOpen(false)} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full">
-                    <X className="w-6 h-6" />
+                    <X className="w-5 h-5" />
                   </button>
                 </div>
 
-                <div className="space-y-6">
+                <div className="space-y-2">
                   {importProgress !== null && (
-                    <div className="bg-blue-500/10 p-6 rounded-3xl border border-blue-500/20">
+                    <div className="bg-blue-500/10 p-6 rounded-3xl border border-blue-500/20 mb-6">
                       <div className="flex justify-between items-center mb-2">
                         <span className="text-xs font-black text-blue-600 uppercase tracking-widest">Importing Data...</span>
                         <span className="text-xs font-black text-blue-600">{importProgress}%</span>
@@ -1497,17 +1551,204 @@ function CoinCollectorApp() {
                     </div>
                   )}
 
-                  <div className="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-3xl space-y-4">
-                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Preferences</h3>
-                    
-                    <div className="space-y-4">
-                      <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">App Modes</h3>
-                      
-                      <div className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm">
+                  {/* Display Settings */}
+                  <SettingSection 
+                    title="Display" 
+                    icon={Monitor} 
+                    isOpen={openSettingSection === 'display'} 
+                    onToggle={() => setOpenSettingSection(openSettingSection === 'display' ? null : 'display')}
+                  >
+                    <div className="space-y-3">
+                      <div className="space-y-2 mb-4">
+                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Theme Mode</label>
+                        <div className="grid grid-cols-3 gap-2 p-1 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
+                          {(['light', 'dark', 'system'] as const).map((mode) => (
+                            <button
+                              key={mode}
+                              onClick={() => setPreferences(prev => ({ ...prev, themeMode: mode }))}
+                              className={cn(
+                                "flex flex-col items-center gap-1 py-3 rounded-xl transition-all",
+                                preferences.themeMode === mode 
+                                  ? "bg-amber-500 text-white shadow-lg shadow-amber-500/20" 
+                                  : "text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
+                              )}
+                            >
+                              {mode === 'light' && <Sun className="w-4 h-4" />}
+                              {mode === 'dark' && <Moon className="w-4 h-4" />}
+                              {mode === 'system' && <Monitor className="w-4 h-4" />}
+                              <span className="text-[10px] font-black uppercase tracking-widest">{mode}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-500">
-                            <ShoppingCart className="w-5 h-5" />
+                          <LayoutGrid className="w-5 h-5 text-slate-400" />
+                          <div>
+                            <p className="text-sm font-bold">Compact UI</p>
+                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Smaller cards, more grid</p>
                           </div>
+                        </div>
+                        <button 
+                          onClick={() => setPreferences(prev => ({ ...prev, isCompactUI: !prev.isCompactUI }))}
+                          className={cn(
+                            "w-12 h-6 rounded-full transition-colors relative",
+                            preferences.isCompactUI ? "bg-amber-500" : "bg-slate-200 dark:bg-slate-700"
+                          )}
+                        >
+                          <motion.div 
+                            animate={{ x: preferences.isCompactUI ? 24 : 4 }}
+                            className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm"
+                          />
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
+                        <div className="flex items-center gap-3">
+                          <TypeIcon className="w-5 h-5 text-slate-400" />
+                          <div>
+                            <p className="text-sm font-bold">Text Mode UI</p>
+                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Simple list layout</p>
+                          </div>
+                        </div>
+                        <button 
+                          onClick={() => setPreferences(prev => ({ ...prev, isTextMode: !prev.isTextMode }))}
+                          className={cn(
+                            "w-12 h-6 rounded-full transition-colors relative",
+                            preferences.isTextMode ? "bg-amber-500" : "bg-slate-200 dark:bg-slate-700"
+                          )}
+                        >
+                          <motion.div 
+                            animate={{ x: preferences.isTextMode ? 24 : 4 }}
+                            className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm"
+                          />
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
+                        <div className="flex items-center gap-3">
+                          <LayoutList className="w-5 h-5 text-slate-400" />
+                          <div>
+                            <p className="text-sm font-bold">Bottom Menu</p>
+                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Show navigation bar</p>
+                          </div>
+                        </div>
+                        <button 
+                          onClick={() => setPreferences(prev => ({ ...prev, showBottomMenu: !prev.showBottomMenu }))}
+                          className={cn(
+                            "w-12 h-6 rounded-full transition-colors relative",
+                            preferences.showBottomMenu ? "bg-amber-500" : "bg-slate-200 dark:bg-slate-700"
+                          )}
+                        >
+                          <motion.div 
+                            animate={{ x: preferences.showBottomMenu ? 24 : 4 }}
+                            className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm"
+                          />
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
+                        <div className="flex items-center gap-3">
+                          <DollarSign className="w-5 h-5 text-slate-400" />
+                          <div>
+                            <p className="text-sm font-bold">Show Prices</p>
+                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Display in normal mode</p>
+                          </div>
+                        </div>
+                        <button 
+                          onClick={() => setPreferences(prev => ({ ...prev, showPriceInNormalMode: !prev.showPriceInNormalMode }))}
+                          className={cn(
+                            "w-12 h-6 rounded-full transition-colors relative",
+                            preferences.showPriceInNormalMode ? "bg-amber-500" : "bg-slate-200 dark:bg-slate-700"
+                          )}
+                        >
+                          <motion.div 
+                            animate={{ x: preferences.showPriceInNormalMode ? 24 : 4 }}
+                            className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm"
+                          />
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
+                        <div className="flex items-center gap-3">
+                          <ImageIcon className="w-5 h-5 text-slate-400" />
+                          <div>
+                            <p className="text-sm font-bold">BG Removal</p>
+                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Auto image processing</p>
+                          </div>
+                        </div>
+                        <button 
+                          onClick={() => setPreferences(prev => ({ ...prev, enableBgRemoval: !prev.enableBgRemoval }))}
+                          className={cn(
+                            "w-12 h-6 rounded-full transition-colors relative",
+                            preferences.enableBgRemoval ? "bg-amber-500" : "bg-slate-200 dark:bg-slate-700"
+                          )}
+                        >
+                          <motion.div 
+                            animate={{ x: preferences.enableBgRemoval ? 24 : 4 }}
+                            className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm"
+                          />
+                        </button>
+                      </div>
+                    </div>
+                  </SettingSection>
+
+                  {/* Import/Export Settings */}
+                  <SettingSection 
+                    title="Import/Export" 
+                    icon={Download} 
+                    isOpen={openSettingSection === 'data'} 
+                    onToggle={() => setOpenSettingSection(openSettingSection === 'data' ? null : 'data')}
+                  >
+                    <div className="grid grid-cols-2 gap-3">
+                      <button 
+                        onClick={exportData}
+                        className="flex flex-col items-center gap-2 p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-800 hover:bg-amber-50 transition-colors"
+                      >
+                        <div className="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-500">
+                          <Download className="w-5 h-5" />
+                        </div>
+                        <span className="text-xs font-bold">Export Data</span>
+                      </button>
+                      <button 
+                        onClick={() => fileInputRef.current?.click()}
+                        className="flex flex-col items-center gap-2 p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-800 hover:bg-blue-50 transition-colors"
+                      >
+                        <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-500">
+                          <Upload className="w-5 h-5" />
+                        </div>
+                        <span className="text-xs font-bold">Import Data</span>
+                        <input type="file" ref={fileInputRef} onChange={importData} accept=".json" className="hidden" />
+                      </button>
+                      <button 
+                        onClick={() => fileInputRef.current?.click()}
+                        className="flex flex-col items-center gap-2 p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-800 hover:bg-purple-50 transition-colors col-span-2"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-purple-500/10 rounded-xl flex items-center justify-center text-purple-500">
+                            <RefreshCw className="w-5 h-5" />
+                          </div>
+                          <div className="text-left">
+                            <p className="text-sm font-bold">Convert Old Data</p>
+                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Migrate from legacy formats</p>
+                          </div>
+                        </div>
+                      </button>
+                    </div>
+                  </SettingSection>
+
+                  {/* Coin Management Settings */}
+                  <SettingSection 
+                    title="Coin Management" 
+                    icon={Database} 
+                    isOpen={openSettingSection === 'management'} 
+                    onToggle={() => setOpenSettingSection(openSettingSection === 'management' ? null : 'management')}
+                  >
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
+                        <div className="flex items-center gap-3">
+                          <ShoppingBag className="w-5 h-5 text-slate-400" />
                           <div>
                             <p className="text-sm font-bold">Purchase Mode</p>
                             <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Optimized for shop use</p>
@@ -1527,271 +1768,150 @@ function CoinCollectorApp() {
                         </button>
                       </div>
 
-                      <div className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-500">
-                            <DollarSign className="w-5 h-5" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-bold">Show Coin Prices</p>
-                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Display value in normal mode</p>
-                          </div>
+                      <div className="space-y-2 mb-4">
+                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Sort Collection By</label>
+                        <div className="grid grid-cols-2 gap-2 p-1 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
+                          {(['recently-added', 'title'] as const).map((sort) => (
+                            <button
+                              key={sort}
+                              onClick={() => setPreferences(prev => ({ ...prev, sortBy: sort }))}
+                              className={cn(
+                                "flex items-center justify-center gap-2 py-3 rounded-xl transition-all",
+                                preferences.sortBy === sort 
+                                  ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-lg" 
+                                  : "text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
+                              )}
+                            >
+                              <ArrowUpDown className="w-3 h-3" />
+                              <span className="text-[10px] font-black uppercase tracking-widest">
+                                {sort === 'recently-added' ? 'Recent' : 'Title'}
+                              </span>
+                            </button>
+                          ))}
                         </div>
-                        <button 
-                          onClick={() => setPreferences(prev => ({ ...prev, showPriceInNormalMode: !prev.showPriceInNormalMode }))}
-                          className={cn(
-                            "w-12 h-6 rounded-full transition-colors relative",
-                            preferences.showPriceInNormalMode ? "bg-emerald-500" : "bg-slate-200 dark:bg-slate-700"
-                          )}
-                        >
-                          <motion.div 
-                            animate={{ x: preferences.showPriceInNormalMode ? 24 : 4 }}
-                            className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm"
-                          />
-                        </button>
                       </div>
 
-                      <div className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-500">
-                            <ShoppingBag className="w-5 h-5" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-bold">Purchase Mode</p>
-                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Optimized for shop use</p>
-                          </div>
-                        </div>
+                      <div className="grid grid-cols-2 gap-3">
                         <button 
-                          onClick={() => setPreferences(prev => ({ ...prev, isPurchaseMode: !prev.isPurchaseMode }))}
-                          className={cn(
-                            "w-12 h-6 rounded-full transition-colors relative",
-                            preferences.isPurchaseMode ? "bg-emerald-500" : "bg-slate-200 dark:bg-slate-700"
-                          )}
+                          onClick={() => window.location.reload()}
+                          className="flex items-center gap-3 p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-800 hover:bg-emerald-50 transition-colors"
                         >
-                          <motion.div 
-                            animate={{ x: preferences.isPurchaseMode ? 24 : 4 }}
-                            className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm"
-                          />
+                          <RefreshCw className="w-5 h-5 text-emerald-500" />
+                          <span className="text-xs font-bold">Refresh</span>
+                        </button>
+                        <button 
+                          onClick={clearCache}
+                          className="flex items-center gap-3 p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-800 hover:bg-red-50 transition-colors"
+                        >
+                          <Trash2 className="w-5 h-5 text-red-500" />
+                          <span className="text-xs font-bold text-red-500">Clear</span>
                         </button>
                       </div>
+                    </div>
+                  </SettingSection>
 
-                      <div className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm">
+                  {/* Gamification Settings */}
+                  <SettingSection 
+                    title="Gamification" 
+                    icon={Trophy} 
+                    isOpen={openSettingSection === 'gamification'} 
+                    onToggle={() => setOpenSettingSection(openSettingSection === 'gamification' ? null : 'gamification')}
+                  >
+                    <div className="space-y-3">
+                      <button 
+                        onClick={handleLuckySpin}
+                        className="w-full flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-800 hover:bg-amber-50 transition-colors"
+                      >
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-500">
-                            <PoundSterling className="w-5 h-5" />
+                            <RotateCcw className="w-5 h-5" />
                           </div>
-                          <div>
-                            <p className="text-sm font-bold">Show Price</p>
-                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Display in normal mode</p>
-                          </div>
-                        </div>
-                        <button 
-                          onClick={() => setPreferences(prev => ({ ...prev, showPriceInNormalMode: !prev.showPriceInNormalMode }))}
-                          className={cn(
-                            "w-12 h-6 rounded-full transition-colors relative",
-                            preferences.showPriceInNormalMode ? "bg-amber-500" : "bg-slate-200 dark:bg-slate-700"
-                          )}
-                        >
-                          <motion.div 
-                            animate={{ x: preferences.showPriceInNormalMode ? 24 : 4 }}
-                            className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm"
-                          />
-                        </button>
-                      </div>
-
-                      <div className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-500">
-                            <TypeIcon className="w-5 h-5" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-bold">Text Mode UI</p>
-                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Simple text-only layout</p>
+                          <div className="text-left">
+                            <p className="text-sm font-bold">Lucky Spin</p>
+                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Win daily bonus points</p>
                           </div>
                         </div>
-                        <button 
-                          onClick={() => setPreferences(prev => ({ ...prev, isTextMode: !prev.isTextMode }))}
-                          className={cn(
-                            "w-12 h-6 rounded-full transition-colors relative",
-                            preferences.isTextMode ? "bg-blue-500" : "bg-slate-200 dark:bg-slate-700"
-                          )}
-                        >
-                          <motion.div 
-                            animate={{ x: preferences.isTextMode ? 24 : 4 }}
-                            className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm"
-                          />
-                        </button>
-                      </div>
+                        <ChevronRight className="w-5 h-5 text-slate-400" />
+                      </button>
 
-                      <div className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-purple-500/10 rounded-xl flex items-center justify-center text-purple-500">
-                            <ImageIcon className="w-5 h-5" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-bold">Background Removal</p>
-                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Enable image processing</p>
-                          </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-800 text-center">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Current Streak</p>
+                          <p className="text-2xl font-black text-amber-500">{streak.count} Days</p>
                         </div>
+                        <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-800 text-center">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Points</p>
+                          <p className="text-2xl font-black text-emerald-500">{stats.totalPoints}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </SettingSection>
+
+                  {/* Backup Settings */}
+                  <SettingSection 
+                    title="Backup" 
+                    icon={ShieldAlert} 
+                    isOpen={openSettingSection === 'backup'} 
+                    onToggle={() => setOpenSettingSection(openSettingSection === 'backup' ? null : 'backup')}
+                  >
+                    <div className="space-y-4">
+                      <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-800">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Your Recovery Code</p>
+                        <p className="text-lg font-mono font-black tracking-wider text-amber-600 select-all">{recoveryCode}</p>
+                        <p className="text-[10px] text-slate-400 mt-2 italic">Save this code to restore your data on another device.</p>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
                         <button 
-                          onClick={() => setPreferences(prev => ({ ...prev, enableBgRemoval: !prev.enableBgRemoval }))}
-                          className={cn(
-                            "w-12 h-6 rounded-full transition-colors relative",
-                            preferences.enableBgRemoval ? "bg-purple-500" : "bg-slate-200 dark:bg-slate-700"
-                          )}
+                          onClick={() => {
+                            const state: AppState = { 
+                              version: 3,
+                              coins, 
+                              folders, 
+                              preferences, 
+                              recoveryCode, 
+                              streak, 
+                              missions, 
+                              achievements, 
+                              lastLuckySpinDate,
+                              lastUpdated: new Date().toISOString() 
+                            };
+                            localStorage.setItem('uk-coin-collection-safe', JSON.stringify(state));
+                            showToast('Safe version saved locally!');
+                          }}
+                          className="flex flex-col items-center gap-2 p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-800 hover:bg-emerald-50 transition-colors"
                         >
-                          <motion.div 
-                            animate={{ x: preferences.enableBgRemoval ? 24 : 4 }}
-                            className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm"
-                          />
+                          <Save className="w-5 h-5 text-emerald-500" />
+                          <span className="text-xs font-bold">Save Safe</span>
+                        </button>
+                        <button 
+                          onClick={() => {
+                            const safeData = localStorage.getItem('uk-coin-collection-safe');
+                            if (safeData && window.confirm('Restore to the last safe version? Current changes will be lost.')) {
+                              const parsed: AppState = JSON.parse(safeData);
+                              setCoins(parsed.coins);
+                              setFolders(parsed.folders);
+                              setPreferences(parsed.preferences);
+                              if (parsed.recoveryCode) setRecoveryCode(parsed.recoveryCode);
+                              if (parsed.streak) setStreak(parsed.streak);
+                              if (parsed.missions) setMissions(parsed.missions);
+                              if (parsed.achievements) setAchievements(parsed.achievements);
+                              if (parsed.lastLuckySpinDate) setLastLuckySpinDate(parsed.lastLuckySpinDate);
+                              showToast('Safe version restored!');
+                            } else if (!safeData) {
+                              alert('No safe version found.');
+                            }
+                          }}
+                          className="flex flex-col items-center gap-2 p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-800 hover:bg-amber-50 transition-colors"
+                        >
+                          <RotateCcw className="w-5 h-5 text-amber-500" />
+                          <span className="text-xs font-bold">Restore Safe</span>
                         </button>
                       </div>
                     </div>
-                    
-                    <div className="space-y-2">
-                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Theme Mode</label>
-                      <div className="grid grid-cols-3 gap-2 p-1 bg-white dark:bg-slate-800 rounded-2xl shadow-sm">
-                        {(['light', 'dark', 'system'] as const).map((mode) => (
-                          <button
-                            key={mode}
-                            onClick={() => setPreferences(prev => ({ ...prev, themeMode: mode }))}
-                            className={cn(
-                              "flex flex-col items-center gap-1 py-3 rounded-xl transition-all",
-                              preferences.themeMode === mode 
-                                ? "bg-amber-500 text-white shadow-lg shadow-amber-500/20" 
-                                : "text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700"
-                            )}
-                          >
-                            {mode === 'light' && <Sun className="w-5 h-5" />}
-                            {mode === 'dark' && <Moon className="w-5 h-5" />}
-                            {mode === 'system' && <Monitor className="w-5 h-5" />}
-                            <span className="text-[10px] font-black uppercase tracking-widest">{mode}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+                  </SettingSection>
 
-                    <button 
-                      onClick={() => setPreferences(prev => ({ ...prev, showBottomMenu: !prev.showBottomMenu }))}
-                      className="w-full flex items-center justify-between p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm"
-                    >
-                      <div className="flex items-center gap-3">
-                        <LayoutList className="w-5 h-5 text-slate-500" />
-                        <span className="font-bold">Bottom Menu</span>
-                      </div>
-                      <div className={cn("w-12 h-6 rounded-full p-1 transition-colors", preferences.showBottomMenu ? "bg-amber-500" : "bg-slate-200")}>
-                        <div className={cn("w-4 h-4 bg-white rounded-full transition-transform", preferences.showBottomMenu ? "translate-x-6" : "translate-x-0")} />
-                      </div>
-                    </button>
-
-                    <button 
-                      onClick={() => setPreferences(prev => ({ ...prev, isCompactUI: !prev.isCompactUI }))}
-                      className="w-full flex items-center justify-between p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm"
-                    >
-                      <div className="flex items-center gap-3">
-                        <LayoutGrid className="w-5 h-5 text-slate-500" />
-                        <span className="font-bold">Compact UI</span>
-                      </div>
-                      <div className={cn("w-12 h-6 rounded-full p-1 transition-colors", preferences.isCompactUI ? "bg-amber-500" : "bg-slate-200")}>
-                        <div className={cn("w-4 h-4 bg-white rounded-full transition-transform", preferences.isCompactUI ? "translate-x-6" : "translate-x-0")} />
-                      </div>
-                    </button>
-                  </div>
-
-                  <div className="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-3xl space-y-4">
-                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Data Management</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      <button 
-                        onClick={exportData}
-                        className="flex flex-col items-center gap-2 p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm hover:bg-amber-50"
-                      >
-                        <Download className="w-6 h-6 text-amber-500" />
-                        <span className="text-xs font-bold">Export</span>
-                      </button>
-                      <button 
-                        onClick={() => fileInputRef.current?.click()}
-                        className="flex flex-col items-center gap-2 p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm hover:bg-blue-50"
-                      >
-                        <Upload className="w-6 h-6 text-blue-500" />
-                        <span className="text-xs font-bold">Import</span>
-                        <input type="file" ref={fileInputRef} onChange={importData} accept=".json" className="hidden" />
-                      </button>
-                      <button 
-                        onClick={() => fileInputRef.current?.click()}
-                        className="flex flex-col items-center gap-2 p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm hover:bg-purple-50"
-                      >
-                        <RefreshCw className="w-6 h-6 text-purple-500" />
-                        <span className="text-xs font-bold">Convert Data</span>
-                      </button>
-                      <button 
-                        onClick={() => window.location.reload()}
-                        className="flex flex-col items-center gap-2 p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm hover:bg-emerald-50"
-                      >
-                        <RefreshCw className="w-6 h-6 text-emerald-500" />
-                        <span className="text-xs font-bold">Refresh App</span>
-                      </button>
-                      <button 
-                        onClick={clearCache}
-                        className="flex flex-col items-center gap-2 p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm hover:bg-red-50"
-                      >
-                        <Trash2 className="w-6 h-6 text-red-500" />
-                        <span className="text-xs font-bold text-red-500">Clear Cache</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-3xl space-y-4">
-                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Safe Mode (Local Backup)</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      <button 
-                        onClick={() => {
-                          const state: AppState = { 
-                            version: 3,
-                            coins, 
-                            folders, 
-                            preferences, 
-                            recoveryCode, 
-                            streak, 
-                            missions, 
-                            achievements, 
-                            lastLuckySpinDate,
-                            lastUpdated: new Date().toISOString() 
-                          };
-                          localStorage.setItem('uk-coin-collection-safe', JSON.stringify(state));
-                          alert('Safe version saved locally!');
-                        }}
-                        className="flex flex-col items-center gap-2 p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm hover:bg-emerald-50"
-                      >
-                        <Save className="w-6 h-6 text-emerald-500" />
-                        <span className="text-xs font-bold">Save Safe</span>
-                      </button>
-                      <button 
-                        onClick={() => {
-                          const safeData = localStorage.getItem('uk-coin-collection-safe');
-                          if (safeData && window.confirm('Restore to the last safe version? Current changes will be lost.')) {
-                            const parsed: AppState = JSON.parse(safeData);
-                            setCoins(parsed.coins);
-                            setFolders(parsed.folders);
-                            setPreferences(parsed.preferences);
-                            if (parsed.recoveryCode) setRecoveryCode(parsed.recoveryCode);
-                            if (parsed.streak) setStreak(parsed.streak);
-                            if (parsed.missions) setMissions(parsed.missions);
-                            if (parsed.achievements) setAchievements(parsed.achievements);
-                            if (parsed.lastLuckySpinDate) setLastLuckySpinDate(parsed.lastLuckySpinDate);
-                            alert('Safe version restored!');
-                          } else if (!safeData) {
-                            alert('No safe version found.');
-                          }
-                        }}
-                        className="flex flex-col items-center gap-2 p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm hover:bg-amber-50"
-                      >
-                        <RotateCcw className="w-6 h-6 text-amber-500" />
-                        <span className="text-xs font-bold">Restore Safe</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="bg-amber-500/10 p-6 rounded-3xl border border-amber-500/20">
+                  <div className="bg-amber-500/10 p-6 rounded-3xl border border-amber-500/20 mt-4">
                     <h3 className="text-sm font-bold text-amber-600 mb-2">Standalone App</h3>
                     <p className="text-xs text-amber-700 leading-relaxed mb-4">
                       Add this app to your home screen for a full-screen, offline-capable experience. 
