@@ -40,6 +40,20 @@ export interface Mission {
   type: 'daily' | 'weekly';
 }
 
+export interface TimelineEvent {
+  year: string;
+  event: string;
+  note: string;
+}
+
+export interface Timeline {
+  id: string;
+  title: string;
+  description: string;
+  events: TimelineEvent[];
+  category: 'journey' | 'evolution' | 'conspiracy' | 'collector' | 'design' | 'detective';
+}
+
 export interface UserPreferences {
   isDarkMode: boolean;
   themeMode: 'light' | 'dark' | 'system';
@@ -67,4 +81,6 @@ export interface AppState {
   missions: Mission[];
   achievements: Achievement[];
   lastLuckySpinDate?: string;
+  lastOpenedTimelineId?: string;
+  timelineProgress: { [timelineId: string]: number };
 }

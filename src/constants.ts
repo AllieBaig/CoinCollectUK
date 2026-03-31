@@ -1,4 +1,4 @@
-import { Coin, Folder } from './types';
+import { Coin, Folder, Timeline } from './types';
 
 const now = new Date().toISOString();
 
@@ -100,5 +100,78 @@ export const INITIAL_COINS: Coin[] = [
     category: '£2',
     folderId: 'folder-rare',
     addedAt: now
+  }
+];
+
+export const TIMELINES: Timeline[] = [
+  {
+    id: 'numismatic-journey',
+    title: 'Numismatic Journey',
+    description: 'From your first pocket find to a curated gallery of history.',
+    category: 'journey',
+    events: [
+      { year: 'Day 1', event: 'The Spark', note: 'Found a shiny 2018 Paddington 50p in change. The hunt begins.' },
+      { year: 'Month 1', event: 'First Folder', note: 'Organized the first 10 commemorative coins. Realized how many are out there.' },
+      { year: 'Year 1', event: 'The Rare One', note: 'Finally secured a Kew Gardens 50p. Officially a serious collector.' },
+      { year: 'Year 2', event: 'Expert Status', note: 'Can identify a fake £2 coin from across the room. Knowledge is power.' }
+    ]
+  },
+  {
+    id: 'coin-evolution',
+    title: 'Coin Evolution',
+    description: 'How physical currency transformed through the ages.',
+    category: 'evolution',
+    events: [
+      { year: '600 BC', event: 'Lydian Lion', note: 'The first true coins appear in Lydia (modern Turkey), made of electrum.' },
+      { year: '1971', event: 'Decimalisation', note: 'The UK switches to a decimal system. Goodbye shillings and pence.' },
+      { year: '2017', event: 'The New Pound', note: 'The 12-sided £1 coin is introduced, the most secure in the world.' },
+      { year: 'Future', event: 'Digital Shift', note: 'Physical coins become rare artifacts as digital payments dominate.' }
+    ]
+  },
+  {
+    id: 'coin-conspiracy',
+    title: 'Coin Conspiracy',
+    description: 'Uncovering the hidden symbols and secret minting stories.',
+    category: 'conspiracy',
+    events: [
+      { year: '1933', event: 'The Missing Penny', note: 'Only 7 pennies were minted. Where are the others? Some say they were buried in foundations.' },
+      { year: '1983', event: 'New Pence Error', note: 'A small batch of 2p coins said "New Pence" instead of "Two Pence". A valuable mistake.' },
+      { year: '2008', event: 'The Dateless 20p', note: 'A production error left 200,000 coins without a date. A modern mystery.' }
+    ]
+  },
+  {
+    id: 'time-loop-collector',
+    title: 'Time Loop Collector',
+    description: 'Tracking the same designs as they reappear across decades.',
+    category: 'collector',
+    events: [
+      { year: '1953', event: 'Coronation', note: 'The first portrait of Queen Elizabeth II appears on coins.' },
+      { year: '1977', event: 'Silver Jubilee', note: 'Special crown coins released, echoing the 1953 celebration.' },
+      { year: '2002', event: 'Golden Jubilee', note: 'The portrait has aged, but the tradition remains unbroken.' },
+      { year: '2022', event: 'Platinum Jubilee', note: 'The final jubilee coins of a historic 70-year reign.' }
+    ]
+  },
+  {
+    id: 'design-evolution',
+    title: 'Design Evolution Timeline',
+    description: 'The artistic shift from traditional to modern numismatics.',
+    category: 'design',
+    events: [
+      { year: 'Victorian', event: 'Gothic Revival', note: 'Intricate, busy designs reflecting the grandeur of the empire.' },
+      { year: '1960s', event: 'Modernist Shift', note: 'Cleaner lines and simpler heraldry begin to appear.' },
+      { year: '2008', event: 'The Shield', note: 'Matthew Dent’s design splits the Royal Shield across six coins.' },
+      { year: '2023', event: 'King Charles III', note: 'A new era of design begins with the first portrait of the King.' }
+    ]
+  },
+  {
+    id: 'mint-mark-detective',
+    title: 'Mint Mark Detective',
+    description: 'Hunting for the tiny marks that define a coin’s origin.',
+    category: 'detective',
+    events: [
+      { year: 'Ancient', event: 'City Marks', note: 'Roman coins used mint marks to track which city produced the currency.' },
+      { year: '1800s', event: 'Branch Mints', note: 'The Royal Mint opened branches in Sydney and Perth to process gold.' },
+      { year: 'Modern', event: 'Llantrisant', note: 'The Royal Mint moves to Wales, changing the production landscape forever.' }
+    ]
   }
 ];

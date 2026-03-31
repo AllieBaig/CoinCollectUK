@@ -50,8 +50,8 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
-import { Coin, AppState, Folder, UserPreferences, Mission, Achievement } from './types';
-import { INITIAL_COINS, INITIAL_FOLDERS } from './constants';
+import { Coin, AppState, Folder, UserPreferences, Mission, Achievement, Timeline, TimelineEvent } from './types';
+import { INITIAL_COINS, INITIAL_FOLDERS, TIMELINES } from './constants';
 
 // Error Boundary Component
 interface ErrorBoundaryProps {
@@ -252,7 +252,8 @@ function CoinCollectorApp() {
           lastUpdated: new Date().toISOString(),
           streak: { count: 0, lastVisitDate: new Date().toISOString() },
           missions: [],
-          achievements: []
+          achievements: [],
+          timelineProgress: {}
         };
       }
 
@@ -297,7 +298,8 @@ function CoinCollectorApp() {
           streak: data.streak || { count: 0, lastVisitDate: new Date().toISOString() },
           missions: data.missions || [],
           achievements: data.achievements || [],
-          lastLuckySpinDate: data.lastLuckySpinDate
+          lastLuckySpinDate: data.lastLuckySpinDate,
+          timelineProgress: data.timelineProgress || {}
         };
       }
 
@@ -341,6 +343,55 @@ function CoinCollectorApp() {
   const [missions, setMissions] = useState<Mission[]>([]);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [lastLuckySpinDate, setLastLuckySpinDate] = useState<string | undefined>(undefined);
+  const [isTimelineOpen, setIsTimelineOpen] = useState(false);
+  const [activeTimelineId, setActiveTimelineId] = useState<string | null>(null);
+  const [timelineProgress, setTimelineProgress] = useState<{ [key: string]: number }>({});
+  const [lastOpenedTimelineId, setLastOpenedTimelineId] = useState<string | undefined>(undefined);
+
+  const TimelineCard = ({ timeline }: { timeline: Timeline, key?: string }) => (
+    <button 
+      onClick={() => {
+        setActiveTimelineId(timeline.id);
+        setLastOpenedTimelineId(timeline.id);
+      }}
+      className={cn(
+        "flex-shrink-0 w-64 p-6 rounded-[32px] text-left transition-all group relative overflow-hidden",
+        lastOpenedTimelineId === timeline.id 
+          ? "bg-amber-500 text-white shadow-xl shadow-amber-500/20" 
+          : "bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 hover:border-amber-500"
+      )}
+    >
+      <div className="relative z-10">
+        <h3 className="text-lg font-black mb-2 line-clamp-1">{timeline.title}</h3>
+        <p className={cn(
+          "text-xs font-medium line-clamp-2",
+          lastOpenedTimelineId === timeline.id ? "text-white/80" : "text-slate-500 dark:text-slate-400"
+        )}>
+          {timeline.description}
+        </p>
+        {timelineProgress[timeline.id] !== undefined && (
+          <div className="mt-4 h-1 w-full bg-black/10 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-white transition-all" 
+              style={{ width: `${(timelineProgress[timeline.id] / timeline.events.length) * 100}%` }} 
+            />
+          </div>
+        )}
+      </div>
+      <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:opacity-20 transition-opacity">
+        <Clock className="w-24 h-24" />
+      </div>
+    </button>
+  );
+
+  const TimelineSection = ({ title, items }: { title: string, items: Timeline[] }) => (
+    <div className="space-y-4">
+      <h2 className="text-sm font-black uppercase tracking-widest text-slate-400 px-6">{title}</h2>
+      <div className="flex gap-4 overflow-x-auto px-6 pb-6 no-scrollbar">
+        {items.map(t => <TimelineCard key={t.id} timeline={t} />)}
+      </div>
+    </div>
+  );
 
   const generateRecoveryCode = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -402,6 +453,8 @@ function CoinCollectorApp() {
         setMissions(parsed.missions || []);
         setAchievements(parsed.achievements || []);
         setLastLuckySpinDate(parsed.lastLuckySpinDate);
+        setTimelineProgress(parsed.timelineProgress || {});
+        setLastOpenedTimelineId(parsed.lastOpenedTimelineId);
 
         if (parsed.preferences) {
           setPreferences({
@@ -430,15 +483,19 @@ function CoinCollectorApp() {
             setMissions(converted.missions);
             setAchievements(converted.achievements);
             setLastLuckySpinDate(converted.lastLuckySpinDate);
+            setTimelineProgress(converted.timelineProgress || {});
+            setLastOpenedTimelineId(converted.lastOpenedTimelineId);
           } else {
             setCoins(parsed.coins || INITIAL_COINS);
             setFolders(INITIAL_FOLDERS);
             setRecoveryCode(generateRecoveryCode());
+            setTimelineProgress({});
           }
         } else {
           setCoins(INITIAL_COINS);
           setFolders(INITIAL_FOLDERS);
           setRecoveryCode(generateRecoveryCode());
+          setTimelineProgress({});
         }
         
         setPreferences(prev => ({ ...prev, themeMode: 'system' }));
@@ -502,6 +559,8 @@ function CoinCollectorApp() {
         missions,
         achievements,
         lastLuckySpinDate,
+        lastOpenedTimelineId,
+        timelineProgress,
         lastUpdated: new Date().toISOString()
       };
       const stateStr = JSON.stringify(state);
@@ -512,7 +571,7 @@ function CoinCollectorApp() {
         localStorage.setItem('uk-coin-collection-last-working', stateStr);
       }
     }
-  }, [coins, folders, preferences, recoveryCode, streak, missions, achievements, lastLuckySpinDate, isSafeMode]);
+  }, [coins, folders, preferences, recoveryCode, streak, missions, achievements, lastLuckySpinDate, isSafeMode, lastOpenedTimelineId, timelineProgress]);
 
   // Daily Backup Logic
   useEffect(() => {
@@ -684,6 +743,8 @@ function CoinCollectorApp() {
       missions, 
       achievements, 
       lastLuckySpinDate,
+      lastOpenedTimelineId,
+      timelineProgress,
       lastUpdated: new Date().toISOString() 
     };
     const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
@@ -736,6 +797,8 @@ function CoinCollectorApp() {
               const currentState: AppState = { 
                 version: 3,
                 coins, folders, preferences, recoveryCode, streak, missions, achievements, lastLuckySpinDate,
+                lastOpenedTimelineId,
+                timelineProgress,
                 lastUpdated: new Date().toISOString() 
               };
               localStorage.setItem('uk-coin-collection-pre-conversion-backup', JSON.stringify(currentState));
@@ -1130,6 +1193,24 @@ function CoinCollectorApp() {
                 </table>
               </div>
             </div>
+          ) : isTimelineOpen ? (
+            <div className="pb-32">
+              <div className="px-6 pt-8 mb-8">
+                <h1 className="text-4xl font-black tracking-tight">Timeline Hub</h1>
+                <p className="text-slate-500 dark:text-slate-400 font-medium mt-2">Explore the history of British numismatics.</p>
+              </div>
+              
+              <div className="space-y-10">
+                {TIMELINES.filter(t => timelineProgress[t.id] !== undefined && timelineProgress[t.id] < t.events.length).length > 0 && (
+                  <TimelineSection 
+                    title="Continue Exploring" 
+                    items={TIMELINES.filter(t => timelineProgress[t.id] !== undefined && timelineProgress[t.id] < t.events.length)} 
+                  />
+                )}
+                <TimelineSection title="Popular Timelines" items={TIMELINES.slice(0, 3)} />
+                <TimelineSection title="All Timelines" items={TIMELINES} />
+              </div>
+            </div>
           ) : (
             <>
               {/* Progress Card */}
@@ -1446,17 +1527,40 @@ function CoinCollectorApp() {
           <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 pb-safe">
             <div className="max-w-5xl mx-auto px-6 py-3 flex items-center justify-between">
               <button 
-                onClick={() => openFolder('all')}
+                onClick={() => {
+                  openFolder('all');
+                  setIsTimelineOpen(false);
+                  setIsPhotoLibraryOpen(false);
+                  setIsProfileOpen(false);
+                }}
                 className={cn(
                   "flex flex-col items-center gap-1 transition-colors",
-                  preferences.activeFolderId === 'all' ? "text-amber-500" : "text-slate-400"
+                  preferences.activeFolderId === 'all' && !isTimelineOpen && !isPhotoLibraryOpen && !isProfileOpen ? "text-amber-500" : "text-slate-400"
                 )}
               >
                 <LayoutGrid className="w-6 h-6" />
                 <span className="text-[10px] font-bold uppercase tracking-widest">Home</span>
               </button>
               <button 
-                onClick={() => setIsPhotoLibraryOpen(true)}
+                onClick={() => {
+                  setIsTimelineOpen(true);
+                  setIsPhotoLibraryOpen(false);
+                  setIsProfileOpen(false);
+                }}
+                className={cn(
+                  "flex flex-col items-center gap-1 transition-colors",
+                  isTimelineOpen ? "text-amber-500" : "text-slate-400"
+                )}
+              >
+                <Clock className="w-6 h-6" />
+                <span className="text-[10px] font-bold uppercase tracking-widest">Timeline</span>
+              </button>
+              <button 
+                onClick={() => {
+                  setIsPhotoLibraryOpen(true);
+                  setIsTimelineOpen(false);
+                  setIsProfileOpen(false);
+                }}
                 className={cn(
                   "flex flex-col items-center gap-1 transition-colors",
                   isPhotoLibraryOpen ? "text-amber-500" : "text-slate-400"
@@ -1874,6 +1978,8 @@ function CoinCollectorApp() {
                               missions, 
                               achievements, 
                               lastLuckySpinDate,
+                              lastOpenedTimelineId,
+                              timelineProgress,
                               lastUpdated: new Date().toISOString() 
                             };
                             localStorage.setItem('uk-coin-collection-safe', JSON.stringify(state));
@@ -1926,6 +2032,81 @@ function CoinCollectorApp() {
                 </div>
               </motion.div>
             </>
+          )}
+        </AnimatePresence>
+
+        {/* Timeline Detail Modal */}
+        <AnimatePresence>
+          {activeTimelineId && (
+            <motion.div 
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed inset-0 z-[60] bg-white dark:bg-slate-900 overflow-y-auto"
+            >
+              {(() => {
+                const timeline = TIMELINES.find(t => t.id === activeTimelineId);
+                if (!timeline) return null;
+                const progress = timelineProgress[timeline.id] || 0;
+                
+                return (
+                  <div className="max-w-2xl mx-auto p-8 pb-32">
+                    <div className="flex justify-between items-center mb-10">
+                      <button onClick={() => setActiveTimelineId(null)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full">
+                        <X className="w-6 h-6" />
+                      </button>
+                      <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                        {Math.round((progress / timeline.events.length) * 100)}% Complete
+                      </div>
+                    </div>
+
+                    <div className="mb-12">
+                      <h1 className="text-4xl font-black mb-4">{timeline.title}</h1>
+                      <p className="text-slate-500 dark:text-slate-400 font-medium">{timeline.description}</p>
+                    </div>
+
+                    <div className="space-y-12 relative">
+                      <div className="absolute left-[19px] top-2 bottom-2 w-0.5 bg-slate-100 dark:bg-slate-800" />
+                      {timeline.events.map((event, idx) => (
+                        <div 
+                          key={idx} 
+                          className={cn(
+                            "relative pl-12 transition-all cursor-pointer group",
+                            idx >= progress ? "opacity-30 hover:opacity-60" : "opacity-100"
+                          )}
+                          onClick={() => {
+                            const newProgress = idx + 1;
+                            setTimelineProgress(prev => ({ ...prev, [timeline.id]: Math.max(prev[timeline.id] || 0, newProgress) }));
+                          }}
+                        >
+                          <div className={cn(
+                            "absolute left-0 top-1 w-10 h-10 rounded-full flex items-center justify-center border-4 border-white dark:border-slate-900 z-10 transition-colors",
+                            idx < progress ? "bg-emerald-500 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-400 group-hover:bg-slate-200"
+                          )}>
+                            {idx < progress ? <Check className="w-5 h-5" /> : <div className="w-2 h-2 bg-current rounded-full" />}
+                          </div>
+                          <div>
+                            <span className="text-xs font-black text-amber-500 uppercase tracking-widest">{event.year}</span>
+                            <h3 className="text-xl font-black mt-1">{event.event}</h3>
+                            <p className="text-slate-500 dark:text-slate-400 mt-2 text-sm leading-relaxed">{event.note}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-white dark:from-slate-900 via-white/80 dark:via-slate-900/80 to-transparent">
+                      <button 
+                        onClick={() => setActiveTimelineId(null)}
+                        className="w-full py-5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black rounded-2xl shadow-xl uppercase tracking-widest"
+                      >
+                        Back to Hub
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
+            </motion.div>
           )}
         </AnimatePresence>
 
