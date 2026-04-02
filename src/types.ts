@@ -53,6 +53,11 @@ export interface Timeline {
   events: TimelineEvent[];
   category: 'journey' | 'evolution' | 'conspiracy' | 'collector' | 'design' | 'detective' | 'my-story';
   isDynamic?: boolean;
+  unlockRequirement?: {
+    type: 'coins' | 'timeline' | 'points';
+    value: number | string;
+    label: string;
+  };
 }
 
 export interface UserPreferences {
@@ -78,10 +83,13 @@ export interface AppState {
   streak: {
     count: number;
     lastVisitDate: string;
+    timelineStreak?: number;
+    lastTimelineVisitDate?: string;
   };
   missions: Mission[];
   achievements: Achievement[];
   lastLuckySpinDate?: string;
   lastOpenedTimelineId?: string;
   timelineProgress: { [timelineId: string]: number };
+  timelinePoints?: number;
 }

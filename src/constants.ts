@@ -121,6 +121,7 @@ export const TIMELINES: Timeline[] = [
     title: 'Coin Evolution',
     description: 'How physical currency transformed through the ages.',
     category: 'evolution',
+    unlockRequirement: { type: 'coins', value: 5, label: 'Collect 5 coins to unlock' },
     events: [
       { year: '600 BC', event: 'Lydian Lion', note: 'The first true coins appear in Lydia (modern Turkey), made of electrum.' },
       { year: '1971', event: 'Decimalisation', note: 'The UK switches to a decimal system. Goodbye shillings and pence.' },
@@ -133,6 +134,7 @@ export const TIMELINES: Timeline[] = [
     title: 'Coin Conspiracy',
     description: 'Uncovering the hidden symbols and secret minting stories.',
     category: 'conspiracy',
+    unlockRequirement: { type: 'points', value: 100, label: 'Earn 100 Timeline Points to unlock' },
     events: [
       { year: '1933', event: 'The Missing Penny', note: 'Only 7 pennies were minted. Where are the others? Some say they were buried in foundations.' },
       { year: '1983', event: 'New Pence Error', note: 'A small batch of 2p coins said "New Pence" instead of "Two Pence". A valuable mistake.' },
@@ -144,6 +146,7 @@ export const TIMELINES: Timeline[] = [
     title: 'Time Loop Collector',
     description: 'Tracking the same designs as they reappear across decades.',
     category: 'collector',
+    unlockRequirement: { type: 'timeline', value: 'numismatic-journey', label: 'Complete Numismatic Journey to unlock' },
     events: [
       { year: '1953', event: 'Coronation', note: 'The first portrait of Queen Elizabeth II appears on coins.' },
       { year: '1977', event: 'Silver Jubilee', note: 'Special crown coins released, echoing the 1953 celebration.' },
