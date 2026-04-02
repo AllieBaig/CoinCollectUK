@@ -51,8 +51,9 @@ export interface Timeline {
   title: string;
   description: string;
   events: TimelineEvent[];
-  category: 'journey' | 'evolution' | 'conspiracy' | 'collector' | 'design' | 'detective' | 'my-story';
+  category: 'journey' | 'evolution' | 'conspiracy' | 'collector' | 'design' | 'detective' | 'my-story' | 'game';
   isDynamic?: boolean;
+  type?: 'timeline' | 'game';
   unlockRequirement?: {
     type: 'coins' | 'timeline' | 'points';
     value: number | string;
@@ -91,5 +92,6 @@ export interface AppState {
   lastLuckySpinDate?: string;
   lastOpenedTimelineId?: string;
   timelineProgress: { [timelineId: string]: number };
+  gameProgress: { [gameId: string]: number };
   timelinePoints?: number;
 }

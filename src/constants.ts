@@ -176,5 +176,32 @@ export const TIMELINES: Timeline[] = [
       { year: '1800s', event: 'Branch Mints', note: 'The Royal Mint opened branches in Sydney and Perth to process gold.' },
       { year: 'Modern', event: 'Llantrisant', note: 'The Royal Mint moves to Wales, changing the production landscape forever.' }
     ]
+  },
+  {
+    id: 'era-conquest',
+    title: 'Era Conquest Mode',
+    description: 'Conquer each numismatic era by collecting key coins from each period.',
+    category: 'game',
+    type: 'game',
+    unlockRequirement: { type: 'coins', value: 10, label: 'Collect 10 coins to unlock' },
+    events: [
+      { year: 'Ancient', event: 'Roman Britain', note: 'Secure a Denarius or equivalent to establish your base.' },
+      { year: 'Medieval', event: 'The Penny Standard', note: 'Collect a hammered silver penny to expand your influence.' },
+      { year: 'Tudor', event: 'The Sovereign Era', note: 'Acquire a gold sovereign to dominate the Renaissance.' },
+      { year: 'Modern', event: 'The Decimal Shift', note: 'Master the 50p and £2 series to complete the conquest.' }
+    ]
+  },
+  {
+    id: 'timeline-reconstruction',
+    title: 'Timeline Reconstruction',
+    description: 'A puzzle mode where you must reorder historic events to restore the timeline.',
+    category: 'game',
+    type: 'game',
+    unlockRequirement: { type: 'points', value: 250, label: 'Earn 250 XP to unlock' },
+    events: [
+      { year: 'Level 1', event: 'The Great Recoinage', note: 'Reorder the events of 1816 to fix the silver standard.' },
+      { year: 'Level 2', event: 'Decimalisation Day', note: 'Restore the chaotic events of Feb 15th, 1971.' },
+      { year: 'Level 3', event: 'The New Pound', note: 'Sequence the security features of the 12-sided £1 coin.' }
+    ]
   }
 ];

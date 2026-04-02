@@ -253,7 +253,8 @@ function CoinCollectorApp() {
           streak: { count: 0, lastVisitDate: new Date().toISOString() },
           missions: [],
           achievements: [],
-          timelineProgress: {}
+          timelineProgress: {},
+          gameProgress: {}
         };
       }
 
@@ -299,7 +300,8 @@ function CoinCollectorApp() {
           missions: data.missions || [],
           achievements: data.achievements || [],
           lastLuckySpinDate: data.lastLuckySpinDate,
-          timelineProgress: data.timelineProgress || {}
+          timelineProgress: data.timelineProgress || {},
+          gameProgress: data.gameProgress || {}
         };
       }
 
@@ -346,6 +348,7 @@ function CoinCollectorApp() {
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
   const [activeTimelineId, setActiveTimelineId] = useState<string | null>(null);
   const [timelineProgress, setTimelineProgress] = useState<{ [key: string]: number }>({});
+  const [gameProgress, setGameProgress] = useState<{ [key: string]: number }>({});
   const [timelinePoints, setTimelinePoints] = useState(0);
   const [lastOpenedTimelineId, setLastOpenedTimelineId] = useState<string | undefined>(undefined);
   const [expandedEventIdx, setExpandedEventIdx] = useState<number | null>(null);
@@ -490,14 +493,14 @@ function CoinCollectorApp() {
           )}>
             {locked ? timeline.unlockRequirement?.label : timeline.description}
           </p>
-          {(timelineProgress[timeline.id] !== undefined || timeline.id === 'my-coin-story') && !locked ? (
+          {(timelineProgress[timeline.id] !== undefined || gameProgress[timeline.id] !== undefined || timeline.id === 'my-coin-story') && !locked ? (
             <div className="mt-4 h-1 w-full bg-black/10 rounded-full overflow-hidden">
               <div 
                 className="h-full bg-white transition-all" 
                 style={{ 
                   width: timeline.id === 'my-coin-story' 
                     ? `${Math.min((coins.filter(c => c.isCollected).length / 100) * 100, 100)}%`
-                    : `${(timelineProgress[timeline.id] / timeline.events.length) * 100}%` 
+                    : `${((timeline.type === 'game' ? (gameProgress[timeline.id] || 0) : (timelineProgress[timeline.id] || 0)) / timeline.events.length) * 100}%` 
                 }} 
               />
             </div>
@@ -580,6 +583,7 @@ function CoinCollectorApp() {
         setAchievements(parsed.achievements || []);
         setLastLuckySpinDate(parsed.lastLuckySpinDate);
         setTimelineProgress(parsed.timelineProgress || {});
+        setGameProgress(parsed.gameProgress || {});
         setTimelinePoints(parsed.timelinePoints || 0);
         setLastOpenedTimelineId(parsed.lastOpenedTimelineId);
 
@@ -688,6 +692,7 @@ function CoinCollectorApp() {
         lastLuckySpinDate,
         lastOpenedTimelineId,
         timelineProgress,
+        gameProgress,
         timelinePoints,
         lastUpdated: new Date().toISOString()
       };
@@ -699,7 +704,7 @@ function CoinCollectorApp() {
         localStorage.setItem('uk-coin-collection-last-working', stateStr);
       }
     }
-  }, [coins, folders, preferences, recoveryCode, streak, missions, achievements, lastLuckySpinDate, isSafeMode, lastOpenedTimelineId, timelineProgress, timelinePoints]);
+  }, [coins, folders, preferences, recoveryCode, streak, missions, achievements, lastLuckySpinDate, isSafeMode, lastOpenedTimelineId, timelineProgress, gameProgress, timelinePoints]);
 
   // Daily Backup Logic
   useEffect(() => {
@@ -873,6 +878,8 @@ function CoinCollectorApp() {
       lastLuckySpinDate,
       lastOpenedTimelineId,
       timelineProgress,
+      gameProgress,
+      timelinePoints,
       lastUpdated: new Date().toISOString() 
     };
     const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
@@ -927,6 +934,8 @@ function CoinCollectorApp() {
                 coins, folders, preferences, recoveryCode, streak, missions, achievements, lastLuckySpinDate,
                 lastOpenedTimelineId,
                 timelineProgress,
+                gameProgress,
+                timelinePoints,
                 lastUpdated: new Date().toISOString() 
               };
               localStorage.setItem('uk-coin-collection-pre-conversion-backup', JSON.stringify(currentState));
@@ -1325,8 +1334,8 @@ function CoinCollectorApp() {
             <div className="pb-32">
               <div className="px-6 pt-8 mb-8 flex justify-between items-end">
                 <div>
-                  <h1 className="text-4xl font-black tracking-tight">Timeline Hub</h1>
-                  <p className="text-slate-500 dark:text-slate-400 font-medium mt-2">Explore the history of British numismatics.</p>
+                  <h1 className="text-4xl font-black tracking-tight">Story Mode</h1>
+                  <p className="text-slate-500 dark:text-slate-400 font-medium mt-2">Merge history with play. Explore and conquer.</p>
                 </div>
                 <div className="text-right">
                   <div className="flex items-center gap-2 bg-amber-100 dark:bg-amber-900/30 px-3 py-1.5 rounded-full border border-amber-200 dark:border-amber-800/50">
@@ -1343,14 +1352,14 @@ function CoinCollectorApp() {
               </div>
               
               <div className="space-y-10">
-                {allTimelines.filter(t => timelineProgress[t.id] !== undefined && timelineProgress[t.id] < t.events.length).length > 0 && (
+                {allTimelines.filter(t => (timelineProgress[t.id] !== undefined || gameProgress[t.id] !== undefined) && (timelineProgress[t.id] < t.events.length || (gameProgress[t.id] || 0) < t.events.length)).length > 0 && (
                   <TimelineSection 
                     title="Continue Exploring" 
-                    items={allTimelines.filter(t => timelineProgress[t.id] !== undefined && timelineProgress[t.id] < t.events.length)} 
+                    items={allTimelines.filter(t => (timelineProgress[t.id] !== undefined || gameProgress[t.id] !== undefined) && (timelineProgress[t.id] < t.events.length || (gameProgress[t.id] || 0) < t.events.length))} 
                   />
                 )}
-                <TimelineSection title="Popular Timelines" items={allTimelines.slice(0, 3)} />
-                <TimelineSection title="All Timelines" items={allTimelines} />
+                <TimelineSection title="Timelines" items={allTimelines.filter(t => t.type !== 'game')} />
+                <TimelineSection title="Game Modes" items={allTimelines.filter(t => t.type === 'game')} />
               </div>
             </div>
           ) : (
@@ -2122,6 +2131,8 @@ function CoinCollectorApp() {
                               lastLuckySpinDate,
                               lastOpenedTimelineId,
                               timelineProgress,
+                              gameProgress,
+                              timelinePoints,
                               lastUpdated: new Date().toISOString() 
                             };
                             localStorage.setItem('uk-coin-collection-safe', JSON.stringify(state));
@@ -2190,7 +2201,9 @@ function CoinCollectorApp() {
               {(() => {
                 const timeline = allTimelines.find(t => t.id === activeTimelineId);
                 if (!timeline) return null;
-                const progress = timeline.id === 'my-coin-story' ? timeline.events.length : (timelineProgress[timeline.id] || 0);
+                const progress = timeline.id === 'my-coin-story' 
+                  ? timeline.events.length 
+                  : (timeline.type === 'game' ? (gameProgress[timeline.id] || 0) : (timelineProgress[timeline.id] || 0));
                 const stats = getMyStoryStats();
                 
                 return (
@@ -2272,12 +2285,16 @@ function CoinCollectorApp() {
                               setExpandedEventIdx(expandedEventIdx === idx ? null : idx);
                             } else {
                               const newProgress = idx + 1;
-                              const currentProgress = timelineProgress[timeline.id] || 0;
+                              const currentProgress = timeline.type === 'game' ? (gameProgress[timeline.id] || 0) : (timelineProgress[timeline.id] || 0);
                               
                               if (newProgress > currentProgress) {
                                 // Award points for new discovery
-                                setTimelinePoints(prev => prev + 10);
-                                setTimelineProgress(prev => ({ ...prev, [timeline.id]: newProgress }));
+                                setTimelinePoints(prev => prev + (timeline.type === 'game' ? 25 : 10));
+                                if (timeline.type === 'game') {
+                                  setGameProgress(prev => ({ ...prev, [timeline.id]: newProgress }));
+                                } else {
+                                  setTimelineProgress(prev => ({ ...prev, [timeline.id]: newProgress }));
+                                }
                                 
                                 // Update streak
                                 const today = new Date().toDateString();
