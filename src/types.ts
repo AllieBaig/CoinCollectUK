@@ -64,6 +64,7 @@ export interface Timeline {
 export interface UserPreferences {
   isDarkMode: boolean;
   themeMode: 'light' | 'dark' | 'system';
+  themeTexture: 'none' | 'paper' | 'glass' | 'wood' | 'metal' | 'fabric';
   sortBy: 'recently-added' | 'recently-opened-folder' | 'title';
   activeFolderId: string | 'all';
   showBottomMenu: boolean;

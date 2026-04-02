@@ -182,7 +182,10 @@ function CoinCollectorApp() {
     <div className="border-b border-slate-100 dark:border-slate-800 last:border-0">
       <button 
         onClick={onToggle}
-        className="w-full flex items-center justify-between py-4 px-2 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors rounded-2xl"
+        className={cn(
+          "w-full flex items-center justify-between py-4 px-2 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors rounded-2xl",
+          preferences.themeTexture === 'glass' && "glass-card"
+        )}
       >
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-500">
@@ -240,6 +243,7 @@ function CoinCollectorApp() {
           preferences: {
             isDarkMode: false,
             themeMode: 'system',
+            themeTexture: 'none',
             sortBy: 'recently-added',
             activeFolderId: 'all',
             showBottomMenu: true,
@@ -265,6 +269,7 @@ function CoinCollectorApp() {
         const preferences = data.preferences || {
           isDarkMode: false,
           themeMode: 'system',
+          themeTexture: 'none',
           sortBy: 'recently-added',
           activeFolderId: 'all',
           showBottomMenu: true,
@@ -315,6 +320,7 @@ function CoinCollectorApp() {
   const [preferences, setPreferences] = useState<UserPreferences>({
     isDarkMode: false,
     themeMode: 'system',
+    themeTexture: 'none',
     sortBy: 'recently-added',
     activeFolderId: 'all',
     showBottomMenu: true,
@@ -479,7 +485,8 @@ function CoinCollectorApp() {
           lastOpenedTimelineId === timeline.id 
             ? "bg-amber-500 text-white shadow-xl shadow-amber-500/20" 
             : "bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 hover:border-amber-500",
-          locked && "opacity-60 grayscale cursor-not-allowed"
+          locked && "opacity-60 grayscale cursor-not-allowed",
+          preferences.themeTexture === 'glass' && "glass-card"
         )}
       >
         <div className="relative z-10">
@@ -667,6 +674,12 @@ function CoinCollectorApp() {
         root.classList.remove('dark');
       }
       setPreferences(prev => ({ ...prev, isDarkMode: isDark }));
+
+      // Texture themes
+      root.classList.remove('theme-paper', 'theme-glass', 'theme-wood', 'theme-metal', 'theme-fabric');
+      if (preferences.themeTexture && preferences.themeTexture !== 'none') {
+        root.classList.add(`theme-${preferences.themeTexture}`);
+      }
     };
 
     applyTheme();
@@ -675,7 +688,7 @@ function CoinCollectorApp() {
       mediaQuery.addEventListener('change', applyTheme);
       return () => mediaQuery.removeEventListener('change', applyTheme);
     }
-  }, [preferences.themeMode]);
+  }, [preferences.themeMode, preferences.themeTexture]);
 
   // Save data and update last working state
   useEffect(() => {
@@ -1264,7 +1277,10 @@ function CoinCollectorApp() {
                 />
               </div>
 
-              <div className="bg-white dark:bg-slate-900 rounded-[32px] border-2 border-slate-200 dark:border-slate-800 overflow-hidden shadow-xl">
+              <div className={cn(
+                "bg-white dark:bg-slate-900 rounded-[32px] border-2 border-slate-200 dark:border-slate-800 overflow-hidden shadow-xl",
+                preferences.themeTexture === 'glass' && "glass-card"
+              )}>
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-50 dark:bg-slate-800/50 border-b-2 border-slate-200 dark:border-slate-800">
@@ -1366,7 +1382,10 @@ function CoinCollectorApp() {
             <>
               {/* Progress Card */}
           <div className="mb-8">
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
+            <div className={cn(
+              "bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm",
+              preferences.themeTexture === 'glass' && "glass-card"
+            )}>
               <div className="flex justify-between items-end mb-3">
                 <div>
                   <h2 className="text-sm text-slate-500 font-bold uppercase tracking-wider mb-1">Collection Progress</h2>
@@ -1503,7 +1522,8 @@ function CoinCollectorApp() {
                         ? "border-emerald-500/30 shadow-lg shadow-emerald-500/5" 
                         : "border-slate-200 dark:border-slate-800 hover:border-amber-500/50",
                     preferences.isCompactUI && "rounded-2xl",
-                    preferences.isTextMode && "rounded-none border-0 border-b border-slate-100 dark:border-slate-800 p-4 bg-transparent dark:bg-transparent"
+                    preferences.isTextMode && "rounded-none border-0 border-b border-slate-100 dark:border-slate-800 p-4 bg-transparent dark:bg-transparent",
+                    preferences.themeTexture === 'glass' && "glass-card"
                   )}
                 >
                   {preferences.isTextMode ? (
@@ -1778,7 +1798,10 @@ function CoinCollectorApp() {
                 animate={{ y: 0 }}
                 exit={{ y: '100%' }}
                 transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-slate-900 rounded-t-[40px] shadow-2xl p-8 pb-12 max-h-[90vh] overflow-y-auto"
+                className={cn(
+                  "fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-slate-900 rounded-t-[40px] shadow-2xl p-8 pb-12 max-h-[90vh] overflow-y-auto",
+                  preferences.themeTexture === 'glass' && "glass-card"
+                )}
               >
                 <div className="w-12 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full mx-auto mb-8" />
                 
@@ -1832,6 +1855,26 @@ function CoinCollectorApp() {
                               {mode === 'dark' && <Moon className="w-4 h-4" />}
                               {mode === 'system' && <Monitor className="w-4 h-4" />}
                               <span className="text-[10px] font-black uppercase tracking-widest">{mode}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="space-y-2 mb-4">
+                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Texture Theme</label>
+                        <div className="grid grid-cols-3 gap-2 p-1 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
+                          {(['none', 'paper', 'glass', 'wood', 'metal', 'fabric'] as const).map((texture) => (
+                            <button
+                              key={texture}
+                              onClick={() => setPreferences(prev => ({ ...prev, themeTexture: texture }))}
+                              className={cn(
+                                "flex flex-col items-center gap-1 py-3 rounded-xl transition-all",
+                                preferences.themeTexture === texture 
+                                  ? "bg-amber-500 text-white shadow-lg shadow-amber-500/20" 
+                                  : "text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
+                              )}
+                            >
+                              <span className="text-[10px] font-black uppercase tracking-widest">{texture}</span>
                             </button>
                           ))}
                         </div>
@@ -2196,7 +2239,10 @@ function CoinCollectorApp() {
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed inset-0 z-[60] bg-white dark:bg-slate-900 overflow-y-auto"
+              className={cn(
+                "fixed inset-0 z-[60] bg-white dark:bg-slate-900 overflow-y-auto",
+                preferences.themeTexture === 'glass' && "glass-card"
+              )}
             >
               {(() => {
                 const timeline = allTimelines.find(t => t.id === activeTimelineId);
@@ -2374,7 +2420,10 @@ function CoinCollectorApp() {
                 initial={{ scale: 0.9, opacity: 0, y: 20 }}
                 animate={{ scale: 1, opacity: 1, y: 0 }}
                 exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-[40px] shadow-2xl overflow-hidden"
+                className={cn(
+                  "relative w-full max-w-md bg-white dark:bg-slate-900 rounded-[40px] shadow-2xl overflow-hidden",
+                  preferences.themeTexture === 'glass' && "glass-card"
+                )}
               >
                 <div className="p-8">
                   <div className="flex justify-between items-center mb-8">
@@ -2421,7 +2470,10 @@ function CoinCollectorApp() {
                 initial={{ scale: 0.9, opacity: 0, y: 20 }}
                 animate={{ scale: 1, opacity: 1, y: 0 }}
                 exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-[40px] shadow-2xl overflow-hidden"
+                className={cn(
+                  "relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-[40px] shadow-2xl overflow-hidden",
+                  preferences.themeTexture === 'glass' && "glass-card"
+                )}
               >
                 <div className="p-8">
                   <div className="flex justify-between items-center mb-8">
@@ -2544,7 +2596,10 @@ function CoinCollectorApp() {
                 initial={{ scale: 0.9, opacity: 0, y: 20 }}
                 animate={{ scale: 1, opacity: 1, y: 0 }}
                 exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-[40px] shadow-2xl overflow-hidden"
+                className={cn(
+                  "relative w-full max-w-md bg-white dark:bg-slate-900 rounded-[40px] shadow-2xl overflow-hidden",
+                  preferences.themeTexture === 'glass' && "glass-card"
+                )}
               >
                 <div className="p-8">
                   <div className="flex justify-between items-center mb-8">
@@ -2731,7 +2786,10 @@ function CoinCollectorApp() {
                 initial={{ scale: 0.9, opacity: 0, y: 20 }}
                 animate={{ scale: 1, opacity: 1, y: 0 }}
                 exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                className="relative w-full max-w-4xl bg-white dark:bg-slate-900 rounded-[40px] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+                className={cn(
+                  "relative w-full max-w-4xl bg-white dark:bg-slate-900 rounded-[40px] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col",
+                  preferences.themeTexture === 'glass' && "glass-card"
+                )}
               >
                 <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
                   <h2 className="text-2xl font-black">Photo Library</h2>
@@ -2789,7 +2847,10 @@ function CoinCollectorApp() {
                 initial={{ scale: 0.9, opacity: 0, y: 20 }}
                 animate={{ scale: 1, opacity: 1, y: 0 }}
                 exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-[40px] shadow-2xl overflow-hidden"
+                className={cn(
+                  "relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-[40px] shadow-2xl overflow-hidden",
+                  preferences.themeTexture === 'glass' && "glass-card"
+                )}
               >
                 {selectedCoin.imageUrl && (
                   <div className="h-64 w-full relative">
@@ -3044,7 +3105,10 @@ function CoinCollectorApp() {
                 initial={{ scale: 0.9, opacity: 0, y: 20 }}
                 animate={{ scale: 1, opacity: 1, y: 0 }}
                 exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-[40px] shadow-2xl overflow-hidden"
+                className={cn(
+                  "relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-[40px] shadow-2xl overflow-hidden",
+                  preferences.themeTexture === 'glass' && "glass-card"
+                )}
               >
                 <div className="p-8">
                   <h2 className="text-2xl font-black mb-6">New Folder</h2>
