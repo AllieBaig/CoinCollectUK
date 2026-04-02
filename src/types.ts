@@ -51,7 +51,8 @@ export interface Timeline {
   title: string;
   description: string;
   events: TimelineEvent[];
-  category: 'journey' | 'evolution' | 'conspiracy' | 'collector' | 'design' | 'detective';
+  category: 'journey' | 'evolution' | 'conspiracy' | 'collector' | 'design' | 'detective' | 'my-story';
+  isDynamic?: boolean;
 }
 
 export interface UserPreferences {

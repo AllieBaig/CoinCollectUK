@@ -347,6 +347,90 @@ function CoinCollectorApp() {
   const [activeTimelineId, setActiveTimelineId] = useState<string | null>(null);
   const [timelineProgress, setTimelineProgress] = useState<{ [key: string]: number }>({});
   const [lastOpenedTimelineId, setLastOpenedTimelineId] = useState<string | undefined>(undefined);
+  const [expandedEventIdx, setExpandedEventIdx] = useState<number | null>(null);
+
+  const myCoinStory = useMemo(() => {
+    const collectedCoins = coins.filter(c => c.isCollected);
+    const events: TimelineEvent[] = [];
+    
+    if (collectedCoins.length > 0) {
+      const sortedByAdded = [...collectedCoins].sort((a, b) => new Date(a.addedAt).getTime() - new Date(b.addedAt).getTime());
+      
+      const firstCoin = sortedByAdded[0];
+      events.push({
+        year: new Date(firstCoin.addedAt).getFullYear().toString(),
+        event: 'The First Discovery',
+        note: `Your collection journey began with the ${firstCoin.denomination} ${firstCoin.title}.`
+      });
+
+      const rareCoins = collectedCoins.filter(c => c.isRare);
+      if (rareCoins.length > 0) {
+        events.push({
+          year: 'Rare Finds',
+          event: 'Treasures Uncovered',
+          note: `You've found ${rareCoins.length} rare coins, including the ${rareCoins[0].title}.`
+        });
+      }
+
+      const counts: Record<string, number> = {};
+      collectedCoins.forEach(c => {
+        counts[c.category] = (counts[c.category] || 0) + 1;
+      });
+      const mostCollected = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+      if (mostCollected) {
+        events.push({
+          year: 'Specialization',
+          event: `The ${mostCollected[0]} Expert`,
+          note: `You've collected ${mostCollected[1]} coins of the ${mostCollected[0]} type.`
+        });
+      }
+
+      const months: Record<string, number> = {};
+      collectedCoins.forEach(c => {
+        const month = new Date(c.addedAt).toLocaleString('default', { month: 'long', year: 'numeric' });
+        months[month] = (months[month] || 0) + 1;
+      });
+      Object.entries(months).forEach(([month, count]) => {
+        events.push({
+          year: month,
+          event: 'Monthly Progress',
+          note: `You added ${count} new coins to your collection this month.`
+        });
+      });
+    }
+
+    return {
+      id: 'my-coin-story',
+      title: 'My Coin Story',
+      description: 'A personalized timeline of your numismatic achievements.',
+      category: 'my-story' as any,
+      events: events.length > 0 ? events : [{ year: 'Today', event: 'The Beginning', note: 'Start collecting to write your story!' }],
+      isDynamic: true
+    };
+  }, [coins]);
+
+  const allTimelines = useMemo(() => [myCoinStory, ...TIMELINES], [myCoinStory]);
+
+  const getMyStoryStats = () => {
+    const collectedCount = coins.filter(c => c.isCollected).length;
+    let level = 'Beginner';
+    if (collectedCount >= 50) level = 'Expert';
+    else if (collectedCount >= 10) level = 'Collector';
+
+    const badges = [];
+    if (collectedCount >= 1) badges.push({ id: 'first', icon: '🌱', title: 'First Coin' });
+    if (collectedCount >= 10) badges.push({ id: 'collector', icon: '📚', title: 'Collector' });
+    if (collectedCount >= 50) badges.push({ id: 'expert', icon: '👑', title: 'Expert' });
+    if (coins.some(c => c.isCollected && c.isRare)) badges.push({ id: 'rare', icon: '💎', title: 'Rare Hunter' });
+
+    const milestones = [
+      { count: 10, title: '10 Coins' },
+      { count: 50, title: '50 Coins' },
+      { count: 100, title: '100 Coins' }
+    ];
+
+    return { level, badges, milestones, collectedCount };
+  };
 
   const TimelineCard = ({ timeline }: { timeline: Timeline, key?: string }) => (
     <button 
@@ -369,14 +453,18 @@ function CoinCollectorApp() {
         )}>
           {timeline.description}
         </p>
-        {timelineProgress[timeline.id] !== undefined && (
+        {timelineProgress[timeline.id] !== undefined || timeline.id === 'my-coin-story' ? (
           <div className="mt-4 h-1 w-full bg-black/10 rounded-full overflow-hidden">
             <div 
               className="h-full bg-white transition-all" 
-              style={{ width: `${(timelineProgress[timeline.id] / timeline.events.length) * 100}%` }} 
+              style={{ 
+                width: timeline.id === 'my-coin-story' 
+                  ? `${Math.min((coins.filter(c => c.isCollected).length / 100) * 100, 100)}%`
+                  : `${(timelineProgress[timeline.id] / timeline.events.length) * 100}%` 
+              }} 
             />
           </div>
-        )}
+        ) : null}
       </div>
       <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:opacity-20 transition-opacity">
         <Clock className="w-24 h-24" />
@@ -1201,14 +1289,14 @@ function CoinCollectorApp() {
               </div>
               
               <div className="space-y-10">
-                {TIMELINES.filter(t => timelineProgress[t.id] !== undefined && timelineProgress[t.id] < t.events.length).length > 0 && (
+                {allTimelines.filter(t => timelineProgress[t.id] !== undefined && timelineProgress[t.id] < t.events.length).length > 0 && (
                   <TimelineSection 
                     title="Continue Exploring" 
-                    items={TIMELINES.filter(t => timelineProgress[t.id] !== undefined && timelineProgress[t.id] < t.events.length)} 
+                    items={allTimelines.filter(t => timelineProgress[t.id] !== undefined && timelineProgress[t.id] < t.events.length)} 
                   />
                 )}
-                <TimelineSection title="Popular Timelines" items={TIMELINES.slice(0, 3)} />
-                <TimelineSection title="All Timelines" items={TIMELINES} />
+                <TimelineSection title="Popular Timelines" items={allTimelines.slice(0, 3)} />
+                <TimelineSection title="All Timelines" items={allTimelines} />
               </div>
             </div>
           ) : (
@@ -2046,9 +2134,10 @@ function CoinCollectorApp() {
               className="fixed inset-0 z-[60] bg-white dark:bg-slate-900 overflow-y-auto"
             >
               {(() => {
-                const timeline = TIMELINES.find(t => t.id === activeTimelineId);
+                const timeline = allTimelines.find(t => t.id === activeTimelineId);
                 if (!timeline) return null;
-                const progress = timelineProgress[timeline.id] || 0;
+                const progress = timeline.id === 'my-coin-story' ? timeline.events.length : (timelineProgress[timeline.id] || 0);
+                const stats = getMyStoryStats();
                 
                 return (
                   <div className="max-w-2xl mx-auto p-8 pb-32">
@@ -2057,7 +2146,10 @@ function CoinCollectorApp() {
                         <X className="w-6 h-6" />
                       </button>
                       <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                        {Math.round((progress / timeline.events.length) * 100)}% Complete
+                        {timeline.id === 'my-coin-story' 
+                          ? `${Math.min((stats.collectedCount / 100) * 100, 100)}% Collection Progress`
+                          : `${Math.round((progress / timeline.events.length) * 100)}% Complete`
+                        }
                       </div>
                     </div>
 
@@ -2066,6 +2158,52 @@ function CoinCollectorApp() {
                       <p className="text-slate-500 dark:text-slate-400 font-medium">{timeline.description}</p>
                     </div>
 
+                    {timeline.id === 'my-coin-story' && (
+                      <div className="mb-12 p-6 bg-amber-50 dark:bg-amber-900/20 rounded-[32px] border border-amber-100 dark:border-amber-800/50">
+                        <div className="flex justify-between items-center mb-6">
+                          <div>
+                            <span className="text-[10px] font-black text-amber-600 uppercase tracking-widest">Current Level</span>
+                            <h2 className="text-2xl font-black text-amber-700 dark:text-amber-400">{stats.level}</h2>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-[10px] font-black text-amber-600 uppercase tracking-widest">Coins Collected</span>
+                            <p className="text-2xl font-black text-amber-700 dark:text-amber-400">{stats.collectedCount}</p>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-4">
+                          <span className="text-[10px] font-black text-amber-600 uppercase tracking-widest">Badges Earned</span>
+                          <div className="flex flex-wrap gap-3">
+                            {stats.badges.length > 0 ? stats.badges.map(badge => (
+                              <div key={badge.id} className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-amber-100 dark:border-amber-800/30">
+                                <span className="text-xl">{badge.icon}</span>
+                                <span className="text-[10px] font-bold uppercase tracking-tight">{badge.title}</span>
+                              </div>
+                            )) : (
+                              <p className="text-xs text-slate-400 font-bold italic">No badges yet. Keep collecting!</p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="mt-8 space-y-4">
+                          <span className="text-[10px] font-black text-amber-600 uppercase tracking-widest">Next Milestones</span>
+                          <div className="grid grid-cols-3 gap-2">
+                            {stats.milestones.map(m => (
+                              <div key={m.count} className={cn(
+                                "p-3 rounded-xl border text-center transition-all",
+                                stats.collectedCount >= m.count 
+                                  ? "bg-emerald-500 border-emerald-500 text-white" 
+                                  : "bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400"
+                              )}>
+                                <p className="text-xs font-black">{m.title}</p>
+                                {stats.collectedCount >= m.count && <Check className="w-3 h-3 mx-auto mt-1" />}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="space-y-12 relative">
                       <div className="absolute left-[19px] top-2 bottom-2 w-0.5 bg-slate-100 dark:bg-slate-800" />
                       {timeline.events.map((event, idx) => (
@@ -2073,23 +2211,41 @@ function CoinCollectorApp() {
                           key={idx} 
                           className={cn(
                             "relative pl-12 transition-all cursor-pointer group",
-                            idx >= progress ? "opacity-30 hover:opacity-60" : "opacity-100"
+                            timeline.id !== 'my-coin-story' && idx >= progress ? "opacity-30 hover:opacity-60" : "opacity-100"
                           )}
                           onClick={() => {
-                            const newProgress = idx + 1;
-                            setTimelineProgress(prev => ({ ...prev, [timeline.id]: Math.max(prev[timeline.id] || 0, newProgress) }));
+                            if (timeline.id === 'my-coin-story') {
+                              setExpandedEventIdx(expandedEventIdx === idx ? null : idx);
+                            } else {
+                              const newProgress = idx + 1;
+                              setTimelineProgress(prev => ({ ...prev, [timeline.id]: Math.max(prev[timeline.id] || 0, newProgress) }));
+                            }
                           }}
                         >
                           <div className={cn(
                             "absolute left-0 top-1 w-10 h-10 rounded-full flex items-center justify-center border-4 border-white dark:border-slate-900 z-10 transition-colors",
-                            idx < progress ? "bg-emerald-500 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-400 group-hover:bg-slate-200"
+                            (timeline.id === 'my-coin-story' || idx < progress) ? "bg-emerald-500 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-400 group-hover:bg-slate-200"
                           )}>
-                            {idx < progress ? <Check className="w-5 h-5" /> : <div className="w-2 h-2 bg-current rounded-full" />}
+                            {(timeline.id === 'my-coin-story' || idx < progress) ? <Check className="w-5 h-5" /> : <div className="w-2 h-2 bg-current rounded-full" />}
                           </div>
                           <div>
                             <span className="text-xs font-black text-amber-500 uppercase tracking-widest">{event.year}</span>
                             <h3 className="text-xl font-black mt-1">{event.event}</h3>
-                            <p className="text-slate-500 dark:text-slate-400 mt-2 text-sm leading-relaxed">{event.note}</p>
+                            <AnimatePresence>
+                              {(timeline.id !== 'my-coin-story' || expandedEventIdx === idx) && (
+                                <motion.p 
+                                  initial={timeline.id === 'my-coin-story' ? { height: 0, opacity: 0 } : false}
+                                  animate={{ height: 'auto', opacity: 1 }}
+                                  exit={{ height: 0, opacity: 0 }}
+                                  className="text-slate-500 dark:text-slate-400 mt-2 text-sm leading-relaxed overflow-hidden"
+                                >
+                                  {event.note}
+                                </motion.p>
+                              )}
+                            </AnimatePresence>
+                            {timeline.id === 'my-coin-story' && expandedEventIdx !== idx && (
+                              <p className="text-slate-400 mt-1 text-xs font-bold uppercase tracking-widest">Tap to read more...</p>
+                            )}
                           </div>
                         </div>
                       ))}
