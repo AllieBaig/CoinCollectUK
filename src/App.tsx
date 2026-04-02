@@ -46,11 +46,13 @@ import {
   ChevronDown,
   Star,
   Database,
-  ArrowUpDown
+  ArrowUpDown,
+  BookOpen,
+  Book
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
-import { Coin, AppState, Folder, UserPreferences, Mission, Achievement, Timeline, TimelineEvent } from './types';
+import { Coin, AppState, Folder, UserPreferences, Mission, Achievement, Timeline, TimelineEvent, Story, StoryChapter } from './types';
 import { INITIAL_COINS, INITIAL_FOLDERS, TIMELINES } from './constants';
 
 // Error Boundary Component
@@ -254,11 +256,14 @@ function CoinCollectorApp() {
             showPriceInNormalMode: true
           },
           lastUpdated: new Date().toISOString(),
-          streak: { count: 0, lastVisitDate: new Date().toISOString() },
+          streak: { count: 0, lastVisitDate: new Date().toISOString(), storyStreak: 0, lastStoryVisitDate: '' },
           missions: [],
           achievements: [],
           timelineProgress: {},
-          gameProgress: {}
+          gameProgress: {},
+          storyProgress: {},
+          timelinePoints: 0,
+          storyPoints: 0
         };
       }
 
@@ -301,12 +306,17 @@ function CoinCollectorApp() {
           preferences: preferences,
           lastUpdated: data.lastUpdated || new Date().toISOString(),
           recoveryCode: data.recoveryCode,
-          streak: data.streak || { count: 0, lastVisitDate: new Date().toISOString() },
+          streak: data.streak || { count: 0, lastVisitDate: new Date().toISOString(), storyStreak: 0, lastStoryVisitDate: '' },
           missions: data.missions || [],
           achievements: data.achievements || [],
           lastLuckySpinDate: data.lastLuckySpinDate,
           timelineProgress: data.timelineProgress || {},
-          gameProgress: data.gameProgress || {}
+          gameProgress: data.gameProgress || {},
+          storyProgress: data.storyProgress || {},
+          timelinePoints: data.timelinePoints || 0,
+          storyPoints: data.storyPoints || 0,
+          lastOpenedTimelineId: data.lastOpenedTimelineId,
+          lastOpenedStoryId: data.lastOpenedStoryId
         };
       }
 
@@ -347,17 +357,30 @@ function CoinCollectorApp() {
   const [openSettingSection, setOpenSettingSection] = useState<string | null>('display');
 
   // Gamification state
-  const [streak, setStreak] = useState({ count: 0, lastVisitDate: '' });
+  const [streak, setStreak] = useState({ 
+    count: 0, 
+    lastVisitDate: '', 
+    timelineStreak: 0, 
+    lastTimelineVisitDate: '',
+    storyStreak: 0,
+    lastStoryVisitDate: ''
+  });
   const [missions, setMissions] = useState<Mission[]>([]);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [lastLuckySpinDate, setLastLuckySpinDate] = useState<string | undefined>(undefined);
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
+  const [isStoryOpen, setIsStoryOpen] = useState(false);
   const [activeTimelineId, setActiveTimelineId] = useState<string | null>(null);
+  const [activeStoryId, setActiveStoryId] = useState<string | null>(null);
   const [timelineProgress, setTimelineProgress] = useState<{ [key: string]: number }>({});
   const [gameProgress, setGameProgress] = useState<{ [key: string]: number }>({});
+  const [storyProgress, setStoryProgress] = useState<{ [key: string]: number }>({});
   const [timelinePoints, setTimelinePoints] = useState(0);
+  const [storyPoints, setStoryPoints] = useState(0);
   const [lastOpenedTimelineId, setLastOpenedTimelineId] = useState<string | undefined>(undefined);
+  const [lastOpenedStoryId, setLastOpenedStoryId] = useState<string | undefined>(undefined);
   const [expandedEventIdx, setExpandedEventIdx] = useState<number | null>(null);
+  const [expandedChapterIdx, setExpandedChapterIdx] = useState<number | null>(null);
 
   const myCoinStory = useMemo(() => {
     const collectedCoins = coins.filter(c => c.isCollected);
@@ -420,6 +443,186 @@ function CoinCollectorApp() {
   }, [coins]);
 
   const allTimelines = useMemo(() => [myCoinStory, ...TIMELINES], [myCoinStory]);
+
+  const allStories: Story[] = useMemo(() => {
+    const collectedCoins = coins.filter(c => c.isCollected);
+    
+    return [
+      {
+        id: 'coin-journey',
+        title: 'Coin Journey',
+        description: 'A narrative through the eras of British numismatics.',
+        icon: '📜',
+        category: 'journey',
+        progress: 0,
+        chapters: [
+          {
+            id: 'cj-1',
+            title: 'The Modern Era',
+            content: 'The journey begins in the late 20th century, where decimalisation changed everything. The 50p and £2 coins we see today are products of this transformation.',
+            isUnlocked: true,
+            order: 1
+          },
+          {
+            id: 'cj-2',
+            title: 'The Royal Mint Move',
+            content: 'In 1968, the Mint moved to Llantrisant, marking a new chapter in production. This move allowed for the massive scale required for decimalisation.',
+            coinId: collectedCoins.find(c => c.year >= 1968 && c.year <= 1971)?.id,
+            isUnlocked: collectedCoins.some(c => c.year >= 1968 && c.year <= 1971),
+            order: 2
+          },
+          {
+            id: 'cj-3',
+            title: 'The Golden Jubilee',
+            content: 'Celebrating 50 years of Her Majesty Queen Elizabeth II. The 2002 £2 coin is a testament to this historic milestone.',
+            coinId: collectedCoins.find(c => c.year === 2002)?.id,
+            isUnlocked: collectedCoins.some(c => c.year === 2002),
+            order: 3
+          }
+        ]
+      },
+      {
+        id: 'mystery-trail',
+        title: 'Mystery Trail',
+        description: 'Follow the clues hidden within your collection.',
+        icon: '🔍',
+        category: 'mystery',
+        progress: 0,
+        chapters: [
+          {
+            id: 'mt-1',
+            title: 'The Hidden Symbol',
+            content: 'A small mark on a 50p coin leads to a forgotten designer. Can you find the coin that started it all?',
+            isUnlocked: true,
+            order: 1
+          },
+          {
+            id: 'mt-2',
+            title: 'The Rare Error',
+            content: 'A mismatched die created a legend in the numismatic world. The "undated" 20p or the Kew Gardens 50p are the stuff of collector dreams.',
+            coinId: collectedCoins.find(c => c.isRare)?.id,
+            isUnlocked: collectedCoins.some(c => c.isRare),
+            order: 2
+          }
+        ]
+      },
+      {
+        id: 'time-traveler',
+        title: 'Time Traveler',
+        description: 'Witness historical events through the coins of the time.',
+        icon: '⏳',
+        category: 'traveler',
+        progress: 0,
+        chapters: [
+          {
+            id: 'tt-1',
+            title: 'The Millennium',
+            content: 'As the clocks struck midnight, a new era of coinage was born. The 2000 Millennium £5 and £2 coins captured the hope of a new age.',
+            coinId: collectedCoins.find(c => c.year === 2000)?.id,
+            isUnlocked: collectedCoins.some(c => c.year === 2000),
+            order: 1
+          }
+        ]
+      },
+      {
+        id: 'collector-diary',
+        title: 'Collector Diary',
+        description: 'Your personal journey as a collector.',
+        icon: '📓',
+        category: 'diary',
+        progress: 0,
+        chapters: [
+          {
+            id: 'cd-1',
+            title: 'The First Find',
+            content: 'It all started with a single coin found in change. That moment of discovery sparked a lifelong passion.',
+            isUnlocked: collectedCoins.length > 0,
+            order: 1
+          },
+          {
+            id: 'cd-2',
+            title: 'The First Folder',
+            content: 'Organizing the collection brought a new sense of purpose. Seeing the gaps filled is the ultimate reward.',
+            isUnlocked: folders.length > 0,
+            order: 2
+          }
+        ]
+      }
+    ];
+  }, [coins, folders]);
+
+  const StoryCard = ({ story }: { story: Story }) => {
+    const unlockedChapters = story.chapters.filter(c => c.isUnlocked).length;
+    const totalChapters = story.chapters.length;
+    const progress = (unlockedChapters / totalChapters) * 100;
+    
+    return (
+      <button 
+        onClick={() => {
+          setActiveStoryId(story.id);
+          setLastOpenedStoryId(story.id);
+        }}
+        className={cn(
+          "flex-shrink-0 w-72 p-6 rounded-[32px] text-left transition-all group relative overflow-hidden",
+          lastOpenedStoryId === story.id 
+            ? "bg-emerald-500 text-white shadow-xl shadow-emerald-500/20" 
+            : "bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 hover:border-emerald-500",
+          preferences.themeTexture === 'glass' && "glass-card"
+        )}
+      >
+        <div className="relative z-10">
+          <div className="flex justify-between items-start mb-2">
+            <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center text-xl mb-2">
+              {story.icon}
+            </div>
+            <span className="text-[10px] font-black uppercase tracking-widest opacity-60">
+              {story.category}
+            </span>
+          </div>
+          <h3 className="text-lg font-black line-clamp-1">{story.title}</h3>
+          <p className={cn(
+            "text-xs font-medium line-clamp-2 mt-1",
+            lastOpenedStoryId === story.id ? "text-white/80" : "text-slate-500 dark:text-slate-400"
+          )}>
+            {story.description}
+          </p>
+          
+          <div className="mt-6">
+            <div className="flex justify-between items-center mb-1">
+              <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Progress</span>
+              <span className="text-[10px] font-black uppercase tracking-widest">{unlockedChapters}/{totalChapters} Chapters</span>
+            </div>
+            <div className="h-1.5 w-full bg-black/10 rounded-full overflow-hidden">
+              <motion.div 
+                initial={{ width: 0 }}
+                animate={{ width: `${progress}%` }}
+                className={cn(
+                  "h-full transition-all",
+                  lastOpenedStoryId === story.id ? "bg-white" : "bg-emerald-500"
+                )}
+              />
+            </div>
+          </div>
+        </div>
+      </button>
+    );
+  };
+
+  const StorySection = ({ title, items }: { title: string, items: Story[] }) => (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center px-2">
+        <h2 className="text-xl font-black tracking-tight">{title}</h2>
+        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{items.length} Stories</span>
+      </div>
+      <div className="flex gap-4 overflow-x-auto pb-4 px-2 no-scrollbar">
+        {items.map(story => (
+          <div key={story.id}>
+            <StoryCard story={story} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 
   const getMyStoryStats = () => {
     const collectedCount = coins.filter(c => c.isCollected).length;
@@ -704,9 +907,12 @@ function CoinCollectorApp() {
         achievements,
         lastLuckySpinDate,
         lastOpenedTimelineId,
+        lastOpenedStoryId,
         timelineProgress,
         gameProgress,
+        storyProgress,
         timelinePoints,
+        storyPoints,
         lastUpdated: new Date().toISOString()
       };
       const stateStr = JSON.stringify(state);
@@ -717,7 +923,7 @@ function CoinCollectorApp() {
         localStorage.setItem('uk-coin-collection-last-working', stateStr);
       }
     }
-  }, [coins, folders, preferences, recoveryCode, streak, missions, achievements, lastLuckySpinDate, isSafeMode, lastOpenedTimelineId, timelineProgress, gameProgress, timelinePoints]);
+  }, [coins, folders, preferences, recoveryCode, streak, missions, achievements, lastLuckySpinDate, isSafeMode, lastOpenedTimelineId, lastOpenedStoryId, timelineProgress, gameProgress, storyProgress, timelinePoints, storyPoints]);
 
   // Daily Backup Logic
   useEffect(() => {
@@ -738,6 +944,8 @@ function CoinCollectorApp() {
   // Streak logic
   useEffect(() => {
     const today = new Date().toISOString().split('T')[0];
+    
+    // Daily Streak
     if (streak.lastVisitDate !== today) {
       const lastDate = streak.lastVisitDate ? new Date(streak.lastVisitDate) : null;
       const todayDate = new Date(today);
@@ -754,12 +962,50 @@ function CoinCollectorApp() {
         }
       }
       
-      setStreak({ count: newCount, lastVisitDate: today });
+      setStreak(prev => ({ ...prev, count: newCount, lastVisitDate: today }));
       if (newCount > streak.count) {
         showToast(`Daily Streak: ${newCount} Days!`, 'info');
       }
     }
-  }, []);
+
+    // Story Streak
+    if (isStoryOpen && streak.lastStoryVisitDate !== today) {
+      const lastStoryDate = streak.lastStoryVisitDate ? new Date(streak.lastStoryVisitDate) : null;
+      const todayDate = new Date(today);
+      
+      let newStoryCount = 1;
+      if (lastStoryDate) {
+        const diffTime = Math.abs(todayDate.getTime() - lastStoryDate.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        if (diffDays === 1) {
+          newStoryCount = (streak.storyStreak || 0) + 1;
+        }
+      }
+      setStreak(prev => ({ ...prev, storyStreak: newStoryCount, lastStoryVisitDate: today }));
+      if (newStoryCount > (streak.storyStreak || 0)) {
+        showToast(`Story Streak: ${newStoryCount} Days!`, 'info');
+      }
+    }
+
+    // Timeline Streak
+    if (isTimelineOpen && streak.lastTimelineVisitDate !== today) {
+      const lastTimelineDate = streak.lastTimelineVisitDate ? new Date(streak.lastTimelineVisitDate) : null;
+      const todayDate = new Date(today);
+      
+      let newTimelineCount = 1;
+      if (lastTimelineDate) {
+        const diffTime = Math.abs(todayDate.getTime() - lastTimelineDate.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        if (diffDays === 1) {
+          newTimelineCount = (streak.timelineStreak || 0) + 1;
+        }
+      }
+      setStreak(prev => ({ ...prev, timelineStreak: newTimelineCount, lastTimelineVisitDate: today }));
+      if (newTimelineCount > (streak.timelineStreak || 0)) {
+        showToast(`Timeline Streak: ${newTimelineCount} Days!`, 'info');
+      }
+    }
+  }, [isStoryOpen, isTimelineOpen, streak.lastVisitDate, streak.lastStoryVisitDate, streak.lastTimelineVisitDate, streak.count, streak.storyStreak, streak.timelineStreak]);
 
   // Mission generation
   useEffect(() => {
@@ -890,9 +1136,12 @@ function CoinCollectorApp() {
       achievements, 
       lastLuckySpinDate,
       lastOpenedTimelineId,
+      lastOpenedStoryId,
       timelineProgress,
       gameProgress,
+      storyProgress,
       timelinePoints,
+      storyPoints,
       lastUpdated: new Date().toISOString() 
     };
     const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
@@ -946,9 +1195,12 @@ function CoinCollectorApp() {
                 version: 3,
                 coins, folders, preferences, recoveryCode, streak, missions, achievements, lastLuckySpinDate,
                 lastOpenedTimelineId,
+                lastOpenedStoryId,
                 timelineProgress,
                 gameProgress,
+                storyProgress,
                 timelinePoints,
+                storyPoints,
                 lastUpdated: new Date().toISOString() 
               };
               localStorage.setItem('uk-coin-collection-pre-conversion-backup', JSON.stringify(currentState));
@@ -1346,12 +1598,38 @@ function CoinCollectorApp() {
                 </table>
               </div>
             </div>
-          ) : isTimelineOpen ? (
+          ) : isStoryOpen ? (
             <div className="pb-32">
               <div className="px-6 pt-8 mb-8 flex justify-between items-end">
                 <div>
                   <h1 className="text-4xl font-black tracking-tight">Story Mode</h1>
-                  <p className="text-slate-500 dark:text-slate-400 font-medium mt-2">Merge history with play. Explore and conquer.</p>
+                  <p className="text-slate-500 dark:text-slate-400 font-medium mt-2">Your coins, your narrative. Unlock the past.</p>
+                </div>
+                <div className="text-right">
+                  <div className="flex items-center gap-2 bg-emerald-100 dark:bg-emerald-900/30 px-3 py-1.5 rounded-full border border-emerald-200 dark:border-emerald-800/50">
+                    <Star className="w-4 h-4 text-emerald-600" />
+                    <span className="text-sm font-black text-emerald-700 dark:text-emerald-400">{storyPoints} <span className="text-[10px] uppercase opacity-60">XP</span></span>
+                  </div>
+                  {streak.storyStreak && streak.storyStreak > 0 && (
+                    <div className="mt-2 flex items-center gap-1 justify-end text-emerald-500">
+                      <Clock className="w-3 h-3" />
+                      <span className="text-[10px] font-black uppercase tracking-widest">{streak.storyStreak} Day Streak</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <div className="space-y-10">
+                <StorySection title="Narrative Journeys" items={allStories.filter(s => s.category === 'journey' || s.category === 'diary')} />
+                <StorySection title="Mysteries & Legends" items={allStories.filter(s => s.category === 'mystery' || s.category === 'traveler')} />
+              </div>
+            </div>
+          ) : isTimelineOpen ? (
+            <div className="pb-32">
+              <div className="px-6 pt-8 mb-8 flex justify-between items-end">
+                <div>
+                  <h1 className="text-4xl font-black tracking-tight">Timeline Hub</h1>
+                  <p className="text-slate-500 dark:text-slate-400 font-medium mt-2">Explore history through your collection.</p>
                 </div>
                 <div className="text-right">
                   <div className="flex items-center gap-2 bg-amber-100 dark:bg-amber-900/30 px-3 py-1.5 rounded-full border border-amber-200 dark:border-amber-800/50">
@@ -1701,12 +1979,13 @@ function CoinCollectorApp() {
                 onClick={() => {
                   openFolder('all');
                   setIsTimelineOpen(false);
+                  setIsStoryOpen(false);
                   setIsPhotoLibraryOpen(false);
                   setIsProfileOpen(false);
                 }}
                 className={cn(
                   "flex flex-col items-center gap-1 transition-colors",
-                  preferences.activeFolderId === 'all' && !isTimelineOpen && !isPhotoLibraryOpen && !isProfileOpen ? "text-amber-500" : "text-slate-400"
+                  preferences.activeFolderId === 'all' && !isTimelineOpen && !isStoryOpen && !isPhotoLibraryOpen && !isProfileOpen ? "text-amber-500" : "text-slate-400"
                 )}
               >
                 <LayoutGrid className="w-6 h-6" />
@@ -1715,6 +1994,7 @@ function CoinCollectorApp() {
               <button 
                 onClick={() => {
                   setIsTimelineOpen(true);
+                  setIsStoryOpen(false);
                   setIsPhotoLibraryOpen(false);
                   setIsProfileOpen(false);
                 }}
@@ -1725,6 +2005,21 @@ function CoinCollectorApp() {
               >
                 <Clock className="w-6 h-6" />
                 <span className="text-[10px] font-bold uppercase tracking-widest">Timeline</span>
+              </button>
+              <button 
+                onClick={() => {
+                  setIsStoryOpen(true);
+                  setIsTimelineOpen(false);
+                  setIsPhotoLibraryOpen(false);
+                  setIsProfileOpen(false);
+                }}
+                className={cn(
+                  "flex flex-col items-center gap-1 transition-colors",
+                  isStoryOpen ? "text-emerald-500" : "text-slate-400"
+                )}
+              >
+                <BookOpen className="w-6 h-6" />
+                <span className="text-[10px] font-bold uppercase tracking-widest">Story</span>
               </button>
               <button 
                 onClick={() => {
@@ -2173,9 +2468,12 @@ function CoinCollectorApp() {
                               achievements, 
                               lastLuckySpinDate,
                               lastOpenedTimelineId,
+                              lastOpenedStoryId,
                               timelineProgress,
                               gameProgress,
+                              storyProgress,
                               timelinePoints,
+                              storyPoints,
                               lastUpdated: new Date().toISOString() 
                             };
                             localStorage.setItem('uk-coin-collection-safe', JSON.stringify(state));
@@ -2228,6 +2526,138 @@ function CoinCollectorApp() {
                 </div>
               </motion.div>
             </>
+          )}
+        </AnimatePresence>
+
+        {/* Story Detail Modal */}
+        <AnimatePresence>
+          {activeStoryId && (
+            <motion.div 
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className={cn(
+                "fixed inset-0 z-[60] bg-white dark:bg-slate-900 overflow-y-auto",
+                preferences.themeTexture === 'glass' && "glass-card"
+              )}
+            >
+              {(() => {
+                const story = allStories.find(s => s.id === activeStoryId);
+                if (!story) return null;
+                
+                return (
+                  <div className="max-w-2xl mx-auto min-h-screen pb-32">
+                    <div className="sticky top-0 z-10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-6 flex items-center justify-between border-b border-slate-100 dark:border-slate-800">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center text-xl">
+                          {story.icon}
+                        </div>
+                        <div>
+                          <h2 className="text-xl font-black">{story.title}</h2>
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{story.category}</p>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => setActiveStoryId(null)}
+                        className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
+                      >
+                        <X className="w-6 h-6" />
+                      </button>
+                    </div>
+
+                    <div className="p-6 space-y-8">
+                      <div className="bg-emerald-50 dark:bg-emerald-900/10 p-6 rounded-[32px] border border-emerald-100 dark:border-emerald-800/50">
+                        <p className="text-emerald-800 dark:text-emerald-300 font-medium leading-relaxed">
+                          {story.description}
+                        </p>
+                      </div>
+
+                      <div className="space-y-6">
+                        {story.chapters.map((chapter, idx) => (
+                          <div key={chapter.id} className="relative pl-8">
+                            {/* Timeline Line */}
+                            {idx < story.chapters.length - 1 && (
+                              <div className="absolute left-[15px] top-8 bottom-[-24px] w-0.5 bg-slate-100 dark:bg-slate-800" />
+                            )}
+                            
+                            {/* Chapter Dot */}
+                            <div className={cn(
+                              "absolute left-0 top-2 w-8 h-8 rounded-full flex items-center justify-center z-10 border-4 border-white dark:border-slate-900",
+                              chapter.isUnlocked ? "bg-emerald-500 text-white" : "bg-slate-200 dark:bg-slate-800 text-slate-400"
+                            )}>
+                              {chapter.isUnlocked ? <Check className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
+                            </div>
+
+                            <div 
+                              onClick={() => chapter.isUnlocked && setExpandedChapterIdx(expandedChapterIdx === idx ? null : idx)}
+                              className={cn(
+                                "p-6 rounded-[32px] border transition-all",
+                                chapter.isUnlocked 
+                                  ? "bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 shadow-sm cursor-pointer" 
+                                  : "bg-slate-50/50 dark:bg-slate-800/30 border-dashed border-slate-200 dark:border-slate-800 opacity-60"
+                              )}
+                            >
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <span className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-1 block">Chapter {chapter.order}</span>
+                                  <h4 className="font-black text-lg">{chapter.title}</h4>
+                                </div>
+                                {!chapter.isUnlocked && (
+                                  <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-lg">
+                                    <Plus className="w-3 h-3 text-slate-400" />
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Locked</span>
+                                  </div>
+                                )}
+                              </div>
+
+                              <AnimatePresence>
+                                {(expandedChapterIdx === idx || !chapter.isUnlocked) && (
+                                  <motion.div 
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: 'auto', opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    className="overflow-hidden"
+                                  >
+                                    <p className="text-slate-500 dark:text-slate-400 mt-4 text-sm leading-relaxed">
+                                      {chapter.isUnlocked ? chapter.content : "This chapter is locked. Add the required coin to your collection to reveal this part of the story."}
+                                    </p>
+                                    {chapter.coinId && (
+                                      <div className="mt-4 flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+                                        <div className="w-10 h-10 bg-amber-100 dark:bg-amber-900/30 rounded-xl flex items-center justify-center text-amber-600">
+                                          <Database className="w-5 h-5" />
+                                        </div>
+                                        <div>
+                                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Required Coin</p>
+                                          <p className="text-xs font-bold">{coins.find(c => c.id === chapter.coinId)?.title || "Unknown Coin"}</p>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                              
+                              {chapter.isUnlocked && expandedChapterIdx !== idx && (
+                                <p className="text-slate-400 mt-2 text-xs font-bold uppercase tracking-widest">Tap to read chapter...</p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-white dark:from-slate-900 via-white/80 dark:via-slate-900/80 to-transparent">
+                      <button 
+                        onClick={() => setActiveStoryId(null)}
+                        className="w-full py-5 bg-emerald-500 text-white font-black rounded-2xl shadow-xl shadow-emerald-500/30 uppercase tracking-widest"
+                      >
+                        Back to Stories
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
+            </motion.div>
           )}
         </AnimatePresence>
 

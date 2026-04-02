@@ -75,6 +75,25 @@ export interface UserPreferences {
   showPriceInNormalMode: boolean;
 }
 
+export interface StoryChapter {
+  id: string;
+  title: string;
+  content: string;
+  coinId?: string; // The coin that unlocks this chapter
+  isUnlocked: boolean;
+  order: number;
+}
+
+export interface Story {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  chapters: StoryChapter[];
+  category: 'journey' | 'mystery' | 'traveler' | 'diary';
+  progress: number;
+}
+
 export interface AppState {
   version?: number;
   coins: Coin[];
@@ -87,12 +106,17 @@ export interface AppState {
     lastVisitDate: string;
     timelineStreak?: number;
     lastTimelineVisitDate?: string;
+    storyStreak?: number;
+    lastStoryVisitDate?: string;
   };
   missions: Mission[];
   achievements: Achievement[];
   lastLuckySpinDate?: string;
   lastOpenedTimelineId?: string;
+  lastOpenedStoryId?: string;
   timelineProgress: { [timelineId: string]: number };
   gameProgress: { [gameId: string]: number };
+  storyProgress: { [storyId: string]: number };
   timelinePoints?: number;
+  storyPoints?: number;
 }
