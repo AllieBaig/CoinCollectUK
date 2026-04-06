@@ -181,25 +181,33 @@ function CoinCollectorApp() {
     onToggle: () => void; 
     children: React.ReactNode 
   }) => (
-    <div className="border-b border-slate-100 dark:border-slate-800 last:border-0">
+    <div className={cn(
+      "rounded-[2rem] border transition-all duration-500 overflow-hidden mb-4",
+      isOpen 
+        ? "bg-white dark:bg-slate-900 border-amber-500/20 shadow-2xl shadow-amber-500/5" 
+        : "bg-slate-50/50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-800"
+    )}>
       <button 
         onClick={onToggle}
         className={cn(
-          "w-full flex items-center justify-between py-4 px-2 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors rounded-2xl",
+          "w-full flex items-center justify-between p-6 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors",
           preferences.themeTexture === 'glass' && "glass-card"
         )}
       >
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-500">
-            <Icon className="w-5 h-5" />
+        <div className="flex items-center gap-4">
+          <div className={cn(
+            "w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 shadow-inner",
+            isOpen ? "bg-amber-500 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-400"
+          )}>
+            <Icon className="w-6 h-6" />
           </div>
-          <span className="font-black text-lg tracking-tight">{title}</span>
+          <span className="text-lg font-black tracking-tight">{title}</span>
         </div>
         <motion.div
           animate={{ rotate: isOpen ? 180 : 0 }}
-          transition={{ duration: 0.2 }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
         >
-          <ChevronDown className="w-5 h-5 text-slate-400" />
+          <ChevronDown className={cn("w-5 h-5 text-slate-300", isOpen && "text-amber-500")} />
         </motion.div>
       </button>
       <AnimatePresence initial={false}>
@@ -208,10 +216,9 @@ function CoinCollectorApp() {
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="overflow-hidden"
+            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
           >
-            <div className="pb-6 pt-2 px-2 space-y-4">
+            <div className="p-6 pt-0 space-y-6">
               {children}
             </div>
           </motion.div>
@@ -563,41 +570,45 @@ function CoinCollectorApp() {
           setLastOpenedStoryId(story.id);
         }}
         className={cn(
-          "flex-shrink-0 w-72 p-6 rounded-[32px] text-left transition-all group relative overflow-hidden",
+          "flex-shrink-0 w-72 p-8 rounded-[2.5rem] text-left transition-all duration-500 group relative overflow-hidden",
+          "shadow-sm hover:shadow-2xl hover:-translate-y-2",
           lastOpenedStoryId === story.id 
-            ? "bg-emerald-500 text-white shadow-xl shadow-emerald-500/20" 
-            : "bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 hover:border-emerald-500",
+            ? "bg-emerald-500 text-white shadow-xl shadow-emerald-500/30" 
+            : "bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 hover:border-emerald-500/50",
           preferences.themeTexture === 'glass' && "glass-card"
         )}
       >
         <div className="relative z-10">
-          <div className="flex justify-between items-start mb-2">
-            <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center text-xl mb-2">
+          <div className="flex justify-between items-start mb-4">
+            <div className="w-14 h-14 bg-emerald-100 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center text-2xl mb-2 shadow-inner">
               {story.icon}
             </div>
-            <span className="text-[10px] font-black uppercase tracking-widest opacity-60">
+            <span className={cn(
+              "text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-full",
+              lastOpenedStoryId === story.id ? "bg-white/20 text-white" : "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
+            )}>
               {story.category}
             </span>
           </div>
-          <h3 className="text-lg font-black line-clamp-1">{story.title}</h3>
+          <h3 className="text-xl font-black tracking-tight line-clamp-1">{story.title}</h3>
           <p className={cn(
-            "text-xs font-medium line-clamp-2 mt-1",
+            "text-xs font-medium leading-relaxed line-clamp-2 mt-2",
             lastOpenedStoryId === story.id ? "text-white/80" : "text-slate-500 dark:text-slate-400"
           )}>
             {story.description}
           </p>
           
-          <div className="mt-6">
-            <div className="flex justify-between items-center mb-1">
+          <div className="mt-8">
+            <div className="flex justify-between items-center mb-2">
               <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Progress</span>
               <span className="text-[10px] font-black uppercase tracking-widest">{unlockedChapters}/{totalChapters} Chapters</span>
             </div>
-            <div className="h-1.5 w-full bg-black/10 rounded-full overflow-hidden">
+            <div className="h-2 w-full bg-black/10 rounded-full overflow-hidden">
               <motion.div 
                 initial={{ width: 0 }}
                 animate={{ width: `${progress}%` }}
                 className={cn(
-                  "h-full transition-all",
+                  "h-full transition-all duration-1000",
                   lastOpenedStoryId === story.id ? "bg-white" : "bg-emerald-500"
                 )}
               />
@@ -609,12 +620,12 @@ function CoinCollectorApp() {
   };
 
   const StorySection = ({ title, items }: { title: string, items: Story[] }) => (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center px-2">
-        <h2 className="text-xl font-black tracking-tight">{title}</h2>
-        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{items.length} Stories</span>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center px-6">
+        <h2 className="text-2xl font-black tracking-tight text-gradient">{title}</h2>
+        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-full">{items.length} Stories</span>
       </div>
-      <div className="flex gap-4 overflow-x-auto pb-4 px-2 no-scrollbar">
+      <div className="flex gap-6 overflow-x-auto pb-8 px-6 no-scrollbar">
         {items.map(story => (
           <div key={story.id}>
             <StoryCard story={story} />
@@ -684,49 +695,54 @@ function CoinCollectorApp() {
           setLastOpenedTimelineId(timeline.id);
         }}
         className={cn(
-          "flex-shrink-0 w-64 p-6 rounded-[32px] text-left transition-all group relative overflow-hidden",
+          "flex-shrink-0 w-64 p-8 rounded-[2.5rem] text-left transition-all duration-500 group relative overflow-hidden",
+          "shadow-sm hover:shadow-2xl hover:-translate-y-2",
           lastOpenedTimelineId === timeline.id 
-            ? "bg-amber-500 text-white shadow-xl shadow-amber-500/20" 
-            : "bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 hover:border-amber-500",
+            ? "bg-amber-500 text-white shadow-xl shadow-amber-500/30" 
+            : "bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 hover:border-amber-500/50",
           locked && "opacity-60 grayscale cursor-not-allowed",
           preferences.themeTexture === 'glass' && "glass-card"
         )}
       >
         <div className="relative z-10">
-          <div className="flex justify-between items-start mb-2">
-            <h3 className="text-lg font-black line-clamp-1">{timeline.title}</h3>
-            {locked && <ShieldAlert className="w-4 h-4 text-slate-400" />}
+          <div className="flex justify-between items-start mb-4">
+            <h3 className="text-xl font-black tracking-tight line-clamp-1">{timeline.title}</h3>
+            {locked && <ShieldAlert className="w-5 h-5 text-slate-400" />}
           </div>
           <p className={cn(
-            "text-xs font-medium line-clamp-2",
+            "text-xs font-medium leading-relaxed line-clamp-2",
             lastOpenedTimelineId === timeline.id ? "text-white/80" : "text-slate-500 dark:text-slate-400"
           )}>
             {locked ? timeline.unlockRequirement?.label : timeline.description}
           </p>
           {(timelineProgress[timeline.id] !== undefined || gameProgress[timeline.id] !== undefined || timeline.id === 'my-coin-story') && !locked ? (
-            <div className="mt-4 h-1 w-full bg-black/10 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-white transition-all" 
-                style={{ 
+            <div className="mt-6 h-2 w-full bg-black/10 rounded-full overflow-hidden">
+              <motion.div 
+                initial={{ width: 0 }}
+                animate={{ 
                   width: timeline.id === 'my-coin-story' 
                     ? `${Math.min((coins.filter(c => c.isCollected).length / 100) * 100, 100)}%`
                     : `${((timeline.type === 'game' ? (gameProgress[timeline.id] || 0) : (timelineProgress[timeline.id] || 0)) / timeline.events.length) * 100}%` 
-                }} 
+                }}
+                className="h-full bg-white transition-all duration-1000" 
               />
             </div>
           ) : null}
         </div>
-        <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:opacity-20 transition-opacity">
-          <Clock className="w-24 h-24" />
+        <div className="absolute -right-6 -bottom-6 opacity-5 group-hover:opacity-10 transition-opacity duration-500">
+          <Clock className="w-32 h-32" />
         </div>
       </button>
     );
   };
 
   const TimelineSection = ({ title, items }: { title: string, items: Timeline[] }) => (
-    <div className="space-y-4">
-      <h2 className="text-sm font-black uppercase tracking-widest text-slate-400 px-6">{title}</h2>
-      <div className="flex gap-4 overflow-x-auto px-6 pb-6 no-scrollbar">
+    <div className="space-y-6">
+      <div className="flex justify-between items-center px-6">
+        <h2 className="text-2xl font-black tracking-tight text-gradient">{title}</h2>
+        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-full">{items.length} Timelines</span>
+      </div>
+      <div className="flex gap-6 overflow-x-auto px-6 pb-8 no-scrollbar">
         {items.map(t => <TimelineCard key={t.id} timeline={t} />)}
       </div>
     </div>
@@ -1439,8 +1455,14 @@ function CoinCollectorApp() {
 
   return (
     <div className={cn(
-      "min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300 font-sans pb-24",
-      "safe-top safe-bottom" // Custom classes for iOS safe areas
+      "min-h-screen text-slate-900 dark:text-slate-100 transition-colors duration-500 font-sans pb-32",
+      preferences.themeTexture === 'paper' && "theme-paper",
+      preferences.themeTexture === 'glass' && "theme-glass",
+      preferences.themeTexture === 'wood' && "theme-wood",
+      preferences.themeTexture === 'metal' && "theme-metal",
+      preferences.themeTexture === 'fabric' && "theme-fabric",
+      !preferences.themeTexture || preferences.themeTexture === 'none' ? "bg-slate-50 dark:bg-slate-950" : "",
+      "safe-top safe-bottom"
     )}>
         {/* Offline Banner */}
         <AnimatePresence>
@@ -1602,7 +1624,7 @@ function CoinCollectorApp() {
             <div className="pb-32">
               <div className="px-6 pt-8 mb-8 flex justify-between items-end">
                 <div>
-                  <h1 className="text-4xl font-black tracking-tight">Story Mode</h1>
+                  <h1 className="text-4xl font-black tracking-tight text-gradient">Story Mode</h1>
                   <p className="text-slate-500 dark:text-slate-400 font-medium mt-2">Your coins, your narrative. Unlock the past.</p>
                 </div>
                 <div className="text-right">
@@ -1628,7 +1650,7 @@ function CoinCollectorApp() {
             <div className="pb-32">
               <div className="px-6 pt-8 mb-8 flex justify-between items-end">
                 <div>
-                  <h1 className="text-4xl font-black tracking-tight">Timeline Hub</h1>
+                  <h1 className="text-4xl font-black tracking-tight text-gradient">Timeline Hub</h1>
                   <p className="text-slate-500 dark:text-slate-400 font-medium mt-2">Explore history through your collection.</p>
                 </div>
                 <div className="text-right">
@@ -1698,39 +1720,33 @@ function CoinCollectorApp() {
               <button
                 onClick={() => openFolder('all')}
                 className={cn(
-                  "flex flex-col items-center gap-2 p-4 rounded-3xl border transition-all min-w-[100px]",
+                  "flex flex-col items-center gap-3 p-6 rounded-[2.5rem] border transition-all duration-500 min-w-[120px]",
                   preferences.activeFolderId === 'all'
-                    ? "bg-amber-500 border-amber-500 text-white shadow-lg shadow-amber-500/20"
-                    : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400"
+                    ? "bg-amber-500 border-amber-500 text-white shadow-2xl shadow-amber-500/30 scale-105"
+                    : "bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:scale-105"
                 )}
               >
-                <div className="text-2xl"><LayoutGrid className="w-6 h-6" /></div>
-                <span className="text-xs font-bold uppercase tracking-wider">All Coins</span>
+                <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center shadow-inner">
+                  <LayoutGrid className="w-7 h-7" />
+                </div>
+                <span className="text-[10px] font-black uppercase tracking-widest">All Coins</span>
               </button>
 
               {sortedFolders.map(folder => (
                 <button
                   key={folder.id}
                   onClick={() => openFolder(folder.id)}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    deleteFolder(folder.id);
-                  }}
                   className={cn(
-                    "flex flex-col items-center gap-2 p-4 rounded-3xl border transition-all min-w-[100px] relative group",
+                    "flex flex-col items-center gap-3 p-6 rounded-[2.5rem] border transition-all duration-500 min-w-[120px] relative group",
                     preferences.activeFolderId === folder.id
-                      ? "bg-amber-500 border-amber-500 text-white shadow-lg shadow-amber-500/20"
-                      : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400"
+                      ? "bg-amber-500 border-amber-500 text-white shadow-2xl shadow-amber-500/30 scale-105"
+                      : "bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:scale-105"
                   )}
                 >
-                  <div className="text-2xl">{folder.icon}</div>
-                  <span className="text-xs font-bold uppercase tracking-wider truncate max-w-[80px]">{folder.name}</span>
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); deleteFolder(folder.id); }}
-                    className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
+                  <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center shadow-inner text-3xl">
+                    {folder.icon}
+                  </div>
+                  <span className="text-[10px] font-black uppercase tracking-widest truncate max-w-[90px]">{folder.name}</span>
                 </button>
               ))}
 
@@ -1793,13 +1809,14 @@ function CoinCollectorApp() {
                   exit={{ opacity: 0, scale: 0.9 }}
                   onClick={() => setSelectedCoin(coin)}
                   className={cn(
-                    "group relative bg-white dark:bg-slate-900 rounded-3xl border transition-all duration-300 overflow-hidden flex flex-col cursor-pointer",
+                    "group relative bg-white dark:bg-slate-900 rounded-[2.5rem] border transition-all duration-500 overflow-hidden flex flex-col cursor-pointer",
+                    "shadow-sm hover:shadow-2xl hover:-translate-y-2",
                     coin.isRare 
-                      ? "border-amber-500/50 shadow-xl shadow-amber-500/10 ring-2 ring-amber-500/10" 
+                      ? "border-amber-500/50 ring-4 ring-amber-500/10" 
                       : coin.isCollected 
-                        ? "border-emerald-500/30 shadow-lg shadow-emerald-500/5" 
-                        : "border-slate-200 dark:border-slate-800 hover:border-amber-500/50",
-                    preferences.isCompactUI && "rounded-2xl",
+                        ? "border-emerald-500/30" 
+                        : "border-slate-100 dark:border-slate-800",
+                    preferences.isCompactUI && "rounded-[2rem]",
                     preferences.isTextMode && "rounded-none border-0 border-b border-slate-100 dark:border-slate-800 p-4 bg-transparent dark:bg-transparent",
                     preferences.themeTexture === 'glass' && "glass-card"
                   )}
@@ -1973,8 +1990,12 @@ function CoinCollectorApp() {
 
         {/* Bottom Navigation */}
         {preferences.showBottomMenu && !preferences.isPurchaseMode && (
-          <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 pb-safe">
-            <div className="max-w-5xl mx-auto px-6 py-3 flex items-center justify-between">
+          <div className="fixed bottom-8 left-0 right-0 z-50 px-6 pointer-events-none">
+            <nav className={cn(
+              "max-w-lg mx-auto pointer-events-auto flex items-center justify-between p-2 rounded-[2.5rem] shadow-2xl border border-white/20 dark:border-slate-800/50",
+              "bg-white/70 dark:bg-slate-900/70 backdrop-blur-3xl",
+              preferences.themeTexture === 'glass' && "glass-card"
+            )}>
               <button 
                 onClick={() => {
                   openFolder('all');
@@ -1982,14 +2003,17 @@ function CoinCollectorApp() {
                   setIsStoryOpen(false);
                   setIsPhotoLibraryOpen(false);
                   setIsProfileOpen(false);
+                  setIsSettingsOpen(false);
                 }}
                 className={cn(
-                  "flex flex-col items-center gap-1 transition-colors",
-                  preferences.activeFolderId === 'all' && !isTimelineOpen && !isStoryOpen && !isPhotoLibraryOpen && !isProfileOpen ? "text-amber-500" : "text-slate-400"
+                  "flex flex-col items-center gap-1 py-3 px-5 rounded-3xl transition-all duration-300",
+                  preferences.activeFolderId === 'all' && !isTimelineOpen && !isStoryOpen && !isPhotoLibraryOpen && !isProfileOpen && !isSettingsOpen
+                    ? "bg-amber-500 text-white shadow-lg shadow-amber-500/20 scale-110" 
+                    : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                 )}
               >
                 <LayoutGrid className="w-6 h-6" />
-                <span className="text-[10px] font-bold uppercase tracking-widest">Home</span>
+                <span className="text-[10px] font-black uppercase tracking-widest">Home</span>
               </button>
               <button 
                 onClick={() => {
@@ -1997,74 +2021,64 @@ function CoinCollectorApp() {
                   setIsStoryOpen(false);
                   setIsPhotoLibraryOpen(false);
                   setIsProfileOpen(false);
+                  setIsSettingsOpen(false);
                 }}
                 className={cn(
-                  "flex flex-col items-center gap-1 transition-colors",
-                  isTimelineOpen ? "text-amber-500" : "text-slate-400"
+                  "flex flex-col items-center gap-1 py-3 px-5 rounded-3xl transition-all duration-300",
+                  isTimelineOpen 
+                    ? "bg-amber-500 text-white shadow-lg shadow-amber-500/20 scale-110" 
+                    : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                 )}
               >
                 <Clock className="w-6 h-6" />
-                <span className="text-[10px] font-bold uppercase tracking-widest">Timeline</span>
+                <span className="text-[10px] font-black uppercase tracking-widest">Time</span>
               </button>
+              
+              <button 
+                onClick={() => setIsAddModalOpen(true)}
+                className="w-14 h-14 bg-amber-500 text-white rounded-full shadow-xl shadow-amber-500/40 flex items-center justify-center hover:scale-110 active:scale-95 transition-all"
+              >
+                <Plus className="w-8 h-8" />
+              </button>
+
               <button 
                 onClick={() => {
                   setIsStoryOpen(true);
                   setIsTimelineOpen(false);
                   setIsPhotoLibraryOpen(false);
                   setIsProfileOpen(false);
+                  setIsSettingsOpen(false);
                 }}
                 className={cn(
-                  "flex flex-col items-center gap-1 transition-colors",
-                  isStoryOpen ? "text-emerald-500" : "text-slate-400"
+                  "flex flex-col items-center gap-1 py-3 px-5 rounded-3xl transition-all duration-300",
+                  isStoryOpen 
+                    ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 scale-110" 
+                    : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                 )}
               >
                 <BookOpen className="w-6 h-6" />
-                <span className="text-[10px] font-bold uppercase tracking-widest">Story</span>
+                <span className="text-[10px] font-black uppercase tracking-widest">Story</span>
               </button>
               <button 
                 onClick={() => {
-                  setIsPhotoLibraryOpen(true);
+                  setIsProfileOpen(true);
                   setIsTimelineOpen(false);
-                  setIsProfileOpen(false);
+                  setIsStoryOpen(false);
+                  setIsPhotoLibraryOpen(false);
+                  setIsSettingsOpen(false);
                 }}
                 className={cn(
-                  "flex flex-col items-center gap-1 transition-colors",
-                  isPhotoLibraryOpen ? "text-amber-500" : "text-slate-400"
-                )}
-              >
-                <ImageIcon className="w-6 h-6" />
-                <span className="text-[10px] font-bold uppercase tracking-widest">Photos</span>
-              </button>
-              <div className="relative -top-8">
-                <button 
-                  onClick={() => setIsAddModalOpen(true)}
-                  className="w-14 h-14 bg-amber-500 text-white rounded-full shadow-xl shadow-amber-500/40 flex items-center justify-center hover:scale-110 active:scale-95 transition-all"
-                >
-                  <Plus className="w-8 h-8" />
-                </button>
-              </div>
-              <button 
-                onClick={() => setIsProfileOpen(true)}
-                className={cn(
-                  "flex flex-col items-center gap-1 transition-colors",
-                  isProfileOpen ? "text-amber-500" : "text-slate-400"
+                  "flex flex-col items-center gap-1 py-3 px-5 rounded-3xl transition-all duration-300",
+                  isProfileOpen 
+                    ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 scale-110" 
+                    : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                 )}
               >
                 <User className="w-6 h-6" />
-                <span className="text-[10px] font-bold uppercase tracking-widest">Profile</span>
+                <span className="text-[10px] font-black uppercase tracking-widest">Me</span>
               </button>
-              <button 
-                onClick={() => setIsSettingsOpen(true)}
-                className={cn(
-                  "flex flex-col items-center gap-1 transition-colors",
-                  isSettingsOpen ? "text-amber-500" : "text-slate-400"
-                )}
-              >
-                <Settings className="w-6 h-6" />
-                <span className="text-[10px] font-bold uppercase tracking-widest">Settings</span>
-              </button>
-            </div>
-          </nav>
+            </nav>
+          </div>
         )}
 
         {/* Floating Add Button (Fallback if bottom menu is disabled) */}
@@ -2175,24 +2189,26 @@ function CoinCollectorApp() {
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
-                        <div className="flex items-center gap-3">
-                          <LayoutGrid className="w-5 h-5 text-slate-400" />
+                      <div className="flex items-center justify-between p-5 bg-slate-50/50 dark:bg-slate-800/50 rounded-[2rem] border border-slate-100 dark:border-slate-800">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 bg-white dark:bg-slate-900 rounded-xl flex items-center justify-center shadow-sm">
+                            <LayoutGrid className="w-5 h-5 text-slate-400" />
+                          </div>
                           <div>
-                            <p className="text-sm font-bold">Compact UI</p>
+                            <p className="text-sm font-black tracking-tight">Compact UI</p>
                             <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Smaller cards, more grid</p>
                           </div>
                         </div>
                         <button 
                           onClick={() => setPreferences(prev => ({ ...prev, isCompactUI: !prev.isCompactUI }))}
                           className={cn(
-                            "w-12 h-6 rounded-full transition-colors relative",
+                            "w-14 h-8 rounded-full transition-all duration-500 relative p-1",
                             preferences.isCompactUI ? "bg-amber-500" : "bg-slate-200 dark:bg-slate-700"
                           )}
                         >
                           <motion.div 
-                            animate={{ x: preferences.isCompactUI ? 24 : 4 }}
-                            className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm"
+                            animate={{ x: preferences.isCompactUI ? 24 : 0 }}
+                            className="w-6 h-6 bg-white rounded-full shadow-lg"
                           />
                         </button>
                       </div>
