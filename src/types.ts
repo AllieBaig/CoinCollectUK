@@ -65,7 +65,9 @@ export interface UserPreferences {
   isDarkMode: boolean;
   themeMode: 'light' | 'dark' | 'system';
   themeTexture: 'none' | 'paper' | 'glass' | 'wood' | 'metal' | 'fabric';
-  sortBy: 'recently-added' | 'recently-opened-folder' | 'title';
+  sortBy: 'recently-added' | 'recently-opened-folder' | 'title' | 'year' | 'denomination' | 'date-added' | 'month-added';
+  groupBy: 'none' | 'year' | 'denomination' | 'date-added' | 'month-added';
+  isGrouped: boolean;
   activeFolderId: string | 'all';
   showBottomMenu: boolean;
   isCompactUI: boolean;

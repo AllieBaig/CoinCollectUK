@@ -261,6 +261,8 @@ function CoinCollectorApp() {
             themeMode: 'system',
             themeTexture: 'none',
             sortBy: 'recently-added',
+            groupBy: 'none',
+            isGrouped: false,
             activeFolderId: 'all',
             showBottomMenu: true,
             isCompactUI: false,
@@ -374,6 +376,8 @@ function CoinCollectorApp() {
     themeMode: 'system',
     themeTexture: 'none',
     sortBy: 'recently-added',
+    groupBy: 'none',
+    isGrouped: false,
     activeFolderId: 'all',
     showBottomMenu: true,
     isCompactUI: false,
@@ -1502,15 +1506,84 @@ function CoinCollectorApp() {
       return matchesSearch && matchesFilter && matchesFolder;
     });
 
-    // Default to recently added for coins
-    if (preferences.sortBy === 'title') {
-      result.sort((a, b) => a.title.localeCompare(b.title));
-    } else {
-      result.sort((a, b) => new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime());
-    }
+    // Sorting logic
+    result.sort((a, b) => {
+      switch (preferences.sortBy) {
+        case 'title':
+          return a.title.localeCompare(b.title);
+        case 'year':
+          return b.year - a.year;
+        case 'denomination':
+          return a.denomination.localeCompare(b.denomination);
+        case 'date-added':
+        case 'recently-added':
+          return new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime();
+        case 'month-added': {
+          const dateA = new Date(a.addedAt);
+          const dateB = new Date(b.addedAt);
+          if (dateA.getFullYear() !== dateB.getFullYear()) {
+            return dateB.getFullYear() - dateA.getFullYear();
+          }
+          return dateB.getMonth() - dateA.getMonth();
+        }
+        default:
+          return new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime();
+      }
+    });
 
     return result;
   }, [coins, searchQuery, filter, preferences.activeFolderId, preferences.sortBy]);
+
+  const groupedCoins = useMemo(() => {
+    if (!preferences.isGrouped || preferences.groupBy === 'none') {
+      return null;
+    }
+
+    const groups: { [key: string]: Coin[] } = {};
+
+    filteredCoins.forEach(coin => {
+      let groupKey = 'Unknown';
+      
+      switch (preferences.groupBy) {
+        case 'year':
+          groupKey = coin.year.toString();
+          break;
+        case 'denomination':
+          groupKey = coin.denomination;
+          break;
+        case 'date-added':
+          groupKey = new Date(coin.addedAt).toLocaleDateString();
+          break;
+        case 'month-added': {
+          const date = new Date(coin.addedAt);
+          groupKey = date.toLocaleString('default', { month: 'long', year: 'numeric' });
+          break;
+        }
+      }
+
+      if (!groups[groupKey]) {
+        groups[groupKey] = [];
+      }
+      groups[groupKey].push(coin);
+    });
+
+    // Sort group keys
+    const sortedKeys = Object.keys(groups).sort((a, b) => {
+      if (preferences.groupBy === 'year') {
+        return parseInt(b) - parseInt(a);
+      }
+      if (preferences.groupBy === 'date-added' || preferences.groupBy === 'month-added') {
+        // Use the first coin in each group to sort by date
+        return new Date(groups[b][0].addedAt).getTime() - new Date(groups[a][0].addedAt).getTime();
+      }
+      return a.localeCompare(b);
+    });
+
+    return sortedKeys.map(key => ({
+      title: key,
+      coins: groups[key]
+    }));
+  }, [filteredCoins, preferences.isGrouped, preferences.groupBy]);
 
   const stats = useMemo(() => {
     const total = coins.length;
@@ -1556,6 +1629,175 @@ function CoinCollectorApp() {
       return dateB.getTime() - dateA.getTime();
     });
   }, [coins]);
+
+  const renderCoinCard = (coin: Coin) => (
+    <motion.div
+      key={coin.id}
+      layout
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.9 }}
+      onClick={() => setSelectedCoin(coin)}
+      className={cn(
+        "group relative app-card transition-all duration-500 overflow-hidden flex flex-col cursor-pointer",
+        "hover:shadow-2xl hover:-translate-y-2",
+        coin.isRare 
+          ? "border-amber-500/50 ring-4 ring-amber-500/10" 
+          : coin.isCollected 
+            ? "border-emerald-500/30" 
+            : "border-slate-100 dark:border-slate-800",
+        preferences.isTextMode && "rounded-none border-0 border-b border-slate-100 dark:border-slate-800 p-4 bg-transparent dark:bg-transparent",
+        preferences.themeTexture === 'glass' && "glass-card"
+      )}
+    >
+      {preferences.isTextMode ? (
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest">{coin.denomination}</span>
+              <span className="text-[10px] font-bold text-slate-400">{coin.year}</span>
+              {coin.isRare && <Trophy className="w-3 h-3 text-amber-500" />}
+            </div>
+            <h3 className="font-bold text-sm">{coin.title}</h3>
+            <p className="text-xs text-slate-500 line-clamp-1">{coin.summary}</p>
+          </div>
+          <div className="flex items-center gap-4">
+            {coin.amountPaid !== undefined && preferences.showPriceInNormalMode && (
+              <span className="text-xs font-bold text-emerald-600">£{coin.amountPaid.toFixed(2)}</span>
+            )}
+            <button 
+              onClick={(e) => { e.stopPropagation(); toggleCollected(coin.id); }}
+              className={cn(
+                "w-8 h-8 rounded-full flex items-center justify-center transition-all",
+                coin.isCollected ? "bg-emerald-500 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-400"
+              )}
+            >
+              {coin.isCollected ? <CheckCircle2 className="w-5 h-5" /> : <Circle className="w-5 h-5" />}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          {coin.isRare && (
+            <div className="absolute top-3 left-3 z-10 bg-amber-500 text-white p-1.5 rounded-xl shadow-lg shadow-amber-500/30">
+              <Trophy className="w-4 h-4" />
+            </div>
+          )}
+          {coins.filter(c => c.title === coin.title && c.denomination === coin.denomination).length > 1 && (
+            <div className="absolute top-3 right-14 z-10 bg-blue-500 text-white px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20">
+              x{coins.filter(c => c.title === coin.title && c.denomination === coin.denomination).length}
+            </div>
+          )}
+          {coin.imageUrl && (
+            <div className={cn(
+              "w-full overflow-hidden bg-slate-100 dark:bg-slate-800 relative",
+              preferences.isCompactUI ? "h-28 sm:h-32" : "h-40 sm:h-48"
+            )}>
+              <img 
+                src={coin.imageUrl} 
+                alt={coin.title} 
+                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                referrerPolicy="no-referrer"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
+                <span className="text-white text-[10px] font-bold uppercase tracking-widest">{coin.denomination}</span>
+              </div>
+            </div>
+          )}
+          <div className={cn(
+            "flex-1 flex flex-col",
+            preferences.isCompactUI ? "p-4" : "p-6"
+          )}>
+            <div className="flex justify-between items-start mb-4">
+              <div className="flex flex-col flex-1 mr-2">
+                <span className="text-[10px] font-black text-amber-500 uppercase tracking-[0.2em] mb-1">
+                  {coin.denomination} • {coin.year}
+                </span>
+                <h3 className={cn(
+                  "font-bold flex items-center gap-2 leading-tight",
+                  preferences.isCompactUI ? "text-sm" : "text-lg"
+                )}>
+                  {coin.title}
+                  {coin.isRare && <Trophy className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />}
+                </h3>
+              </div>
+              <button 
+                onClick={(e) => { e.stopPropagation(); toggleCollected(coin.id); }}
+                className={cn(
+                  "rounded-2xl flex items-center justify-center transition-all shrink-0",
+                  preferences.isCompactUI ? "w-8 h-8 rounded-xl" : "w-12 h-12 rounded-2xl",
+                  coin.isCollected 
+                    ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20" 
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-emerald-500"
+                )}
+              >
+                {coin.isCollected 
+                  ? <CheckCircle2 className={preferences.isCompactUI ? "w-5 h-5" : "w-7 h-7"} /> 
+                  : <Circle className={preferences.isCompactUI ? "w-5 h-5" : "w-7 h-7"} />
+                }
+              </button>
+            </div>
+
+            {!preferences.isCompactUI && (
+              <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 mb-4 italic leading-relaxed">
+                {coin.summary}
+              </p>
+            )}
+
+            {coin.amountPaid !== undefined && !preferences.isCompactUI && preferences.showPriceInNormalMode && (
+              <div className="flex items-center gap-4 mb-6 text-xs font-bold">
+                <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                  <PoundSterling className="w-3.5 h-3.5" />
+                  <span>{coin.amountPaid.toFixed(2)}</span>
+                </div>
+                {coin.purchaseDate && (
+                  <div className="flex items-center gap-1.5 text-slate-400">
+                    <Calendar className="w-3.5 h-3.5" />
+                    <span>{new Date(coin.purchaseDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className={cn(
+              "mt-auto flex items-center justify-between border-t border-slate-100 dark:border-slate-800",
+              preferences.isCompactUI ? "pt-2" : "pt-4"
+            )}>
+              <div className="flex items-center gap-2">
+                <span className={cn(
+                  "text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider",
+                  coin.isCollected 
+                    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" 
+                    : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
+                )}>
+                  {coin.isCollected ? 'Collected' : 'Missing'}
+                </span>
+                {coin.folderId && !preferences.isCompactUI && (
+                  <span className="text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                    {folders.find(f => f.id === coin.folderId)?.name || 'Folder'}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-1">
+                <button 
+                  onClick={(e) => { e.stopPropagation(); setEditingCoin(coin); }}
+                  className="p-2 text-slate-300 hover:text-amber-500 transition-colors"
+                >
+                  <Edit2 className="w-4 h-4" />
+                </button>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); deleteCoin(coin.id); }}
+                  className="p-2 text-slate-300 hover:text-red-500 transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+    </motion.div>
+  );
 
   const [newCoinImage, setNewCoinImage] = useState<string | null>(null);
   const coinImageInputRef = useRef<HTMLInputElement>(null);
@@ -2090,187 +2332,91 @@ function CoinCollectorApp() {
                 </button>
               ))}
             </div>
+
+            {/* Sort & Group Controls */}
+            <div className="flex flex-wrap gap-3">
+              <div className="flex-1 min-w-[140px]">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block">Sort By</label>
+                <select 
+                  value={preferences.sortBy}
+                  onChange={(e) => setPreferences(prev => ({ ...prev, sortBy: e.target.value as any }))}
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-amber-500 outline-none"
+                >
+                  <option value="recently-added">Recently Added</option>
+                  <option value="year">Year</option>
+                  <option value="denomination">Denomination</option>
+                  <option value="title">Title</option>
+                  <option value="date-added">Date Added</option>
+                  <option value="month-added">Month Added</option>
+                </select>
+              </div>
+
+              <div className="flex-1 min-w-[140px]">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block">Group By</label>
+                <select 
+                  value={preferences.groupBy}
+                  onChange={(e) => setPreferences(prev => ({ ...prev, groupBy: e.target.value as any }))}
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-amber-500 outline-none"
+                >
+                  <option value="none">No Grouping</option>
+                  <option value="year">Year</option>
+                  <option value="denomination">Denomination</option>
+                  <option value="date-added">Date Added</option>
+                  <option value="month-added">Month Added</option>
+                </select>
+              </div>
+
+              <div className="flex items-end pb-1">
+                <button
+                  onClick={() => setPreferences(prev => ({ ...prev, isGrouped: !prev.isGrouped }))}
+                  className={cn(
+                    "px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all border",
+                    preferences.isGrouped 
+                      ? "bg-amber-500 text-white border-amber-500 shadow-lg shadow-amber-500/20" 
+                      : "bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-800"
+                  )}
+                >
+                  {preferences.isGrouped ? "Grouped" : "Ungrouped"}
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* Coin Grid */}
-          <div className={cn(
-            "grid gap-6",
-            preferences.isCompactUI 
-              ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4" 
-              : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3",
-            preferences.isTextMode && "grid-cols-1 gap-0"
-          )}>
-            <AnimatePresence mode="popLayout">
-              {filteredCoins.map((coin) => (
-                <motion.div
-                  key={coin.id}
-                  layout
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  onClick={() => setSelectedCoin(coin)}
-                  className={cn(
-                    "group relative app-card transition-all duration-500 overflow-hidden flex flex-col cursor-pointer",
-                    "hover:shadow-2xl hover:-translate-y-2",
-                    coin.isRare 
-                      ? "border-amber-500/50 ring-4 ring-amber-500/10" 
-                      : coin.isCollected 
-                        ? "border-emerald-500/30" 
-                        : "border-slate-100 dark:border-slate-800",
-                    preferences.isTextMode && "rounded-none border-0 border-b border-slate-100 dark:border-slate-800 p-4 bg-transparent dark:bg-transparent",
-                    preferences.themeTexture === 'glass' && "glass-card"
-                  )}
-                >
-                  {preferences.isTextMode ? (
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest">{coin.denomination}</span>
-                          <span className="text-[10px] font-bold text-slate-400">{coin.year}</span>
-                          {coin.isRare && <Trophy className="w-3 h-3 text-amber-500" />}
-                        </div>
-                        <h3 className="font-bold text-sm">{coin.title}</h3>
-                        <p className="text-xs text-slate-500 line-clamp-1">{coin.summary}</p>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        {coin.amountPaid !== undefined && preferences.showPriceInNormalMode && (
-                          <span className="text-xs font-bold text-emerald-600">£{coin.amountPaid.toFixed(2)}</span>
-                        )}
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); toggleCollected(coin.id); }}
-                          className={cn(
-                            "w-8 h-8 rounded-full flex items-center justify-center transition-all",
-                            coin.isCollected ? "bg-emerald-500 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-400"
-                          )}
-                        >
-                          {coin.isCollected ? <CheckCircle2 className="w-5 h-5" /> : <Circle className="w-5 h-5" />}
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      {coin.isRare && (
-                        <div className="absolute top-3 left-3 z-10 bg-amber-500 text-white p-1.5 rounded-xl shadow-lg shadow-amber-500/30">
-                          <Trophy className="w-4 h-4" />
-                        </div>
-                      )}
-                      {coins.filter(c => c.title === coin.title && c.denomination === coin.denomination).length > 1 && (
-                        <div className="absolute top-3 right-14 z-10 bg-blue-500 text-white px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20">
-                          x{coins.filter(c => c.title === coin.title && c.denomination === coin.denomination).length}
-                        </div>
-                      )}
-                      {coin.imageUrl && (
-                        <div className={cn(
-                          "w-full overflow-hidden bg-slate-100 dark:bg-slate-800 relative",
-                          preferences.isCompactUI ? "h-28 sm:h-32" : "h-40 sm:h-48"
-                        )}>
-                          <img 
-                            src={coin.imageUrl} 
-                            alt={coin.title} 
-                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                            referrerPolicy="no-referrer"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
-                            <span className="text-white text-[10px] font-bold uppercase tracking-widest">{coin.denomination}</span>
-                          </div>
-                        </div>
-                      )}
-                      <div className={cn(
-                        "flex-1 flex flex-col",
-                        preferences.isCompactUI ? "p-4" : "p-6"
-                      )}>
-                        <div className="flex justify-between items-start mb-4">
-                          <div className="flex flex-col flex-1 mr-2">
-                            <span className="text-[10px] font-black text-amber-500 uppercase tracking-[0.2em] mb-1">
-                              {coin.denomination} • {coin.year}
-                            </span>
-                            <h3 className={cn(
-                              "font-bold flex items-center gap-2 leading-tight",
-                              preferences.isCompactUI ? "text-sm" : "text-lg"
-                            )}>
-                              {coin.title}
-                              {coin.isRare && <Trophy className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />}
-                            </h3>
-                          </div>
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); toggleCollected(coin.id); }}
-                            className={cn(
-                              "rounded-2xl flex items-center justify-center transition-all shrink-0",
-                              preferences.isCompactUI ? "w-8 h-8 rounded-xl" : "w-12 h-12 rounded-2xl",
-                              coin.isCollected 
-                                ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20" 
-                                : "bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-emerald-500"
-                            )}
-                          >
-                            {coin.isCollected 
-                              ? <CheckCircle2 className={preferences.isCompactUI ? "w-5 h-5" : "w-7 h-7"} /> 
-                              : <Circle className={preferences.isCompactUI ? "w-5 h-5" : "w-7 h-7"} />
-                            }
-                          </button>
-                        </div>
-
-                        {!preferences.isCompactUI && (
-                          <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 mb-4 italic leading-relaxed">
-                            {coin.summary}
-                          </p>
-                        )}
-
-                        {coin.amountPaid !== undefined && !preferences.isCompactUI && preferences.showPriceInNormalMode && (
-                          <div className="flex items-center gap-4 mb-6 text-xs font-bold">
-                            <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
-                              <PoundSterling className="w-3.5 h-3.5" />
-                              <span>{coin.amountPaid.toFixed(2)}</span>
-                            </div>
-                            {coin.purchaseDate && (
-                              <div className="flex items-center gap-1.5 text-slate-400">
-                                <Calendar className="w-3.5 h-3.5" />
-                                <span>{new Date(coin.purchaseDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        <div className={cn(
-                          "mt-auto flex items-center justify-between border-t border-slate-100 dark:border-slate-800",
-                          preferences.isCompactUI ? "pt-2" : "pt-4"
-                        )}>
-                          <div className="flex items-center gap-2">
-                            <span className={cn(
-                              "text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider",
-                              coin.isCollected 
-                                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" 
-                                : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
-                            )}>
-                              {coin.isCollected ? 'Collected' : 'Missing'}
-                            </span>
-                            {coin.folderId && !preferences.isCompactUI && (
-                              <span className="text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-                                {folders.find(f => f.id === coin.folderId)?.name || 'Folder'}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <button 
-                              onClick={(e) => { e.stopPropagation(); setEditingCoin(coin); }}
-                              className="p-2 text-slate-300 hover:text-amber-500 transition-colors"
-                            >
-                              <Edit2 className="w-4 h-4" />
-                            </button>
-                            <button 
-                              onClick={(e) => { e.stopPropagation(); deleteCoin(coin.id); }}
-                              className="p-2 text-slate-300 hover:text-red-500 transition-colors"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </motion.div>
+          {preferences.isGrouped && groupedCoins ? (
+            <div className="space-y-12">
+              {groupedCoins.map((group) => (
+                <div key={group.title} className="space-y-6">
+                  <div className="flex items-center gap-4">
+                    <h3 className="text-lg font-black tracking-tight text-slate-900 dark:text-white uppercase">{group.title}</h3>
+                    <div className="h-px flex-1 bg-slate-100 dark:bg-slate-800" />
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{group.coins.length} Coins</span>
+                  </div>
+                  <div className={cn(
+                    "grid gap-6",
+                    preferences.isCompactUI 
+                      ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4" 
+                      : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3",
+                    preferences.isTextMode && "grid-cols-1 gap-0"
+                  )}>
+                    {group.coins.map((coin) => renderCoinCard(coin))}
+                  </div>
+                </div>
               ))}
-            </AnimatePresence>
-          </div>
+            </div>
+          ) : (
+            <div className={cn(
+              "grid gap-6",
+              preferences.isCompactUI 
+                ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4" 
+                : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3",
+              preferences.isTextMode && "grid-cols-1 gap-0"
+            )}>
+              <AnimatePresence mode="popLayout">
+                {filteredCoins.map((coin) => renderCoinCard(coin))}
+              </AnimatePresence>
+            </div>
+          )}
 
           {filteredCoins.length === 0 && (
             <div className="flex flex-col items-center justify-center py-20 text-slate-400">
