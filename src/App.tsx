@@ -346,6 +346,29 @@ function CoinCollectorApp() {
     }
   };
 
+  const [windowSize, setWindowSize] = useState({
+    width: typeof window !== 'undefined' ? window.innerWidth : 0,
+    height: typeof window !== 'undefined' ? window.innerHeight : 0,
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowSize({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      });
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const density = useMemo(() => {
+    if (windowSize.width < 380) return 'compact';
+    if (windowSize.width < 768) return 'normal';
+    return 'spacious';
+  }, [windowSize.width]);
+
   const [preferences, setPreferences] = useState<UserPreferences>({
     isDarkMode: false,
     themeMode: 'system',
@@ -771,25 +794,25 @@ function CoinCollectorApp() {
       whileTap={{ scale: 0.98 }}
       onClick={onClick}
       className={cn(
-        "app-card p-8 cursor-pointer relative overflow-hidden group min-w-[280px] flex-shrink-0",
+        "app-card cursor-pointer relative overflow-hidden group min-w-[240px] sm:min-w-[280px] flex-shrink-0",
         !mode.isUnlocked && "opacity-75 grayscale cursor-not-allowed",
         preferences.themeTexture === 'glass' && "glass-card"
       )}
     >
       <div className="relative z-10">
-        <div className="flex items-start justify-between mb-6">
-          <div className="w-16 h-16 bg-amber-500/10 rounded-3xl flex items-center justify-center text-4xl shadow-inner">
+        <div className="flex items-start justify-between mb-4 sm:mb-6">
+          <div className="w-12 h-12 sm:w-16 h-16 bg-amber-500/10 rounded-3xl flex items-center justify-center text-3xl sm:text-4xl shadow-inner">
             {mode.icon}
           </div>
           {!mode.isUnlocked && (
             <div className="bg-slate-100 dark:bg-slate-800 p-2 rounded-2xl">
-              <Lock className="w-5 h-5 text-slate-400" />
+              <Lock className="w-4 h-4 sm:w-5 h-5 text-slate-400" />
             </div>
           )}
         </div>
         
-        <h3 className="text-2xl font-black tracking-tight mb-2">{mode.title}</h3>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mb-8 line-clamp-2 leading-relaxed">
+        <h3 className="text-lg sm:text-2xl font-black tracking-tight mb-1 sm:mb-2">{mode.title}</h3>
+        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mb-4 sm:mb-8 line-clamp-2 leading-relaxed">
           {mode.description}
         </p>
         
@@ -825,25 +848,25 @@ function CoinCollectorApp() {
         whileTap={{ scale: 0.98 }}
         onClick={() => isUnlocked && onSelect()}
         className={cn(
-          "app-card p-8 cursor-pointer relative overflow-hidden group",
+          "app-card cursor-pointer relative overflow-hidden group",
           !isUnlocked && "opacity-75 grayscale cursor-not-allowed",
           preferences.themeTexture === 'glass' && "glass-card"
         )}
       >
         <div className="relative z-10">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 bg-amber-500/10 rounded-2xl flex items-center justify-center text-2xl shadow-inner">
+          <div className="flex items-center justify-between mb-4 sm:mb-6">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="w-10 h-10 sm:w-14 h-14 bg-amber-500/10 rounded-2xl flex items-center justify-center text-xl sm:text-2xl shadow-inner">
                 {era.badge}
               </div>
               <div>
-                <h4 className="text-xl font-black tracking-tight">{era.name}</h4>
-                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">
+                <h4 className="text-lg sm:text-xl font-black tracking-tight">{era.name}</h4>
+                <p className="text-[8px] sm:text-[10px] text-slate-400 font-black uppercase tracking-widest">
                   {era.startYear} - {era.endYear}
                 </p>
               </div>
             </div>
-            {!isUnlocked && <Lock className="w-5 h-5 text-slate-400" />}
+            {!isUnlocked && <Lock className="w-4 h-4 sm:w-5 h-5 text-slate-400" />}
           </div>
 
           <div className="space-y-4">
@@ -1046,6 +1069,17 @@ function CoinCollectorApp() {
     );
     setGameProgress(prev => ({ ...prev, 'era-conquest': eraConquestProgress }));
   }, [coins]);
+
+  // Auto-compact on small screens
+  useEffect(() => {
+    if (density === 'compact' && !preferences.isCompactUI) {
+      setPreferences(prev => ({ ...prev, isCompactUI: true }));
+    } else if (density !== 'compact' && preferences.isCompactUI && windowSize.width > 400) {
+      // Only auto-disable if it was auto-enabled (this is a bit tricky, let's just respect user choice if they manually toggled)
+      // For now, let's just make it dynamic
+      setPreferences(prev => ({ ...prev, isCompactUI: density === 'compact' }));
+    }
+  }, [density]);
 
   // Theme management
   useEffect(() => {
@@ -1804,10 +1838,10 @@ function CoinCollectorApp() {
             </div>
           ) : isGameModesOpen ? (
             <div className="pb-32">
-              <div className="px-6 pt-8 mb-8 flex justify-between items-end">
+              <div className="px-4 sm:px-6 pt-6 sm:pt-8 mb-6 sm:mb-8 flex justify-between items-end">
                 <div>
-                  <h1 className="text-4xl font-black tracking-tight text-gradient">Game Modes</h1>
-                  <p className="text-slate-500 dark:text-slate-400 font-medium mt-2">Challenge yourself and unlock history.</p>
+                  <h1 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight text-gradient">Game Modes</h1>
+                  <p className="text-slate-500 dark:text-slate-400 font-medium mt-1 sm:mt-2 text-xs sm:text-sm">Challenge yourself and unlock history.</p>
                 </div>
                 <div className="text-right">
                   <div className="flex items-center gap-2 bg-amber-100 dark:bg-amber-900/30 px-3 py-1.5 rounded-full border border-amber-200 dark:border-amber-800/50">
@@ -1889,10 +1923,10 @@ function CoinCollectorApp() {
             </div>
           ) : isStoryOpen ? (
             <div className="pb-32">
-              <div className="px-6 pt-8 mb-8 flex justify-between items-end">
+              <div className="px-4 sm:px-6 pt-6 sm:pt-8 mb-6 sm:mb-8 flex justify-between items-end">
                 <div>
-                  <h1 className="text-4xl font-black tracking-tight text-gradient">Story Mode</h1>
-                  <p className="text-slate-500 dark:text-slate-400 font-medium mt-2">Your coins, your narrative. Unlock the past.</p>
+                  <h1 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight text-gradient">Story Mode</h1>
+                  <p className="text-slate-500 dark:text-slate-400 font-medium mt-1 sm:mt-2 text-xs sm:text-sm">Your coins, your narrative. Unlock the past.</p>
                 </div>
                 <div className="text-right">
                   <div className="flex items-center gap-2 bg-emerald-100 dark:bg-emerald-900/30 px-3 py-1.5 rounded-full border border-emerald-200 dark:border-emerald-800/50">
@@ -1915,10 +1949,10 @@ function CoinCollectorApp() {
             </div>
           ) : isTimelineOpen ? (
             <div className="pb-32">
-              <div className="px-6 pt-8 mb-8 flex justify-between items-end">
+              <div className="px-4 sm:px-6 pt-6 sm:pt-8 mb-6 sm:mb-8 flex justify-between items-end">
                 <div>
-                  <h1 className="text-4xl font-black tracking-tight text-gradient">Timeline Hub</h1>
-                  <p className="text-slate-500 dark:text-slate-400 font-medium mt-2">Explore history through your collection.</p>
+                  <h1 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight text-gradient">Timeline Hub</h1>
+                  <p className="text-slate-500 dark:text-slate-400 font-medium mt-1 sm:mt-2 text-xs sm:text-sm">Explore history through your collection.</p>
                 </div>
                 <div className="text-right">
                   <div className="flex items-center gap-2 bg-amber-100 dark:bg-amber-900/30 px-3 py-1.5 rounded-full border border-amber-200 dark:border-amber-800/50">
@@ -1948,16 +1982,16 @@ function CoinCollectorApp() {
           ) : (
             <>
               {/* Progress Card */}
-          <div className="mb-8">
+          <div className="mb-6 sm:mb-8">
             <div className={cn(
-              "bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm",
+              "bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm",
               preferences.themeTexture === 'glass' && "glass-card"
             )}>
-              <div className="flex justify-between items-end mb-3">
+              <div className="flex justify-between items-end mb-2 sm:mb-3">
                 <div>
-                  <h2 className="text-sm text-slate-500 font-bold uppercase tracking-wider mb-1">Collection Progress</h2>
+                  <h2 className="text-[10px] sm:text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">Collection Progress</h2>
                   <div className="flex items-center gap-2">
-                    <p className="text-2xl font-black">{stats.collected} / {stats.total} <span className="text-sm font-normal text-slate-400">Coins</span></p>
+                    <p className="text-xl sm:text-2xl font-black">{stats.collected} / {stats.total} <span className="text-xs sm:text-sm font-normal text-slate-400">Coins</span></p>
                     <span className="px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-600 text-[10px] font-black rounded-full uppercase tracking-widest">
                       {stats.currentLevel.name}
                     </span>
@@ -1987,16 +2021,16 @@ function CoinCollectorApp() {
               <button
                 onClick={() => openFolder('all')}
                 className={cn(
-                  "flex flex-col items-center gap-3 p-6 rounded-[2.5rem] border transition-all duration-500 min-w-[120px]",
+                  "flex flex-col items-center gap-2 sm:gap-3 p-4 sm:p-6 rounded-[2.5rem] border transition-all duration-500 min-w-[100px] sm:min-w-[120px]",
                   preferences.activeFolderId === 'all'
                     ? "bg-amber-500 border-amber-500 text-white shadow-2xl shadow-amber-500/30 scale-105"
                     : "bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:scale-105"
                 )}
               >
-                <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center shadow-inner">
-                  <LayoutGrid className="w-7 h-7" />
+                <div className="w-10 h-10 sm:w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center shadow-inner">
+                  <LayoutGrid className="w-5 h-5 sm:w-7 h-7" />
                 </div>
-                <span className="text-[10px] font-black uppercase tracking-widest">All Coins</span>
+                <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest">All Coins</span>
               </button>
 
               {sortedFolders.map(folder => (
@@ -2004,16 +2038,16 @@ function CoinCollectorApp() {
                   key={folder.id}
                   onClick={() => openFolder(folder.id)}
                   className={cn(
-                    "flex flex-col items-center gap-3 p-6 rounded-[2.5rem] border transition-all duration-500 min-w-[120px] relative group",
+                    "flex flex-col items-center gap-2 sm:gap-3 p-4 sm:p-6 rounded-[2.5rem] border transition-all duration-500 min-w-[100px] sm:min-w-[120px] relative group",
                     preferences.activeFolderId === folder.id
                       ? "bg-amber-500 border-amber-500 text-white shadow-2xl shadow-amber-500/30 scale-105"
                       : "bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:scale-105"
                   )}
                 >
-                  <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center shadow-inner text-3xl">
+                  <div className="w-10 h-10 sm:w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center shadow-inner text-xl sm:text-3xl">
                     {folder.icon}
                   </div>
-                  <span className="text-[10px] font-black uppercase tracking-widest truncate max-w-[90px]">{folder.name}</span>
+                  <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest truncate max-w-[80px] sm:max-w-[90px]">{folder.name}</span>
                 </button>
               ))}
 
@@ -2036,7 +2070,7 @@ function CoinCollectorApp() {
                 placeholder="Search your collection..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-12 pr-4 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none transition-all shadow-sm text-lg"
+                className="w-full pl-12 pr-4 py-3 sm:py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none transition-all shadow-sm text-base sm:text-lg"
               />
             </div>
             
@@ -2076,14 +2110,13 @@ function CoinCollectorApp() {
                   exit={{ opacity: 0, scale: 0.9 }}
                   onClick={() => setSelectedCoin(coin)}
                   className={cn(
-                    "group relative bg-white dark:bg-slate-900 rounded-[2.5rem] border transition-all duration-500 overflow-hidden flex flex-col cursor-pointer",
-                    "shadow-sm hover:shadow-2xl hover:-translate-y-2",
+                    "group relative app-card transition-all duration-500 overflow-hidden flex flex-col cursor-pointer",
+                    "hover:shadow-2xl hover:-translate-y-2",
                     coin.isRare 
                       ? "border-amber-500/50 ring-4 ring-amber-500/10" 
                       : coin.isCollected 
                         ? "border-emerald-500/30" 
                         : "border-slate-100 dark:border-slate-800",
-                    preferences.isCompactUI && "rounded-[2rem]",
                     preferences.isTextMode && "rounded-none border-0 border-b border-slate-100 dark:border-slate-800 p-4 bg-transparent dark:bg-transparent",
                     preferences.themeTexture === 'glass' && "glass-card"
                   )}
@@ -2129,7 +2162,7 @@ function CoinCollectorApp() {
                       {coin.imageUrl && (
                         <div className={cn(
                           "w-full overflow-hidden bg-slate-100 dark:bg-slate-800 relative",
-                          preferences.isCompactUI ? "h-32" : "h-48"
+                          preferences.isCompactUI ? "h-28 sm:h-32" : "h-40 sm:h-48"
                         )}>
                           <img 
                             src={coin.imageUrl} 
@@ -2257,9 +2290,9 @@ function CoinCollectorApp() {
 
         {/* Bottom Navigation */}
         {preferences.showBottomMenu && !preferences.isPurchaseMode && (
-          <div className="fixed bottom-8 left-0 right-0 z-50 px-6 pointer-events-none">
+          <div className="fixed bottom-4 sm:bottom-8 left-0 right-0 z-50 px-4 sm:px-6 pointer-events-none">
             <nav className={cn(
-              "max-w-lg mx-auto pointer-events-auto flex items-center justify-between p-2 rounded-[2.5rem] shadow-2xl border border-white/20 dark:border-slate-800/50",
+              "max-w-lg mx-auto pointer-events-auto flex items-center justify-between p-1.5 sm:p-2 rounded-[2.5rem] shadow-2xl border border-white/20 dark:border-slate-800/50",
               "bg-white/70 dark:bg-slate-900/70 backdrop-blur-3xl",
               preferences.themeTexture === 'glass' && "glass-card"
             )}>
@@ -2274,14 +2307,14 @@ function CoinCollectorApp() {
                   setIsSettingsOpen(false);
                 }}
                 className={cn(
-                  "flex flex-col items-center gap-1 py-3 px-5 rounded-3xl transition-all duration-300",
+                  "flex flex-col items-center gap-0.5 sm:gap-1 py-2 sm:py-3 px-3 sm:px-5 rounded-3xl transition-all duration-300",
                   preferences.activeFolderId === 'all' && !isTimelineOpen && !isStoryOpen && !isGameModesOpen && !isPhotoLibraryOpen && !isProfileOpen && !isSettingsOpen
                     ? "bg-amber-500 text-white shadow-lg shadow-amber-500/20 scale-110" 
                     : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                 )}
               >
-                <LayoutGrid className="w-6 h-6" />
-                <span className="text-[10px] font-black uppercase tracking-widest">Home</span>
+                <LayoutGrid className="w-5 h-5 sm:w-6 h-6" />
+                <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest">Home</span>
               </button>
               <button 
                 onClick={() => {
@@ -2293,21 +2326,21 @@ function CoinCollectorApp() {
                   setIsSettingsOpen(false);
                 }}
                 className={cn(
-                  "flex flex-col items-center gap-1 py-3 px-5 rounded-3xl transition-all duration-300",
+                  "flex flex-col items-center gap-0.5 sm:gap-1 py-2 sm:py-3 px-3 sm:px-5 rounded-3xl transition-all duration-300",
                   isTimelineOpen 
                     ? "bg-amber-500 text-white shadow-lg shadow-amber-500/20 scale-110" 
                     : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                 )}
               >
-                <Clock className="w-6 h-6" />
-                <span className="text-[10px] font-black uppercase tracking-widest">Time</span>
+                <Clock className="w-5 h-5 sm:w-6 h-6" />
+                <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest">Time</span>
               </button>
               
               <button 
                 onClick={() => setIsAddModalOpen(true)}
-                className="w-14 h-14 bg-amber-500 text-white rounded-full shadow-xl shadow-amber-500/40 flex items-center justify-center hover:scale-110 active:scale-95 transition-all"
+                className="w-12 h-12 sm:w-14 h-14 bg-amber-500 text-white rounded-full shadow-xl shadow-amber-500/40 flex items-center justify-center hover:scale-110 active:scale-95 transition-all"
               >
-                <Plus className="w-8 h-8" />
+                <Plus className="w-6 h-6 sm:w-8 h-8" />
               </button>
 
               <button 
@@ -2320,14 +2353,14 @@ function CoinCollectorApp() {
                   setIsSettingsOpen(false);
                 }}
                 className={cn(
-                  "flex flex-col items-center gap-1 py-3 px-5 rounded-3xl transition-all duration-300",
+                  "flex flex-col items-center gap-0.5 sm:gap-1 py-2 sm:py-3 px-3 sm:px-5 rounded-3xl transition-all duration-300",
                   isGameModesOpen 
                     ? "bg-amber-500 text-white shadow-lg shadow-amber-500/20 scale-110" 
                     : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                 )}
               >
-                <Gamepad2 className="w-6 h-6" />
-                <span className="text-[10px] font-black uppercase tracking-widest">Play</span>
+                <Gamepad2 className="w-5 h-5 sm:w-6 h-6" />
+                <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest">Play</span>
               </button>
 
               <button 
@@ -2340,14 +2373,14 @@ function CoinCollectorApp() {
                   setIsSettingsOpen(false);
                 }}
                 className={cn(
-                  "flex flex-col items-center gap-1 py-3 px-5 rounded-3xl transition-all duration-300",
+                  "flex flex-col items-center gap-0.5 sm:gap-1 py-2 sm:py-3 px-3 sm:px-5 rounded-3xl transition-all duration-300",
                   isStoryOpen 
                     ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 scale-110" 
                     : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                 )}
               >
-                <BookOpen className="w-6 h-6" />
-                <span className="text-[10px] font-black uppercase tracking-widest">Story</span>
+                <BookOpen className="w-5 h-5 sm:w-6 h-6" />
+                <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest">Story</span>
               </button>
               <button 
                 onClick={() => {
@@ -2358,14 +2391,14 @@ function CoinCollectorApp() {
                   setIsSettingsOpen(false);
                 }}
                 className={cn(
-                  "flex flex-col items-center gap-1 py-3 px-5 rounded-3xl transition-all duration-300",
+                  "flex flex-col items-center gap-0.5 sm:gap-1 py-2 sm:py-3 px-3 sm:px-5 rounded-3xl transition-all duration-300",
                   isProfileOpen 
                     ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 scale-110" 
                     : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                 )}
               >
-                <User className="w-6 h-6" />
-                <span className="text-[10px] font-black uppercase tracking-widest">Me</span>
+                <User className="w-5 h-5 sm:w-6 h-6" />
+                <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest">Me</span>
               </button>
             </nav>
           </div>

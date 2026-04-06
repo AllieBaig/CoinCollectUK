@@ -10,6 +10,27 @@
     --app-radius: 2.5rem;
     --card-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.1);
     --card-shadow-hover: 0 20px 40px -15px rgba(0, 0, 0, 0.15);
+    --ui-spacing: 1.5rem;
+    --ui-font-base: 1rem;
+    --ui-card-padding: 1.5rem;
+  }
+
+  @media (max-width: 380px) {
+    :root {
+      --app-radius: 1.5rem;
+      --ui-spacing: 1rem;
+      --ui-font-base: 0.875rem;
+      --ui-card-padding: 1rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    :root {
+      --app-radius: 3rem;
+      --ui-spacing: 2rem;
+      --ui-font-base: 1.125rem;
+      --ui-card-padding: 2rem;
+    }
   }
 
   body {
@@ -81,7 +102,9 @@
 
 @layer components {
   .app-card {
-    @apply bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm transition-all duration-500;
+    @apply bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm transition-all duration-500;
+    border-radius: var(--app-radius);
+    padding: var(--ui-card-padding);
     box-shadow: var(--card-shadow);
   }
   
@@ -90,7 +113,9 @@
   }
 
   .premium-button {
-    @apply relative overflow-hidden active:scale-95 transition-all duration-300 rounded-2xl font-black uppercase tracking-widest text-xs py-4 px-6;
+    @apply relative overflow-hidden active:scale-95 transition-all duration-300 font-black uppercase tracking-widest text-xs;
+    border-radius: calc(var(--app-radius) / 2);
+    padding: calc(var(--ui-spacing) * 0.75) var(--ui-spacing);
   }
 
   .text-gradient {
