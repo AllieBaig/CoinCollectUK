@@ -48,12 +48,19 @@ import {
   Database,
   ArrowUpDown,
   BookOpen,
-  Book
+  Book,
+  Gamepad2,
+  Lock,
+  Zap,
+  Award,
+  History,
+  SearchCode,
+  Map
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
-import { Coin, AppState, Folder, UserPreferences, Mission, Achievement, Timeline, TimelineEvent, Story, StoryChapter } from './types';
-import { INITIAL_COINS, INITIAL_FOLDERS, TIMELINES } from './constants';
+import { Coin, AppState, Folder, UserPreferences, Mission, Achievement, Timeline, TimelineEvent, Story, StoryChapter, GameMode, Era } from './types';
+import { INITIAL_COINS, INITIAL_FOLDERS, TIMELINES, GAME_MODES, ERAS } from './constants';
 
 // Error Boundary Component
 interface ErrorBoundaryProps {
@@ -270,7 +277,9 @@ function CoinCollectorApp() {
           gameProgress: {},
           storyProgress: {},
           timelinePoints: 0,
-          storyPoints: 0
+          storyPoints: 0,
+          gamePoints: 0,
+          eraProgress: {}
         };
       }
 
@@ -322,8 +331,11 @@ function CoinCollectorApp() {
           storyProgress: data.storyProgress || {},
           timelinePoints: data.timelinePoints || 0,
           storyPoints: data.storyPoints || 0,
+          gamePoints: data.gamePoints || 0,
+          eraProgress: data.eraProgress || {},
           lastOpenedTimelineId: data.lastOpenedTimelineId,
-          lastOpenedStoryId: data.lastOpenedStoryId
+          lastOpenedStoryId: data.lastOpenedStoryId,
+          lastOpenedGameModeId: data.lastOpenedGameModeId
         };
       }
 
@@ -377,15 +389,20 @@ function CoinCollectorApp() {
   const [lastLuckySpinDate, setLastLuckySpinDate] = useState<string | undefined>(undefined);
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
   const [isStoryOpen, setIsStoryOpen] = useState(false);
+  const [isGameModesOpen, setIsGameModesOpen] = useState(false);
   const [activeTimelineId, setActiveTimelineId] = useState<string | null>(null);
   const [activeStoryId, setActiveStoryId] = useState<string | null>(null);
+  const [activeGameModeId, setActiveGameModeId] = useState<string | null>(null);
   const [timelineProgress, setTimelineProgress] = useState<{ [key: string]: number }>({});
   const [gameProgress, setGameProgress] = useState<{ [key: string]: number }>({});
   const [storyProgress, setStoryProgress] = useState<{ [key: string]: number }>({});
+  const [eraProgress, setEraProgress] = useState<{ [key: string]: number }>({});
   const [timelinePoints, setTimelinePoints] = useState(0);
   const [storyPoints, setStoryPoints] = useState(0);
+  const [gamePoints, setGamePoints] = useState(0);
   const [lastOpenedTimelineId, setLastOpenedTimelineId] = useState<string | undefined>(undefined);
   const [lastOpenedStoryId, setLastOpenedStoryId] = useState<string | undefined>(undefined);
+  const [lastOpenedGameModeId, setLastOpenedGameModeId] = useState<string | undefined>(undefined);
   const [expandedEventIdx, setExpandedEventIdx] = useState<number | null>(null);
   const [expandedChapterIdx, setExpandedChapterIdx] = useState<number | null>(null);
 
@@ -748,6 +765,121 @@ function CoinCollectorApp() {
     </div>
   );
 
+  const GameModeCard = ({ mode, onClick }: { mode: GameMode, onClick: () => void, key?: string }) => (
+    <motion.div
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
+      onClick={onClick}
+      className={cn(
+        "app-card p-8 cursor-pointer relative overflow-hidden group min-w-[280px] flex-shrink-0",
+        !mode.isUnlocked && "opacity-75 grayscale cursor-not-allowed",
+        preferences.themeTexture === 'glass' && "glass-card"
+      )}
+    >
+      <div className="relative z-10">
+        <div className="flex items-start justify-between mb-6">
+          <div className="w-16 h-16 bg-amber-500/10 rounded-3xl flex items-center justify-center text-4xl shadow-inner">
+            {mode.icon}
+          </div>
+          {!mode.isUnlocked && (
+            <div className="bg-slate-100 dark:bg-slate-800 p-2 rounded-2xl">
+              <Lock className="w-5 h-5 text-slate-400" />
+            </div>
+          )}
+        </div>
+        
+        <h3 className="text-2xl font-black tracking-tight mb-2">{mode.title}</h3>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mb-8 line-clamp-2 leading-relaxed">
+          {mode.description}
+        </p>
+        
+        <div className="space-y-3">
+          <div className="flex justify-between text-[10px] font-black uppercase tracking-widest">
+            <span className="text-slate-400">Mastery</span>
+            <span className="text-amber-500">{mode.progress}%</span>
+          </div>
+          <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+            <motion.div 
+              initial={{ width: 0 }}
+              animate={{ width: `${mode.progress}%` }}
+              className="h-full bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-amber-500/5 rounded-full blur-3xl group-hover:bg-amber-500/10 transition-all duration-700" />
+    </motion.div>
+  );
+
+  const EraCard = ({ era, coins, progress, onSelect }: { era: Era, coins: Coin[], progress: number, onSelect: () => void, key?: string }) => {
+    const eraCoins = coins.filter(c => c.year >= era.startYear && c.year <= era.endYear);
+    const collectedInEra = eraCoins.filter(c => c.isCollected).length;
+    
+    const eraIndex = ERAS.findIndex(e => e.id === era.id);
+    const isUnlocked = eraIndex === 0 || (eraProgress[ERAS[eraIndex - 1].id] || 0) >= 50;
+    
+    return (
+      <motion.div
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+        onClick={() => isUnlocked && onSelect()}
+        className={cn(
+          "app-card p-8 cursor-pointer relative overflow-hidden group",
+          !isUnlocked && "opacity-75 grayscale cursor-not-allowed",
+          preferences.themeTexture === 'glass' && "glass-card"
+        )}
+      >
+        <div className="relative z-10">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 bg-amber-500/10 rounded-2xl flex items-center justify-center text-2xl shadow-inner">
+                {era.badge}
+              </div>
+              <div>
+                <h4 className="text-xl font-black tracking-tight">{era.name}</h4>
+                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">
+                  {era.startYear} - {era.endYear}
+                </p>
+              </div>
+            </div>
+            {!isUnlocked && <Lock className="w-5 h-5 text-slate-400" />}
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-500">{collectedInEra} / {eraCoins.length} Coins Found</span>
+              <span className="text-xs font-black text-amber-500">{progress}%</span>
+            </div>
+            <div className="h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+              <motion.div 
+                initial={{ width: 0 }}
+                animate={{ width: `${progress}%` }}
+                className="h-full bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]"
+              />
+            </div>
+          </div>
+
+          {isUnlocked && progress === 100 && (
+            <div className="mt-6 flex items-center gap-2 text-emerald-500 bg-emerald-500/10 p-3 rounded-2xl border border-emerald-500/20">
+              <CheckCircle2 className="w-5 h-5" />
+              <span className="text-[10px] font-black uppercase tracking-widest">Era Fully Conquered</span>
+            </div>
+          )}
+          
+          {!isUnlocked && (
+            <div className="mt-6 flex items-center gap-2 text-slate-400 bg-slate-100 dark:bg-slate-800 p-3 rounded-2xl border border-slate-200 dark:border-slate-700">
+              <ShieldAlert className="w-5 h-5" />
+              <span className="text-[10px] font-black uppercase tracking-widest">Reach 50% in previous era to unlock</span>
+            </div>
+          )}
+        </div>
+        
+        <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-amber-500/5 rounded-full blur-3xl group-hover:bg-amber-500/10 transition-all duration-700" />
+      </motion.div>
+    );
+  };
+
   const generateRecoveryCode = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let code = '';
@@ -810,8 +942,14 @@ function CoinCollectorApp() {
         setLastLuckySpinDate(parsed.lastLuckySpinDate);
         setTimelineProgress(parsed.timelineProgress || {});
         setGameProgress(parsed.gameProgress || {});
+        setStoryProgress(parsed.storyProgress || {});
+        setEraProgress(parsed.eraProgress || {});
         setTimelinePoints(parsed.timelinePoints || 0);
+        setStoryPoints(parsed.storyPoints || 0);
+        setGamePoints(parsed.gamePoints || 0);
         setLastOpenedTimelineId(parsed.lastOpenedTimelineId);
+        setLastOpenedStoryId(parsed.lastOpenedStoryId);
+        setLastOpenedGameModeId(parsed.lastOpenedGameModeId);
 
         if (parsed.preferences) {
           setPreferences({
@@ -874,6 +1012,41 @@ function CoinCollectorApp() {
     }
   }, []);
 
+  // Era Conquest Progress Logic
+  useEffect(() => {
+    const newEraProgress: { [key: string]: number } = {};
+    let totalPoints = 0;
+    
+    ERAS.forEach(era => {
+      const eraCoins = coins.filter(c => c.year >= era.startYear && c.year <= era.endYear);
+      const collectedInEra = eraCoins.filter(c => c.isCollected).length;
+      
+      // Calculate progress based on challenges
+      let completedChallenges = 0;
+      era.challenges.forEach(challenge => {
+        if (collectedInEra >= challenge.requirement) {
+          completedChallenges++;
+          totalPoints += 50; // 50 XP per challenge
+        }
+      });
+      
+      const progress = era.challenges.length > 0 
+        ? Math.round((completedChallenges / era.challenges.length) * 100)
+        : (eraCoins.length > 0 ? Math.round((collectedInEra / eraCoins.length) * 100) : 0);
+        
+      newEraProgress[era.id] = progress;
+    });
+    
+    setEraProgress(newEraProgress);
+    setGamePoints(totalPoints);
+
+    // Update Game Mode progress
+    const eraConquestProgress = Math.round(
+      Object.values(newEraProgress).reduce((acc, curr) => acc + curr, 0) / ERAS.length
+    );
+    setGameProgress(prev => ({ ...prev, 'era-conquest': eraConquestProgress }));
+  }, [coins]);
+
   // Theme management
   useEffect(() => {
     const root = document.documentElement;
@@ -924,11 +1097,14 @@ function CoinCollectorApp() {
         lastLuckySpinDate,
         lastOpenedTimelineId,
         lastOpenedStoryId,
+        lastOpenedGameModeId,
         timelineProgress,
         gameProgress,
         storyProgress,
+        eraProgress,
         timelinePoints,
         storyPoints,
+        gamePoints,
         lastUpdated: new Date().toISOString()
       };
       const stateStr = JSON.stringify(state);
@@ -939,7 +1115,7 @@ function CoinCollectorApp() {
         localStorage.setItem('uk-coin-collection-last-working', stateStr);
       }
     }
-  }, [coins, folders, preferences, recoveryCode, streak, missions, achievements, lastLuckySpinDate, isSafeMode, lastOpenedTimelineId, lastOpenedStoryId, timelineProgress, gameProgress, storyProgress, timelinePoints, storyPoints]);
+  }, [coins, folders, preferences, recoveryCode, streak, missions, achievements, lastLuckySpinDate, isSafeMode, lastOpenedTimelineId, lastOpenedStoryId, lastOpenedGameModeId, timelineProgress, gameProgress, storyProgress, eraProgress, timelinePoints, storyPoints, gamePoints]);
 
   // Daily Backup Logic
   useEffect(() => {
@@ -1141,25 +1317,28 @@ function CoinCollectorApp() {
   };
 
   const exportData = () => {
-    const state: AppState = { 
-      version: 3,
-      coins, 
-      folders, 
-      preferences, 
-      recoveryCode, 
-      streak, 
-      missions, 
-      achievements, 
-      lastLuckySpinDate,
-      lastOpenedTimelineId,
-      lastOpenedStoryId,
-      timelineProgress,
-      gameProgress,
-      storyProgress,
-      timelinePoints,
-      storyPoints,
-      lastUpdated: new Date().toISOString() 
-    };
+      const state: AppState = { 
+        version: 3,
+        coins, 
+        folders, 
+        preferences, 
+        recoveryCode, 
+        streak, 
+        missions, 
+        achievements, 
+        lastLuckySpinDate,
+        lastOpenedTimelineId,
+        lastOpenedStoryId,
+        lastOpenedGameModeId,
+        timelineProgress,
+        gameProgress,
+        storyProgress,
+        eraProgress,
+        timelinePoints,
+        storyPoints,
+        gamePoints,
+        lastUpdated: new Date().toISOString() 
+      };
     const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1212,11 +1391,14 @@ function CoinCollectorApp() {
                 coins, folders, preferences, recoveryCode, streak, missions, achievements, lastLuckySpinDate,
                 lastOpenedTimelineId,
                 lastOpenedStoryId,
+                lastOpenedGameModeId,
                 timelineProgress,
                 gameProgress,
                 storyProgress,
+                eraProgress,
                 timelinePoints,
                 storyPoints,
+                gamePoints,
                 lastUpdated: new Date().toISOString() 
               };
               localStorage.setItem('uk-coin-collection-pre-conversion-backup', JSON.stringify(currentState));
@@ -1620,6 +1802,91 @@ function CoinCollectorApp() {
                 </table>
               </div>
             </div>
+          ) : isGameModesOpen ? (
+            <div className="pb-32">
+              <div className="px-6 pt-8 mb-8 flex justify-between items-end">
+                <div>
+                  <h1 className="text-4xl font-black tracking-tight text-gradient">Game Modes</h1>
+                  <p className="text-slate-500 dark:text-slate-400 font-medium mt-2">Challenge yourself and unlock history.</p>
+                </div>
+                <div className="text-right">
+                  <div className="flex items-center gap-2 bg-amber-100 dark:bg-amber-900/30 px-3 py-1.5 rounded-full border border-amber-200 dark:border-amber-800/50">
+                    <Star className="w-4 h-4 text-amber-600" />
+                    <span className="text-sm font-black text-amber-700 dark:text-amber-400">{gamePoints} <span className="text-[10px] uppercase opacity-60">XP</span></span>
+                  </div>
+                </div>
+              </div>
+
+              <AnimatePresence mode="wait">
+                {activeGameModeId === 'era-conquest' ? (
+                  <motion.div
+                    key="era-conquest"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    className="px-6 space-y-8"
+                  >
+                    <div className="flex items-center gap-4 mb-8">
+                      <button 
+                        onClick={() => setActiveGameModeId(null)}
+                        className="p-3 bg-slate-100 dark:bg-slate-800 rounded-2xl hover:bg-amber-500 hover:text-white transition-all"
+                      >
+                        <X className="w-6 h-6" />
+                      </button>
+                      <h2 className="text-3xl font-black tracking-tight">Era Conquest</h2>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {ERAS.map(era => (
+                        <EraCard 
+                          key={era.id} 
+                          era={era} 
+                          coins={coins} 
+                          progress={eraProgress[era.id] || 0}
+                          onSelect={() => {
+                            // Logic to handle era selection or showing challenges
+                            showToast(`Exploring ${era.name}...`, 'info');
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="modes-hub"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    className="space-y-10"
+                  >
+                    <div className="space-y-6">
+                      <div className="flex justify-between items-center px-6">
+                        <h2 className="text-2xl font-black tracking-tight text-gradient">Available Modes</h2>
+                      </div>
+                      <div className="flex gap-6 overflow-x-auto px-6 pb-8 no-scrollbar">
+                        {GAME_MODES.map(mode => (
+                          <GameModeCard 
+                            key={mode.id} 
+                            mode={{
+                              ...mode,
+                              progress: gameProgress[mode.id] || 0
+                            }} 
+                            onClick={() => {
+                              if (mode.isUnlocked) {
+                                setActiveGameModeId(mode.id);
+                                setLastOpenedGameModeId(mode.id);
+                              } else {
+                                showToast('Mode locked! Keep collecting to unlock.', 'info');
+                              }
+                            }} 
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           ) : isStoryOpen ? (
             <div className="pb-32">
               <div className="px-6 pt-8 mb-8 flex justify-between items-end">
@@ -2001,13 +2268,14 @@ function CoinCollectorApp() {
                   openFolder('all');
                   setIsTimelineOpen(false);
                   setIsStoryOpen(false);
+                  setIsGameModesOpen(false);
                   setIsPhotoLibraryOpen(false);
                   setIsProfileOpen(false);
                   setIsSettingsOpen(false);
                 }}
                 className={cn(
                   "flex flex-col items-center gap-1 py-3 px-5 rounded-3xl transition-all duration-300",
-                  preferences.activeFolderId === 'all' && !isTimelineOpen && !isStoryOpen && !isPhotoLibraryOpen && !isProfileOpen && !isSettingsOpen
+                  preferences.activeFolderId === 'all' && !isTimelineOpen && !isStoryOpen && !isGameModesOpen && !isPhotoLibraryOpen && !isProfileOpen && !isSettingsOpen
                     ? "bg-amber-500 text-white shadow-lg shadow-amber-500/20 scale-110" 
                     : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                 )}
@@ -2019,6 +2287,7 @@ function CoinCollectorApp() {
                 onClick={() => {
                   setIsTimelineOpen(true);
                   setIsStoryOpen(false);
+                  setIsGameModesOpen(false);
                   setIsPhotoLibraryOpen(false);
                   setIsProfileOpen(false);
                   setIsSettingsOpen(false);
@@ -2043,8 +2312,29 @@ function CoinCollectorApp() {
 
               <button 
                 onClick={() => {
+                  setIsGameModesOpen(true);
+                  setIsTimelineOpen(false);
+                  setIsStoryOpen(false);
+                  setIsPhotoLibraryOpen(false);
+                  setIsProfileOpen(false);
+                  setIsSettingsOpen(false);
+                }}
+                className={cn(
+                  "flex flex-col items-center gap-1 py-3 px-5 rounded-3xl transition-all duration-300",
+                  isGameModesOpen 
+                    ? "bg-amber-500 text-white shadow-lg shadow-amber-500/20 scale-110" 
+                    : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                )}
+              >
+                <Gamepad2 className="w-6 h-6" />
+                <span className="text-[10px] font-black uppercase tracking-widest">Play</span>
+              </button>
+
+              <button 
+                onClick={() => {
                   setIsStoryOpen(true);
                   setIsTimelineOpen(false);
+                  setIsGameModesOpen(false);
                   setIsPhotoLibraryOpen(false);
                   setIsProfileOpen(false);
                   setIsSettingsOpen(false);
@@ -2485,11 +2775,14 @@ function CoinCollectorApp() {
                               lastLuckySpinDate,
                               lastOpenedTimelineId,
                               lastOpenedStoryId,
+                              lastOpenedGameModeId,
                               timelineProgress,
                               gameProgress,
                               storyProgress,
+                              eraProgress,
                               timelinePoints,
                               storyPoints,
+                              gamePoints,
                               lastUpdated: new Date().toISOString() 
                             };
                             localStorage.setItem('uk-coin-collection-safe', JSON.stringify(state));
@@ -2513,6 +2806,10 @@ function CoinCollectorApp() {
                               if (parsed.missions) setMissions(parsed.missions);
                               if (parsed.achievements) setAchievements(parsed.achievements);
                               if (parsed.lastLuckySpinDate) setLastLuckySpinDate(parsed.lastLuckySpinDate);
+                              if (parsed.gameProgress) setGameProgress(parsed.gameProgress);
+                              if (parsed.eraProgress) setEraProgress(parsed.eraProgress);
+                              if (parsed.gamePoints !== undefined) setGamePoints(parsed.gamePoints);
+                              if (parsed.lastOpenedGameModeId) setLastOpenedGameModeId(parsed.lastOpenedGameModeId);
                               showToast('Safe version restored!');
                             } else if (!safeData) {
                               alert('No safe version found.');

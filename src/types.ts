@@ -94,6 +94,34 @@ export interface Story {
   progress: number;
 }
 
+export interface GameMode {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  isUnlocked: boolean;
+  progress: number;
+}
+
+export interface EraChallenge {
+  id: string;
+  title: string;
+  description: string;
+  requirement: number;
+  isCompleted: boolean;
+}
+
+export interface Era {
+  id: string;
+  name: string;
+  startYear: number;
+  endYear: number;
+  challenges: EraChallenge[];
+  isUnlocked: boolean;
+  loreCard?: string;
+  badge?: string;
+}
+
 export interface AppState {
   version?: number;
   coins: Coin[];
@@ -108,15 +136,20 @@ export interface AppState {
     lastTimelineVisitDate?: string;
     storyStreak?: number;
     lastStoryVisitDate?: string;
+    gameStreak?: number;
+    lastGameVisitDate?: string;
   };
   missions: Mission[];
   achievements: Achievement[];
   lastLuckySpinDate?: string;
   lastOpenedTimelineId?: string;
   lastOpenedStoryId?: string;
+  lastOpenedGameModeId?: string;
   timelineProgress: { [timelineId: string]: number };
   gameProgress: { [gameId: string]: number };
   storyProgress: { [storyId: string]: number };
+  eraProgress: { [eraId: string]: number };
   timelinePoints?: number;
   storyPoints?: number;
+  gamePoints?: number;
 }

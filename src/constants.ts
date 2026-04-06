@@ -1,4 +1,4 @@
-import { Coin, Folder, Timeline } from './types';
+import { Coin, Folder, Timeline, GameMode, Era } from './types';
 
 const now = new Date().toISOString();
 
@@ -7,6 +7,92 @@ export const INITIAL_FOLDERS: Folder[] = [
   { id: 'folder-rare', name: 'Rare Finds', icon: '💎', lastOpenedAt: now, addedAt: now },
   { id: 'folder-circulating', name: 'Circulating', icon: '🔄', lastOpenedAt: now, addedAt: now },
   { id: 'folder-purchased', name: 'Coins Purchased', icon: '🛍️', lastOpenedAt: now, addedAt: now }
+];
+
+export const ERAS: Era[] = [
+  {
+    id: 'era-1800s',
+    name: 'The 1800s',
+    startYear: 1800,
+    endYear: 1899,
+    challenges: [
+      { id: 'era-1800s-c1', title: 'Victorian Collector', description: 'Collect 3 coins from the 1800s', requirement: 3, isCompleted: false }
+    ],
+    isUnlocked: true,
+    loreCard: 'The 1800s saw the rise of the British Empire and the industrial revolution. Coins from this era often feature Queen Victoria.',
+    badge: '👑'
+  },
+  {
+    id: 'era-1900s',
+    name: 'The 1900s',
+    startYear: 1900,
+    endYear: 1919,
+    challenges: [
+      { id: 'era-1900s-c1', title: 'Edwardian Era', description: 'Collect 2 coins from 1900-1919', requirement: 2, isCompleted: false }
+    ],
+    isUnlocked: false,
+    loreCard: 'The early 20th century was a time of great change, leading up to the First World War.',
+    badge: '⚔️'
+  },
+  {
+    id: 'era-1920s',
+    name: 'The 1920s',
+    startYear: 1920,
+    endYear: 1929,
+    challenges: [
+      { id: 'era-1920s-c1', title: 'Roaring Twenties', description: 'Collect 3 coins from the 1920s', requirement: 3, isCompleted: false }
+    ],
+    isUnlocked: false,
+    loreCard: 'The 1920s were known for economic prosperity and social change.',
+    badge: '🎷'
+  },
+  {
+    id: 'era-modern',
+    name: 'Modern Era',
+    startYear: 1930,
+    endYear: 2026,
+    challenges: [
+      { id: 'era-modern-c1', title: 'Modern Collector', description: 'Collect 10 coins from 1930 onwards', requirement: 10, isCompleted: false }
+    ],
+    isUnlocked: false,
+    loreCard: 'The modern era includes decimalisation and the introduction of new denominations.',
+    badge: '📱'
+  }
+];
+
+export const GAME_MODES: GameMode[] = [
+  {
+    id: 'era-conquest',
+    title: 'Era Conquest',
+    description: 'Conquer different time periods by completing challenges.',
+    icon: '🏰',
+    isUnlocked: true,
+    progress: 0
+  },
+  {
+    id: 'timeline-explorer',
+    title: 'Timeline Explorer',
+    description: 'Navigate the full history of your collection.',
+    icon: '⏳',
+    isUnlocked: true,
+    progress: 0
+  },
+  {
+    id: 'mint-mark-detective',
+    title: 'Mint Mark Detective',
+    description: 'Identify rare mint marks and origins.',
+    icon: '🕵️',
+    isUnlocked: false,
+    progress: 0
+  },
+  {
+    id: 'my-coin-story-game',
+    title: 'My Coin Story',
+    description: 'Play through your own personal collection journey.',
+    icon: '📖',
+    isUnlocked: true,
+    progress: 0
+  }
 ];
 
 export const INITIAL_COINS: Coin[] = [
