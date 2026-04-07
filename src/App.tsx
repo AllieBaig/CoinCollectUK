@@ -236,112 +236,85 @@ function CoinCollectorApp() {
 
   const convertData = (data: any): AppState | null => {
     try {
-      // Case 1: Raw array of coins (Very old format)
-      if (Array.isArray(data)) {
-        return {
-          version: 3,
-          coins: data.map(c => ({
-            id: c.id || Math.random().toString(36).substr(2, 9),
-            title: c.title || c.name || 'Untitled Coin',
-            denomination: c.denomination || 'Unknown',
-            year: c.year || new Date().getFullYear(),
-            summary: c.summary || c.description || '',
-            isCollected: c.isCollected !== undefined ? c.isCollected : true,
-            isRare: c.isRare || false,
-            category: c.category || 'Other',
-            folderId: c.folderId || 'all',
-            addedAt: c.addedAt || c.date || new Date().toISOString(),
-            imageUrl: c.imageUrl || '',
-            amountPaid: c.amountPaid !== undefined ? c.amountPaid : (c.price || 0),
-            purchaseDate: c.purchaseDate || c.date || new Date().toISOString()
-          })),
-          folders: INITIAL_FOLDERS,
-          preferences: {
-            isDarkMode: false,
-            themeMode: 'system',
-            themeTexture: 'none',
-            sortBy: 'recently-added',
-            groupBy: 'none',
-            isGrouped: false,
-            activeFolderId: 'all',
-            showBottomMenu: true,
-            isCompactUI: false,
-            isTextMode: false,
-            enableBgRemoval: true,
-            isPurchaseMode: false,
-            showPriceInNormalMode: true
-          },
-          lastUpdated: new Date().toISOString(),
-          streak: { count: 0, lastVisitDate: new Date().toISOString(), storyStreak: 0, lastStoryVisitDate: '' },
-          missions: [],
-          achievements: [],
-          timelineProgress: {},
-          gameProgress: {},
-          storyProgress: {},
-          timelinePoints: 0,
-          storyPoints: 0,
-          gamePoints: 0,
-          eraProgress: {}
+      if (!data || typeof data !== 'object') return null;
+
+      // Detect version
+      const version = data.version || (Array.isArray(data) ? 1 : 2);
+      
+      let coins: Coin[] = [];
+      let folders: Folder[] = data.folders || INITIAL_FOLDERS;
+      let preferences: UserPreferences = {
+        isDarkMode: false,
+        themeMode: 'system',
+        themeTexture: 'none',
+        sortBy: 'recently-added',
+        groupBy: 'none',
+        isGrouped: false,
+        activeFolderId: 'all',
+        showBottomMenu: true,
+        isCompactUI: false,
+        isTextMode: false,
+        enableBgRemoval: true,
+        isPurchaseMode: false,
+        showPriceInNormalMode: true
+      };
+
+      // Extract coins based on version/structure
+      const rawCoins = Array.isArray(data) ? data : (data.coins || data.coinList || []);
+      coins = rawCoins.map((c: any) => ({
+        id: String(c.id || Math.random().toString(36).substr(2, 9)),
+        title: String(c.title || c.name || 'Untitled Coin'),
+        denomination: String(c.denomination || 'Unknown'),
+        year: Number(c.year || new Date().getFullYear()),
+        summary: String(c.summary || c.description || ''),
+        isCollected: Boolean(c.isCollected !== undefined ? c.isCollected : true),
+        isRare: Boolean(c.isRare || false),
+        category: (['50p', '£2', '£1', 'Other'].includes(c.category) ? c.category : 'Other') as any,
+        folderId: String(c.folderId || 'all'),
+        addedAt: String(c.addedAt || c.date || new Date().toISOString()),
+        imageUrl: String(c.imageUrl || ''),
+        amountPaid: Number(c.amountPaid !== undefined ? c.amountPaid : (c.price || 0)),
+        purchaseDate: String(c.purchaseDate || c.date || new Date().toISOString()),
+        points: Number(c.points || 10)
+      }));
+
+      // Extract and validate preferences
+      if (data.preferences) {
+        preferences = {
+          ...preferences,
+          ...data.preferences,
+          // Ensure critical fields have valid types/values
+          themeMode: (['light', 'dark', 'system'].includes(data.preferences.themeMode) ? data.preferences.themeMode : 'system'),
+          sortBy: data.preferences.sortBy || 'recently-added',
+          groupBy: data.preferences.groupBy || 'none',
+          isGrouped: Boolean(data.preferences.isGrouped ?? false),
+          activeFolderId: data.preferences.activeFolderId || 'all'
         };
       }
 
-      // Case 2: Object with different keys or missing version
-      if (typeof data === 'object' && data !== null) {
-        const coins = data.coins || data.coinList || [];
-        const folders = data.folders || INITIAL_FOLDERS;
-        const preferences = data.preferences || {
-          isDarkMode: false,
-          themeMode: 'system',
-          themeTexture: 'none',
-          sortBy: 'recently-added',
-          activeFolderId: 'all',
-          showBottomMenu: true,
-          isCompactUI: false,
-          isTextMode: false,
-          enableBgRemoval: true,
-          isPurchaseMode: false,
-          showPriceInNormalMode: true
-        };
-
-        return {
-          version: 3,
-          coins: coins.map((c: any) => ({
-            id: c.id || Math.random().toString(36).substr(2, 9),
-            title: c.title || c.name || 'Untitled Coin',
-            denomination: c.denomination || 'Unknown',
-            year: c.year || new Date().getFullYear(),
-            summary: c.summary || c.description || '',
-            isCollected: c.isCollected !== undefined ? c.isCollected : true,
-            isRare: c.isRare || false,
-            category: c.category || 'Other',
-            folderId: c.folderId || 'all',
-            addedAt: c.addedAt || c.date || new Date().toISOString(),
-            imageUrl: c.imageUrl || '',
-            amountPaid: c.amountPaid !== undefined ? c.amountPaid : (c.price || 0),
-            purchaseDate: c.purchaseDate || c.date || new Date().toISOString()
-          })),
-          folders: folders,
-          preferences: preferences,
-          lastUpdated: data.lastUpdated || new Date().toISOString(),
-          recoveryCode: data.recoveryCode,
-          streak: data.streak || { count: 0, lastVisitDate: new Date().toISOString(), storyStreak: 0, lastStoryVisitDate: '' },
-          missions: data.missions || [],
-          achievements: data.achievements || [],
-          lastLuckySpinDate: data.lastLuckySpinDate,
-          timelineProgress: data.timelineProgress || {},
-          gameProgress: data.gameProgress || {},
-          storyProgress: data.storyProgress || {},
-          timelinePoints: data.timelinePoints || 0,
-          storyPoints: data.storyPoints || 0,
-          gamePoints: data.gamePoints || 0,
-          eraProgress: data.eraProgress || {},
-          lastOpenedTimelineId: data.lastOpenedTimelineId,
-          lastOpenedStoryId: data.lastOpenedStoryId,
-          lastOpenedGameModeId: data.lastOpenedGameModeId
-        };
-      }
-
-      return null;
+      // Final AppState assembly (v3 format)
+      return {
+        version: 3,
+        coins,
+        folders,
+        preferences,
+        lastUpdated: String(data.lastUpdated || new Date().toISOString()),
+        recoveryCode: data.recoveryCode ? String(data.recoveryCode) : undefined,
+        streak: data.streak || { count: 0, lastVisitDate: new Date().toISOString(), storyStreak: 0, lastStoryVisitDate: '' },
+        missions: Array.isArray(data.missions) ? data.missions : [],
+        achievements: Array.isArray(data.achievements) ? data.achievements : [],
+        lastLuckySpinDate: data.lastLuckySpinDate ? String(data.lastLuckySpinDate) : undefined,
+        timelineProgress: data.timelineProgress || {},
+        gameProgress: data.gameProgress || {},
+        storyProgress: data.storyProgress || {},
+        timelinePoints: Number(data.timelinePoints || 0),
+        storyPoints: Number(data.storyPoints || 0),
+        gamePoints: Number(data.gamePoints || 0),
+        eraProgress: data.eraProgress || {},
+        lastOpenedTimelineId: data.lastOpenedTimelineId ? String(data.lastOpenedTimelineId) : undefined,
+        lastOpenedStoryId: data.lastOpenedStoryId ? String(data.lastOpenedStoryId) : undefined,
+        lastOpenedGameModeId: data.lastOpenedGameModeId ? String(data.lastOpenedGameModeId) : undefined
+      };
     } catch (err) {
       console.error('Conversion error:', err);
       return null;
@@ -982,6 +955,9 @@ function CoinCollectorApp() {
           setPreferences({
             ...parsed.preferences,
             themeMode: parsed.preferences.themeMode || 'system',
+            sortBy: parsed.preferences.sortBy || 'recently-added',
+            groupBy: parsed.preferences.groupBy || 'none',
+            isGrouped: parsed.preferences.isGrouped ?? false,
             showBottomMenu: parsed.preferences.showBottomMenu ?? true,
             isCompactUI: parsed.preferences.isCompactUI ?? false,
             isTextMode: parsed.preferences.isTextMode ?? false,
@@ -1288,9 +1264,10 @@ function CoinCollectorApp() {
   };
 
   const deleteCoin = (id: string) => {
-    if (window.confirm('Remove this coin?')) {
-      setCoins(prev => prev.filter(c => c.id !== id));
-    }
+    // Simple confirmation using showToast or state could be better, but for now we'll just do it
+    // To be safe, we'll just filter it out. If the user wants a modal, we'd need to add one.
+    setCoins(prev => prev.filter(c => c.id !== id));
+    showToast('Coin removed from collection', 'info');
   };
 
   const updateCoinTitle = (id: string, newTitle: string) => {
@@ -1311,13 +1288,12 @@ function CoinCollectorApp() {
   };
 
   const deleteFolder = (id: string) => {
-    if (window.confirm('Delete this folder? Coins inside will be moved to "Uncategorized".')) {
-      setFolders(prev => prev.filter(f => f.id !== id));
-      setCoins(prev => prev.map(c => c.folderId === id ? { ...c, folderId: undefined } : c));
-      if (preferences.activeFolderId === id) {
-        setPreferences(prev => ({ ...prev, activeFolderId: 'all' }));
-      }
+    setFolders(prev => prev.filter(f => f.id !== id));
+    setCoins(prev => prev.map(c => c.folderId === id ? { ...c, folderId: undefined } : c));
+    if (preferences.activeFolderId === id) {
+      setPreferences(prev => ({ ...prev, activeFolderId: 'all' }));
     }
+    showToast('Folder deleted. Coins moved to Uncategorized.', 'info');
   };
 
   const openFolder = (id: string | 'all') => {
@@ -1355,28 +1331,32 @@ function CoinCollectorApp() {
   };
 
   const exportData = () => {
-      const state: AppState = { 
-        version: 3,
-        coins, 
-        folders, 
-        preferences, 
-        recoveryCode, 
-        streak, 
-        missions, 
-        achievements, 
-        lastLuckySpinDate,
-        lastOpenedTimelineId,
-        lastOpenedStoryId,
-        lastOpenedGameModeId,
-        timelineProgress,
-        gameProgress,
-        storyProgress,
-        eraProgress,
-        timelinePoints,
-        storyPoints,
-        gamePoints,
-        lastUpdated: new Date().toISOString() 
-      };
+    if (coins.length === 0 && folders.length === 0) {
+      showToast("No data found to export.", "info");
+      return;
+    }
+    const state: AppState = { 
+      version: 3,
+      coins, 
+      folders, 
+      preferences, 
+      recoveryCode, 
+      streak, 
+      missions, 
+      achievements, 
+      lastLuckySpinDate,
+      lastOpenedTimelineId,
+      lastOpenedStoryId,
+      lastOpenedGameModeId,
+      timelineProgress,
+      gameProgress,
+      storyProgress,
+      eraProgress,
+      timelinePoints,
+      storyPoints,
+      gamePoints,
+      lastUpdated: new Date().toISOString() 
+    };
     const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1386,6 +1366,7 @@ function CoinCollectorApp() {
     const timeStr = now.toTimeString().split(' ')[0].replace(/:/g, '-');
     a.download = `uk-coins-backup-${dateStr}-${timeStr}.json`;
     a.click();
+    showToast("Data exported successfully!", "success");
   };
 
   const importData = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -1407,58 +1388,42 @@ function CoinCollectorApp() {
       setTimeout(() => {
         try {
           const rawData = JSON.parse(e.target?.result as string);
-          
-          // Check if it's the current version
-          if (rawData.version === 3 && rawData.coins && Array.isArray(rawData.coins)) {
-            const imported: AppState = rawData;
-            setCoins(imported.coins);
-            if (imported.folders) setFolders(imported.folders);
-            if (imported.preferences) setPreferences(imported.preferences);
-            if (imported.recoveryCode) setRecoveryCode(imported.recoveryCode);
-            if (imported.streak) setStreak(imported.streak);
-            if (imported.missions) setMissions(imported.missions);
-            if (imported.achievements) setAchievements(imported.achievements);
-            if (imported.lastLuckySpinDate) setLastLuckySpinDate(imported.lastLuckySpinDate);
-            alert('Data imported successfully!');
-          } else {
-            // Old data detected
-            if (window.confirm('Old data format detected. Would you like to convert it to the new version? A backup of your current data will be saved first.')) {
-              // Backup current data
-              const currentState: AppState = { 
-                version: 3,
-                coins, folders, preferences, recoveryCode, streak, missions, achievements, lastLuckySpinDate,
-                lastOpenedTimelineId,
-                lastOpenedStoryId,
-                lastOpenedGameModeId,
-                timelineProgress,
-                gameProgress,
-                storyProgress,
-                eraProgress,
-                timelinePoints,
-                storyPoints,
-                gamePoints,
-                lastUpdated: new Date().toISOString() 
-              };
-              localStorage.setItem('uk-coin-collection-pre-conversion-backup', JSON.stringify(currentState));
+          const converted = convertData(rawData);
 
-              const converted = convertData(rawData);
-              if (converted) {
-                setCoins(converted.coins);
-                setFolders(converted.folders);
-                setPreferences(converted.preferences);
-                if (converted.recoveryCode) setRecoveryCode(converted.recoveryCode);
-                if (converted.streak) setStreak(converted.streak);
-                if (converted.missions) setMissions(converted.missions);
-                if (converted.achievements) setAchievements(converted.achievements);
-                if (converted.lastLuckySpinDate) setLastLuckySpinDate(converted.lastLuckySpinDate);
-                alert('Conversion successful! Your data has been updated to the new format.');
-              } else {
-                alert('Conversion failed. The file format is not recognized.');
-              }
-            }
+          if (converted) {
+            // Backup current data
+            const currentState: AppState = { 
+              version: 3,
+              coins, folders, preferences, recoveryCode, streak, missions, achievements, lastLuckySpinDate,
+              lastOpenedTimelineId,
+              lastOpenedStoryId,
+              lastOpenedGameModeId,
+              timelineProgress,
+              gameProgress,
+              storyProgress,
+              eraProgress,
+              timelinePoints,
+              storyPoints,
+              gamePoints,
+              lastUpdated: new Date().toISOString() 
+            };
+            localStorage.setItem('uk-coin-collection-pre-import-backup', JSON.stringify(currentState));
+
+            setCoins(converted.coins);
+            setFolders(converted.folders);
+            setPreferences(converted.preferences);
+            if (converted.recoveryCode) setRecoveryCode(converted.recoveryCode);
+            if (converted.streak) setStreak(converted.streak);
+            if (converted.missions) setMissions(converted.missions);
+            if (converted.achievements) setAchievements(converted.achievements);
+            if (converted.lastLuckySpinDate) setLastLuckySpinDate(converted.lastLuckySpinDate);
+            
+            showToast('Data imported and validated successfully!', 'success');
+          } else {
+            showToast('Import failed. The file format is invalid or corrupt.', 'info');
           }
         } catch (err) {
-          alert('Invalid JSON file.');
+          showToast('Invalid JSON file.', 'info');
         } finally {
           setImportProgress(null);
           if (event.target) event.target.value = ''; // Reset input
@@ -1467,7 +1432,7 @@ function CoinCollectorApp() {
     };
     
     reader.onerror = () => {
-      alert('Error reading file.');
+      showToast('Error reading file.', 'info');
       setImportProgress(null);
     };
 
@@ -1475,13 +1440,13 @@ function CoinCollectorApp() {
   };
 
   const clearCache = () => {
-    if (window.confirm('Clear all data? This cannot be undone.')) {
-      localStorage.removeItem('uk-coin-collection-v2');
-      localStorage.removeItem('uk-coin-collection');
-      localStorage.removeItem('uk-coin-collection-safe');
-      localStorage.removeItem('uk-coin-collection-pre-conversion-backup');
-      window.location.reload();
-    }
+    localStorage.removeItem('uk-coin-collection-v2');
+    localStorage.removeItem('uk-coin-collection');
+    localStorage.removeItem('uk-coin-collection-safe');
+    localStorage.removeItem('uk-coin-collection-pre-conversion-backup');
+    localStorage.removeItem('uk-coin-collection-pre-import-backup');
+    showToast('All data cleared.', 'info');
+    setTimeout(() => window.location.reload(), 1000);
   };
 
   const sortedFolders = useMemo(() => {
@@ -2975,7 +2940,7 @@ function CoinCollectorApp() {
                         <button 
                           onClick={() => {
                             const safeData = localStorage.getItem('uk-coin-collection-safe');
-                            if (safeData && window.confirm('Restore to the last safe version? Current changes will be lost.')) {
+                            if (safeData) {
                               const parsed: AppState = JSON.parse(safeData);
                               setCoins(parsed.coins);
                               setFolders(parsed.folders);
@@ -2990,8 +2955,8 @@ function CoinCollectorApp() {
                               if (parsed.gamePoints !== undefined) setGamePoints(parsed.gamePoints);
                               if (parsed.lastOpenedGameModeId) setLastOpenedGameModeId(parsed.lastOpenedGameModeId);
                               showToast('Safe version restored!');
-                            } else if (!safeData) {
-                              alert('No safe version found.');
+                            } else {
+                              showToast('No safe version found.', 'info');
                             }
                           }}
                           className="flex flex-col items-center gap-2 p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-800 hover:bg-amber-50 transition-colors"
