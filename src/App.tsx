@@ -405,6 +405,272 @@ function CoinCollectorApp() {
   const [lastOpenedGameModeId, setLastOpenedGameModeId] = useState<string | undefined>(undefined);
   const [expandedEventIdx, setExpandedEventIdx] = useState<number | null>(null);
   const [expandedChapterIdx, setExpandedChapterIdx] = useState<number | null>(null);
+  const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({});
+  const [selectedMindMapCoin, setSelectedMindMapCoin] = useState<Coin | null>(null);
+
+  const toggleNode = (id: string) => {
+    setExpandedNodes(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+  };
+
+  const MindMapTimeline = () => {
+    const treeData = useMemo(() => {
+      return ERAS.map(era => {
+        const eraCoins = coins.filter(c => c.year >= era.startYear && c.year <= era.endYear);
+        const collectedInEra = eraCoins.filter(c => c.isCollected).length;
+        const totalInEra = eraCoins.length;
+        
+        // Group by Year
+        const years: Record<number, Coin[]> = {};
+        eraCoins.forEach(c => {
+          if (!years[c.year]) years[c.year] = [];
+          years[c.year].push(c);
+        });
+
+        const yearNodes = Object.entries(years).sort((a, b) => Number(b[0]) - Number(a[0])).map(([year, yearCoins]) => {
+          const collectedInYear = yearCoins.filter(c => c.isCollected).length;
+          
+          // Group by Category (Type)
+          const categories: Record<string, Coin[]> = {};
+          yearCoins.forEach(c => {
+            if (!categories[c.category]) categories[c.category] = [];
+            categories[c.category].push(c);
+          });
+
+          const categoryNodes = Object.entries(categories).map(([cat, catCoins]) => {
+            const collectedInCat = catCoins.filter(c => c.isCollected).length;
+            
+            return {
+              id: `era-${era.id}-year-${year}-cat-${cat}`,
+              label: cat,
+              type: 'category',
+              collected: collectedInCat,
+              total: catCoins.length,
+              children: catCoins.map(coin => ({
+                id: `coin-${coin.id}`,
+                label: coin.title,
+                type: 'coin',
+                coin: coin,
+                collected: coin.isCollected ? 1 : 0,
+                total: 1
+              }))
+            };
+          });
+
+          return {
+            id: `era-${era.id}-year-${year}`,
+            label: year,
+            type: 'year',
+            collected: collectedInYear,
+            total: yearCoins.length,
+            children: [
+              {
+                id: `era-${era.id}-year-${year}-mint-royal`,
+                label: 'Royal Mint',
+                type: 'mint',
+                collected: collectedInYear,
+                total: yearCoins.length,
+                children: categoryNodes
+              }
+            ]
+          };
+        });
+
+        return {
+          id: `era-${era.id}`,
+          label: era.name,
+          type: 'era',
+          collected: collectedInEra,
+          total: totalInEra,
+          children: yearNodes
+        };
+      });
+    }, [coins]);
+
+    const renderNode = (node: any, depth: number = 0) => {
+      const isExpanded = expandedNodes[node.id];
+      const hasChildren = node.children && node.children.length > 0;
+      const progress = node.total > 0 ? Math.round((node.collected / node.total) * 100) : 0;
+      const isUnlocked = node.type === 'era' ? true : node.collected > 0 || (node.type === 'coin' && node.coin.isCollected);
+
+      return (
+        <div key={node.id} className="select-none">
+          <div 
+            onClick={() => {
+              if (node.type === 'coin') {
+                setSelectedMindMapCoin(node.coin);
+              } else if (hasChildren) {
+                toggleNode(node.id);
+              }
+            }}
+            className={cn(
+              "flex items-center gap-3 py-2 px-3 rounded-xl transition-all cursor-pointer group",
+              depth === 0 ? "mt-6 first:mt-0" : "mt-1",
+              isExpanded ? "bg-slate-100 dark:bg-slate-800/50" : "hover:bg-slate-50 dark:hover:bg-slate-800/30",
+              node.type === 'coin' && node.coin.isCollected && "text-emerald-600 dark:text-emerald-400",
+              node.type === 'coin' && !node.coin.isCollected && "text-slate-400 opacity-60"
+            )}
+            style={{ marginLeft: `${depth * 20}px` }}
+          >
+            {/* Branch Line Visual */}
+            {depth > 0 && (
+              <div className="flex items-center">
+                <div className="w-4 h-px bg-slate-200 dark:bg-slate-700" />
+              </div>
+            )}
+
+            <div className="flex items-center gap-2 flex-1">
+              {hasChildren && (
+                <motion.div
+                  animate={{ rotate: isExpanded ? 90 : 0 }}
+                  className="text-slate-400"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </motion.div>
+              )}
+              
+              <span className={cn(
+                "font-bold tracking-tight",
+                node.type === 'era' ? "text-lg uppercase font-black" : 
+                node.type === 'year' ? "text-base" : 
+                node.type === 'mint' ? "text-sm italic text-slate-500 dark:text-slate-400" : "text-sm"
+              )}>
+                {node.label}
+              </span>
+
+              {node.type !== 'coin' && (
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-auto">
+                  {node.collected}/{node.total}
+                </span>
+              )}
+              
+              {node.type === 'coin' && node.coin.isRare && (
+                <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
+              )}
+              
+              {node.type === 'coin' && !node.coin.isCollected && (
+                <Lock className="w-3 h-3 text-slate-300 dark:text-slate-600" />
+              )}
+            </div>
+
+            {/* Progress Bar for branches */}
+            {node.type !== 'coin' && node.total > 0 && (
+              <div className="w-12 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden hidden sm:block">
+                <div 
+                  className={cn(
+                    "h-full transition-all duration-500",
+                    progress === 100 ? "bg-emerald-500" : "bg-amber-500"
+                  )}
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+            )}
+          </div>
+
+          <AnimatePresence>
+            {isExpanded && hasChildren && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="overflow-hidden border-l border-slate-100 dark:border-slate-800 ml-4"
+              >
+                {node.children.map((child: any) => renderNode(child, depth + 1))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      );
+    };
+
+    return (
+      <div className="pb-32 px-4 sm:px-6">
+        <div className="flex items-center gap-4 mb-8 pt-6">
+          <button 
+            onClick={() => setActiveGameModeId(null)}
+            className="p-3 bg-slate-100 dark:bg-slate-800 rounded-2xl hover:bg-amber-500 hover:text-white transition-all"
+          >
+            <X className="w-6 h-6" />
+          </button>
+          <div>
+            <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-gradient">Mind Map Timeline</h2>
+            <p className="text-slate-500 dark:text-slate-400 text-xs font-medium">Interactive tree of your collection history.</p>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-6 sm:p-8 border border-slate-100 dark:border-slate-800 shadow-sm">
+          <div className="space-y-2">
+            {treeData.map(eraNode => renderNode(eraNode))}
+          </div>
+        </div>
+
+        {/* Coin Info Modal (Overlay) */}
+        <AnimatePresence>
+          {selectedMindMapCoin && (
+            <div className="fixed inset-0 z-[70] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm">
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-white dark:bg-slate-900 rounded-[3rem] p-8 max-w-md w-full shadow-2xl relative border border-slate-100 dark:border-slate-800"
+              >
+                <button 
+                  onClick={() => setSelectedMindMapCoin(null)}
+                  className="absolute top-6 right-6 p-2 bg-slate-100 dark:bg-slate-800 rounded-full hover:bg-red-500 hover:text-white transition-all"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+
+                <div className="space-y-6">
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 bg-amber-500 rounded-2xl flex items-center justify-center text-white text-2xl font-black">
+                      {selectedMindMapCoin.denomination}
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-black tracking-tight">{selectedMindMapCoin.title}</h3>
+                      <p className="text-slate-500 font-bold">{selectedMindMapCoin.year}</p>
+                    </div>
+                  </div>
+
+                  <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">
+                    {selectedMindMapCoin.summary}
+                  </p>
+
+                  <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</span>
+                      <span className={cn(
+                        "text-sm font-black uppercase tracking-wider",
+                        selectedMindMapCoin.isCollected ? "text-emerald-500" : "text-amber-500"
+                      )}>
+                        {selectedMindMapCoin.isCollected ? "Collected" : "Missing"}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => {
+                        toggleCollected(selectedMindMapCoin.id);
+                        setSelectedMindMapCoin(prev => prev ? { ...prev, isCollected: !prev.isCollected } : null);
+                      }}
+                      className={cn(
+                        "px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-xs transition-all",
+                        selectedMindMapCoin.isCollected 
+                          ? "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400" 
+                          : "bg-amber-500 text-white shadow-lg shadow-amber-500/20"
+                      )}
+                    >
+                      {selectedMindMapCoin.isCollected ? "Remove" : "Add to Collection"}
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  };
 
   const myCoinStory = useMemo(() => {
     const collectedCoins = coins.filter(c => c.isCollected);
@@ -2091,6 +2357,15 @@ function CoinCollectorApp() {
                         />
                       ))}
                     </div>
+                  </motion.div>
+                ) : activeGameModeId === 'mind-map-timeline' ? (
+                  <motion.div
+                    key="mind-map-timeline"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                  >
+                    <MindMapTimeline />
                   </motion.div>
                 ) : (
                   <motion.div

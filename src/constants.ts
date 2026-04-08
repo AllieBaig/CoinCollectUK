@@ -86,6 +86,14 @@ export const GAME_MODES: GameMode[] = [
     progress: 0
   },
   {
+    id: 'mind-map-timeline',
+    title: 'Mind Map Timeline',
+    description: 'Explore your collection in an interactive tree structure.',
+    icon: '🌿',
+    isUnlocked: true,
+    progress: 0
+  },
+  {
     id: 'my-coin-story-game',
     title: 'My Coin Story',
     description: 'Play through your own personal collection journey.',
