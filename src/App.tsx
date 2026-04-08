@@ -60,7 +60,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
 import { Coin, AppState, Folder, UserPreferences, Mission, Achievement, Timeline, TimelineEvent, Story, StoryChapter, GameMode, Era } from './types';
-import { INITIAL_COINS, INITIAL_FOLDERS, TIMELINES, GAME_MODES, ERAS } from './constants';
+import { INITIAL_COINS, INITIAL_FOLDERS, TIMELINES, GAME_MODES, ERAS, DENOMINATIONS } from './constants';
 
 // Error Boundary Component
 interface ErrorBoundaryProps {
@@ -256,7 +256,8 @@ function CoinCollectorApp() {
         isTextMode: false,
         enableBgRemoval: true,
         isPurchaseMode: false,
-        showPriceInNormalMode: true
+        showPriceInNormalMode: true,
+        denominationPrices: DENOMINATIONS.reduce((acc, denom) => ({ ...acc, [denom]: 0 }), {})
       };
 
       // Extract coins based on version/structure
@@ -357,7 +358,8 @@ function CoinCollectorApp() {
     isTextMode: false,
     enableBgRemoval: true,
     isPurchaseMode: false,
-    showPriceInNormalMode: true
+    showPriceInNormalMode: true,
+    denominationPrices: DENOMINATIONS.reduce((acc, denom) => ({ ...acc, [denom]: 0 }), {})
   });
   
   const [searchQuery, setSearchQuery] = useState('');
@@ -407,6 +409,7 @@ function CoinCollectorApp() {
   const [expandedChapterIdx, setExpandedChapterIdx] = useState<number | null>(null);
   const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({});
   const [selectedMindMapCoin, setSelectedMindMapCoin] = useState<Coin | null>(null);
+  const [addCoinDenomination, setAddCoinDenomination] = useState<string>('50p');
   const [selectedCoinIds, setSelectedCoinIds] = useState<Set<string>>(new Set());
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [isBulkFolderModalOpen, setIsBulkFolderModalOpen] = useState(false);
@@ -463,7 +466,7 @@ function CoinCollectorApp() {
   const bulkUpdateDenomination = (denomination: string) => {
     const selectedIds = Array.from(selectedCoinIds);
     setCoins(prev => prev.map(c => 
-      selectedIds.includes(c.id) ? { ...c, denomination } : c
+      selectedIds.includes(c.id) ? { ...c, denomination, category: denomination } : c
     ));
     showToast(`Updated ${selectedCoinIds.size} coins`, 'success');
     exitMultiSelectMode();
@@ -1311,7 +1314,11 @@ function CoinCollectorApp() {
             isTextMode: parsed.preferences.isTextMode ?? false,
             enableBgRemoval: parsed.preferences.enableBgRemoval ?? true,
             isPurchaseMode: parsed.preferences.isPurchaseMode ?? false,
-            showPriceInNormalMode: parsed.preferences.showPriceInNormalMode ?? true
+            showPriceInNormalMode: parsed.preferences.showPriceInNormalMode ?? true,
+            denominationPrices: {
+              ...DENOMINATIONS.reduce((acc, denom) => ({ ...acc, [denom]: 0 }), {}),
+              ...(parsed.preferences.denominationPrices || {})
+            }
           });
         }
       } else {
@@ -3186,6 +3193,44 @@ function CoinCollectorApp() {
                     </div>
                   </SettingSection>
 
+                  {/* Fixed Prices Settings */}
+                  <SettingSection 
+                    title="Set Fixed Prices" 
+                    icon={PoundSterling} 
+                    isOpen={openSettingSection === 'prices'} 
+                    onToggle={() => setOpenSettingSection(openSettingSection === 'prices' ? null : 'prices')}
+                  >
+                    <div className="space-y-4 max-h-[40vh] overflow-y-auto pr-2 no-scrollbar">
+                      <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-2 px-2">Default price auto-filled when adding coins</p>
+                      <div className="grid grid-cols-1 gap-2">
+                        {DENOMINATIONS.map(denom => (
+                          <div key={denom} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+                            <span className="text-sm font-black uppercase tracking-tight">{denom}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-slate-400">£</span>
+                              <input 
+                                type="number" 
+                                step="0.01"
+                                value={preferences.denominationPrices[denom] || 0}
+                                onChange={(e) => {
+                                  const val = parseFloat(e.target.value) || 0;
+                                  setPreferences(prev => ({
+                                    ...prev,
+                                    denominationPrices: {
+                                      ...prev.denominationPrices,
+                                      [denom]: val
+                                    }
+                                  }));
+                                }}
+                                className="w-20 px-3 py-2 bg-white dark:bg-slate-900 border-none rounded-xl focus:ring-2 focus:ring-amber-500 outline-none font-bold text-right text-sm"
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </SettingSection>
+
                   {/* Coin Management Settings */}
                   <SettingSection 
                     title="Coin Management" 
@@ -3789,7 +3834,7 @@ function CoinCollectorApp() {
                         summary: formData.get('summary') as string,
                         isCollected: !!amountPaid || false,
                         isRare: formData.get('isRare') === 'on',
-                        category: 'Other',
+                        category: formData.get('denomination') as string,
                         folderId: formData.get('folderId') as string || undefined,
                         addedAt: new Date().toISOString(),
                         imageUrl: newCoinImage || undefined,
@@ -3826,7 +3871,17 @@ function CoinCollectorApp() {
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Denomination</label>
-                          <input name="denomination" required placeholder="e.g. 50p" className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold" />
+                          <select 
+                            name="denomination" 
+                            required 
+                            value={addCoinDenomination}
+                            onChange={(e) => setAddCoinDenomination(e.target.value)}
+                            className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold appearance-none"
+                          >
+                            {DENOMINATIONS.map(d => (
+                              <option key={d} value={d}>{d}</option>
+                            ))}
+                          </select>
                         </div>
                         <div>
                           <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Year</label>
@@ -3836,7 +3891,15 @@ function CoinCollectorApp() {
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Amount Paid (£)</label>
-                          <input name="amountPaid" type="number" step="0.01" placeholder="0.00" className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold" />
+                          <input 
+                            name="amountPaid" 
+                            type="number" 
+                            step="0.01" 
+                            placeholder="0.00" 
+                            key={`price-${addCoinDenomination}`}
+                            defaultValue={preferences.denominationPrices[addCoinDenomination] || ''}
+                            className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold" 
+                          />
                         </div>
                         <div>
                           <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Purchase Date</label>
@@ -4311,6 +4374,7 @@ function CoinCollectorApp() {
                       denomination: formData.get('denomination') as string,
                       year: parseInt(formData.get('year') as string),
                       summary: formData.get('summary') as string,
+                      category: formData.get('denomination') as string,
                       amountPaid,
                       purchaseDate: formData.get('purchaseDate') as string || undefined,
                       folderId: formData.get('folderId') as string || undefined,
@@ -4346,7 +4410,16 @@ function CoinCollectorApp() {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Denomination</label>
-                        <input name="denomination" required defaultValue={editingCoin.denomination} className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold" />
+                        <select 
+                          name="denomination" 
+                          required 
+                          defaultValue={editingCoin.denomination}
+                          className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold appearance-none"
+                        >
+                          {DENOMINATIONS.map(d => (
+                            <option key={d} value={d}>{d}</option>
+                          ))}
+                        </select>
                       </div>
                       <div>
                         <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Year</label>
@@ -4552,7 +4625,11 @@ function CoinCollectorApp() {
                 }} className="space-y-4">
                   <div>
                     <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">New Denomination</label>
-                    <input name="denomination" required placeholder="e.g. 50p, £2" className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold" />
+                    <select name="denomination" required className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold appearance-none">
+                      {DENOMINATIONS.map(d => (
+                        <option key={d} value={d}>{d}</option>
+                      ))}
+                    </select>
                   </div>
                   <button type="submit" className="w-full py-5 bg-amber-500 hover:bg-amber-600 text-white font-black rounded-2xl shadow-xl shadow-amber-500/30 transition-all mt-4 uppercase tracking-widest">
                     Apply to {selectedCoinIds.size} Coins

@@ -2,6 +2,27 @@ import { Coin, Folder, Timeline, GameMode, Era } from './types';
 
 const now = new Date().toISOString();
 
+export const DENOMINATIONS = [
+  'Farthing',
+  'Half Penny',
+  'Penny',
+  'Threepence',
+  'Sixpence',
+  'Shilling',
+  'Florin',
+  'Half Crown',
+  'Crown',
+  '1p',
+  '2p',
+  '5p',
+  '10p',
+  '20p',
+  '50p',
+  '£1',
+  '£2',
+  'Other'
+];
+
 export const INITIAL_FOLDERS: Folder[] = [
   { id: 'folder-commemorative', name: 'Commemorative', icon: '🏆', lastOpenedAt: now, addedAt: now },
   { id: 'folder-rare', name: 'Rare Finds', icon: '💎', lastOpenedAt: now, addedAt: now },

@@ -6,7 +6,7 @@ export interface Coin {
   summary: string;
   isCollected: boolean;
   isRare?: boolean;
-  category: '50p' | '£2' | '£1' | 'Other';
+  category: string;
   folderId?: string;
   addedAt: string;
   imageUrl?: string;
@@ -75,6 +75,7 @@ export interface UserPreferences {
   enableBgRemoval: boolean;
   isPurchaseMode: boolean;
   showPriceInNormalMode: boolean;
+  denominationPrices: Record<string, number>;
 }
 
 export interface StoryChapter {
