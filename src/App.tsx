@@ -407,6 +407,68 @@ function CoinCollectorApp() {
   const [expandedChapterIdx, setExpandedChapterIdx] = useState<number | null>(null);
   const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({});
   const [selectedMindMapCoin, setSelectedMindMapCoin] = useState<Coin | null>(null);
+  const [selectedCoinIds, setSelectedCoinIds] = useState<Set<string>>(new Set());
+  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
+  const [isBulkFolderModalOpen, setIsBulkFolderModalOpen] = useState(false);
+  const [isBulkDenomModalOpen, setIsBulkDenomModalOpen] = useState(false);
+  const longPressTimer = useRef<any>(null);
+
+  const toggleCoinSelection = (id: string) => {
+    setSelectedCoinIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const enterMultiSelectMode = (id: string) => {
+    setIsMultiSelectMode(true);
+    setSelectedCoinIds(new Set([id]));
+    showToast('Multi-select mode active', 'info');
+  };
+
+  const exitMultiSelectMode = () => {
+    setIsMultiSelectMode(false);
+    setSelectedCoinIds(new Set());
+  };
+
+  const handleCoinPressStart = (id: string) => {
+    if (isMultiSelectMode) return;
+    longPressTimer.current = setTimeout(() => {
+      enterMultiSelectMode(id);
+    }, 600);
+  };
+
+  const handleCoinPressEnd = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+
+  const bulkUpdateFolder = (folderId: string | undefined) => {
+    const selectedIds = Array.from(selectedCoinIds);
+    setCoins(prev => prev.map(c => 
+      selectedIds.includes(c.id) ? { ...c, folderId } : c
+    ));
+    showToast(`Moved ${selectedCoinIds.size} coins`, 'success');
+    exitMultiSelectMode();
+    setIsBulkFolderModalOpen(false);
+  };
+
+  const bulkUpdateDenomination = (denomination: string) => {
+    const selectedIds = Array.from(selectedCoinIds);
+    setCoins(prev => prev.map(c => 
+      selectedIds.includes(c.id) ? { ...c, denomination } : c
+    ));
+    showToast(`Updated ${selectedCoinIds.size} coins`, 'success');
+    exitMultiSelectMode();
+    setIsBulkDenomModalOpen(false);
+  };
 
   const toggleNode = (id: string) => {
     setExpandedNodes(prev => ({
@@ -500,15 +562,25 @@ function CoinCollectorApp() {
           <div 
             onClick={() => {
               if (node.type === 'coin') {
-                setSelectedMindMapCoin(node.coin);
+                if (isMultiSelectMode) {
+                  toggleCoinSelection(node.coin.id);
+                } else {
+                  setSelectedMindMapCoin(node.coin);
+                }
               } else if (hasChildren) {
                 toggleNode(node.id);
               }
             }}
+            onMouseDown={() => node.type === 'coin' && handleCoinPressStart(node.coin.id)}
+            onMouseUp={handleCoinPressEnd}
+            onMouseLeave={handleCoinPressEnd}
+            onTouchStart={() => node.type === 'coin' && handleCoinPressStart(node.coin.id)}
+            onTouchEnd={handleCoinPressEnd}
             className={cn(
               "flex items-center gap-3 py-2 px-3 rounded-xl transition-all cursor-pointer group",
               depth === 0 ? "mt-6 first:mt-0" : "mt-1",
               isExpanded ? "bg-slate-100 dark:bg-slate-800/50" : "hover:bg-slate-50 dark:hover:bg-slate-800/30",
+              node.type === 'coin' && selectedCoinIds.has(node.coin.id) && "bg-amber-100 dark:bg-amber-900/20 ring-1 ring-amber-500/50",
               node.type === 'coin' && node.coin.isCollected && "text-emerald-600 dark:text-emerald-400",
               node.type === 'coin' && !node.coin.isCollected && "text-slate-400 opacity-60"
             )}
@@ -522,6 +594,16 @@ function CoinCollectorApp() {
             )}
 
             <div className="flex items-center gap-2 flex-1">
+              {isMultiSelectMode && node.type === 'coin' && (
+                <div className={cn(
+                  "w-4 h-4 rounded-full border flex items-center justify-center transition-all",
+                  selectedCoinIds.has(node.coin.id) 
+                    ? "bg-amber-500 border-amber-500 text-white" 
+                    : "bg-slate-200 dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-transparent"
+                )}>
+                  <Check className="w-2.5 h-2.5" />
+                </div>
+              )}
               {hasChildren && (
                 <motion.div
                   animate={{ rotate: isExpanded ? 90 : 0 }}
@@ -1868,10 +1950,22 @@ function CoinCollectorApp() {
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9 }}
-      onClick={() => setSelectedCoin(coin)}
+      onClick={() => {
+        if (isMultiSelectMode) {
+          toggleCoinSelection(coin.id);
+        } else {
+          setSelectedCoin(coin);
+        }
+      }}
+      onMouseDown={() => handleCoinPressStart(coin.id)}
+      onMouseUp={handleCoinPressEnd}
+      onMouseLeave={handleCoinPressEnd}
+      onTouchStart={() => handleCoinPressStart(coin.id)}
+      onTouchEnd={handleCoinPressEnd}
       className={cn(
         "group relative app-card transition-all duration-500 overflow-hidden flex flex-col cursor-pointer",
         "hover:shadow-2xl hover:-translate-y-2",
+        selectedCoinIds.has(coin.id) && "ring-4 ring-amber-500 ring-offset-2 dark:ring-offset-slate-900",
         coin.isRare 
           ? "border-amber-500/50 ring-4 ring-amber-500/10" 
           : coin.isCollected 
@@ -1881,6 +1975,18 @@ function CoinCollectorApp() {
         preferences.themeTexture === 'glass' && "glass-card"
       )}
     >
+      {isMultiSelectMode && (
+        <div className="absolute top-3 right-3 z-20">
+          <div className={cn(
+            "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all",
+            selectedCoinIds.has(coin.id) 
+              ? "bg-amber-500 border-amber-500 text-white" 
+              : "bg-white/50 border-white text-transparent"
+          )}>
+            <Check className="w-4 h-4" />
+          </div>
+        </div>
+      )}
       {preferences.isTextMode ? (
         <div className="flex items-center justify-between gap-4">
           <div className="flex-1">
@@ -2256,16 +2362,40 @@ function CoinCollectorApp() {
                     {filteredCoins.map((coin) => (
                       <tr 
                         key={coin.id} 
-                        onClick={() => setSelectedCoin(coin)}
+                        onClick={() => {
+                          if (isMultiSelectMode) {
+                            toggleCoinSelection(coin.id);
+                          } else {
+                            setSelectedCoin(coin);
+                          }
+                        }}
+                        onMouseDown={() => handleCoinPressStart(coin.id)}
+                        onMouseUp={handleCoinPressEnd}
+                        onMouseLeave={handleCoinPressEnd}
+                        onTouchStart={() => handleCoinPressStart(coin.id)}
+                        onTouchEnd={handleCoinPressEnd}
                         className={cn(
                           "border-b border-slate-100 dark:border-slate-800 active:bg-slate-50 dark:active:bg-slate-800/50 transition-colors",
-                          !coin.isCollected && "bg-amber-50/30 dark:bg-amber-900/5"
+                          selectedCoinIds.has(coin.id) && "bg-amber-100 dark:bg-amber-900/20",
+                          !coin.isCollected && !selectedCoinIds.has(coin.id) && "bg-amber-50/30 dark:bg-amber-900/5"
                         )}
                       >
                         <td className="px-6 py-6">
-                          <div className="flex flex-col">
-                            <span className="text-2xl font-black text-slate-900 dark:text-white">{coin.denomination}</span>
-                            <span className="text-sm font-bold text-slate-500 uppercase tracking-wider">{coin.title}</span>
+                          <div className="flex items-center gap-4">
+                            {isMultiSelectMode && (
+                              <div className={cn(
+                                "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all",
+                                selectedCoinIds.has(coin.id) 
+                                  ? "bg-amber-500 border-amber-500 text-white" 
+                                  : "bg-slate-200 dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-transparent"
+                              )}>
+                                <Check className="w-4 h-4" />
+                              </div>
+                            )}
+                            <div className="flex flex-col">
+                              <span className="text-2xl font-black text-slate-900 dark:text-white">{coin.denomination}</span>
+                              <span className="text-sm font-bold text-slate-500 uppercase tracking-wider">{coin.title}</span>
+                            </div>
                           </div>
                         </td>
                         <td className="px-6 py-6">
@@ -4296,6 +4426,143 @@ function CoinCollectorApp() {
             </div>
           )}
         </AnimatePresence>
+        {/* Toast Notification */}
+        <AnimatePresence>
+          {isMultiSelectMode && selectedCoinIds.size > 0 && (
+            <motion.div
+              initial={{ y: 100, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 100, opacity: 0 }}
+              className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[60] w-[90%] max-w-lg bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-6 py-4 rounded-[2.5rem] shadow-2xl flex items-center justify-between gap-4 border border-slate-800 dark:border-slate-200"
+            >
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={exitMultiSelectMode}
+                  className="p-2 hover:bg-slate-800 dark:hover:bg-slate-100 rounded-full transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+                <span className="text-sm font-black uppercase tracking-widest">
+                  {selectedCoinIds.size} Selected
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => setIsBulkFolderModalOpen(true)}
+                  className="p-3 bg-slate-800 dark:bg-slate-100 rounded-2xl hover:bg-amber-500 hover:text-white transition-all"
+                  title="Move to Folder"
+                >
+                  <FolderIcon className="w-5 h-5" />
+                </button>
+                <button 
+                  onClick={() => setIsBulkDenomModalOpen(true)}
+                  className="p-3 bg-slate-800 dark:bg-slate-100 rounded-2xl hover:bg-amber-500 hover:text-white transition-all"
+                  title="Change Denomination"
+                >
+                  <PoundSterling className="w-5 h-5" />
+                </button>
+                <button 
+                  onClick={() => {
+                    const allSelected = Array.from(selectedCoinIds);
+                    setCoins(prev => prev.map(c => 
+                      allSelected.includes(c.id) ? { ...c, isCollected: !c.isCollected } : c
+                    ));
+                    showToast(`Updated ${selectedCoinIds.size} coins`, 'success');
+                    exitMultiSelectMode();
+                  }}
+                  className="p-3 bg-slate-800 dark:bg-slate-100 rounded-2xl hover:bg-emerald-500 hover:text-white transition-all"
+                  title="Toggle Collected"
+                >
+                  <CheckCircle2 className="w-5 h-5" />
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {isBulkFolderModalOpen && (
+            <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsBulkFolderModalOpen(false)}
+                className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+              />
+              <motion.div 
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                className={cn(
+                  "relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-[40px] shadow-2xl overflow-hidden p-8",
+                  preferences.themeTexture === 'glass' && "glass-card"
+                )}
+              >
+                <h2 className="text-2xl font-black mb-6">Move to Folder</h2>
+                <div className="grid grid-cols-2 gap-3 max-h-[40vh] overflow-y-auto pr-2 no-scrollbar">
+                  <button
+                    onClick={() => bulkUpdateFolder(undefined)}
+                    className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 text-left hover:border-amber-500 transition-all"
+                  >
+                    <div className="text-2xl mb-1">📂</div>
+                    <div className="text-xs font-black uppercase">Uncategorized</div>
+                  </button>
+                  {folders.map(folder => (
+                    <button
+                      key={folder.id}
+                      onClick={() => bulkUpdateFolder(folder.id)}
+                      className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 text-left hover:border-amber-500 transition-all"
+                    >
+                      <div className="text-2xl mb-1">{folder.icon}</div>
+                      <div className="text-xs font-black uppercase truncate">{folder.name}</div>
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {isBulkDenomModalOpen && (
+            <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsBulkDenomModalOpen(false)}
+                className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+              />
+              <motion.div 
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                className={cn(
+                  "relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-[40px] shadow-2xl overflow-hidden p-8",
+                  preferences.themeTexture === 'glass' && "glass-card"
+                )}
+              >
+                <h2 className="text-2xl font-black mb-6">Change Denomination</h2>
+                <form onSubmit={(e) => {
+                  e.preventDefault();
+                  const formData = new FormData(e.currentTarget);
+                  bulkUpdateDenomination(formData.get('denomination') as string);
+                }} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">New Denomination</label>
+                    <input name="denomination" required placeholder="e.g. 50p, £2" className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold" />
+                  </div>
+                  <button type="submit" className="w-full py-5 bg-amber-500 hover:bg-amber-600 text-white font-black rounded-2xl shadow-xl shadow-amber-500/30 transition-all mt-4 uppercase tracking-widest">
+                    Apply to {selectedCoinIds.size} Coins
+                  </button>
+                </form>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
         {/* Toast Notification */}
         <AnimatePresence>
           {toast && (
