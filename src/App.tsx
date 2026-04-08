@@ -414,6 +414,7 @@ function CoinCollectorApp() {
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [isBulkFolderModalOpen, setIsBulkFolderModalOpen] = useState(false);
   const [isBulkDenomModalOpen, setIsBulkDenomModalOpen] = useState(false);
+  const [isBulkPriceModalOpen, setIsBulkPriceModalOpen] = useState(false);
   const longPressTimer = useRef<any>(null);
 
   const toggleCoinSelection = (id: string) => {
@@ -471,6 +472,16 @@ function CoinCollectorApp() {
     showToast(`Updated ${selectedCoinIds.size} coins`, 'success');
     exitMultiSelectMode();
     setIsBulkDenomModalOpen(false);
+  };
+
+  const bulkUpdatePrice = (price: number) => {
+    const selectedIds = Array.from(selectedCoinIds);
+    setCoins(prev => prev.map(c => 
+      selectedIds.includes(c.id) ? { ...c, amountPaid: price, isCollected: true } : c
+    ));
+    showToast(`Updated ${selectedCoinIds.size} coins`, 'success');
+    exitMultiSelectMode();
+    setIsBulkPriceModalOpen(false);
   };
 
   const toggleNode = (id: string) => {
@@ -4536,6 +4547,13 @@ function CoinCollectorApp() {
                   <PoundSterling className="w-5 h-5" />
                 </button>
                 <button 
+                  onClick={() => setIsBulkPriceModalOpen(true)}
+                  className="p-3 bg-slate-800 dark:bg-slate-100 rounded-2xl hover:bg-amber-500 hover:text-white transition-all"
+                  title="Update Price"
+                >
+                  <DollarSign className="w-5 h-5" />
+                </button>
+                <button 
                   onClick={() => {
                     const allSelected = Array.from(selectedCoinIds);
                     setCoins(prev => prev.map(c => 
@@ -4633,6 +4651,53 @@ function CoinCollectorApp() {
                   </div>
                   <button type="submit" className="w-full py-5 bg-amber-500 hover:bg-amber-600 text-white font-black rounded-2xl shadow-xl shadow-amber-500/30 transition-all mt-4 uppercase tracking-widest">
                     Apply to {selectedCoinIds.size} Coins
+                  </button>
+                </form>
+              </motion.div>
+            </div>
+          )}
+          {isBulkPriceModalOpen && (
+            <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsBulkPriceModalOpen(false)}
+                className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+              />
+              <motion.div 
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                className={cn(
+                  "relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-[40px] shadow-2xl overflow-hidden p-8",
+                  preferences.themeTexture === 'glass' && "glass-card"
+                )}
+              >
+                <h2 className="text-2xl font-black mb-6">Update Price</h2>
+                <form onSubmit={(e) => {
+                  e.preventDefault();
+                  const formData = new FormData(e.currentTarget);
+                  const price = parseFloat(formData.get('price') as string);
+                  if (isNaN(price)) return;
+                  
+                  if (window.confirm(`Update price to £${price.toFixed(2)} for ${selectedCoinIds.size} coins?`)) {
+                    bulkUpdatePrice(price);
+                  }
+                }} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">New Price (£)</label>
+                    <input 
+                      name="price" 
+                      type="number" 
+                      step="0.01" 
+                      required 
+                      placeholder="e.g. 5.00" 
+                      className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold" 
+                    />
+                  </div>
+                  <button type="submit" className="w-full py-5 bg-amber-500 hover:bg-amber-600 text-white font-black rounded-2xl shadow-xl shadow-amber-500/30 transition-all mt-4 uppercase tracking-widest">
+                    Update {selectedCoinIds.size} Coins
                   </button>
                 </form>
               </motion.div>
