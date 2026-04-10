@@ -61,6 +61,8 @@ export interface Timeline {
   };
 }
 
+export type LayoutType = 'grid' | 'list' | 'carousel' | 'masonry' | 'board' | 'timeline' | 'gallery' | 'spotlight' | 'compact' | 'split' | 'hexagon';
+
 export interface UserPreferences {
   isDarkMode: boolean;
   themeMode: 'light' | 'dark' | 'system';
@@ -76,6 +78,8 @@ export interface UserPreferences {
   isPurchaseMode: boolean;
   showPriceInNormalMode: boolean;
   denominationPrices: Record<string, number>;
+  layoutType: LayoutType;
+  showLayoutSwitcher: boolean;
 }
 
 export interface StoryChapter {

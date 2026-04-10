@@ -55,7 +55,16 @@ import {
   Award,
   History,
   SearchCode,
-  Map
+  Map,
+  Layout,
+  Columns,
+  List as ListIcon,
+  GalleryHorizontal,
+  LayoutDashboard,
+  Maximize2,
+  Rows,
+  Split,
+  Hexagon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
@@ -257,7 +266,9 @@ function CoinCollectorApp() {
         enableBgRemoval: true,
         isPurchaseMode: false,
         showPriceInNormalMode: true,
-        denominationPrices: DENOMINATIONS.reduce((acc, denom) => ({ ...acc, [denom]: 0 }), {})
+        denominationPrices: DENOMINATIONS.reduce((acc, denom) => ({ ...acc, [denom]: 0 }), {}),
+        layoutType: 'grid',
+        showLayoutSwitcher: true
       };
 
       // Extract coins based on version/structure
@@ -359,7 +370,9 @@ function CoinCollectorApp() {
     enableBgRemoval: true,
     isPurchaseMode: false,
     showPriceInNormalMode: true,
-    denominationPrices: DENOMINATIONS.reduce((acc, denom) => ({ ...acc, [denom]: 0 }), {})
+    denominationPrices: DENOMINATIONS.reduce((acc, denom) => ({ ...acc, [denom]: 0 }), {}),
+    layoutType: 'grid',
+    showLayoutSwitcher: true
   });
   
   const [searchQuery, setSearchQuery] = useState('');
@@ -415,6 +428,7 @@ function CoinCollectorApp() {
   const [isBulkFolderModalOpen, setIsBulkFolderModalOpen] = useState(false);
   const [isBulkDenomModalOpen, setIsBulkDenomModalOpen] = useState(false);
   const [isBulkPriceModalOpen, setIsBulkPriceModalOpen] = useState(false);
+  const [spotlightIndex, setSpotlightIndex] = useState(0);
   const longPressTimer = useRef<any>(null);
 
   const toggleCoinSelection = (id: string) => {
@@ -1326,6 +1340,8 @@ function CoinCollectorApp() {
             enableBgRemoval: parsed.preferences.enableBgRemoval ?? true,
             isPurchaseMode: parsed.preferences.isPurchaseMode ?? false,
             showPriceInNormalMode: parsed.preferences.showPriceInNormalMode ?? true,
+            layoutType: parsed.preferences.layoutType || 'grid',
+            showLayoutSwitcher: parsed.preferences.showLayoutSwitcher ?? true,
             denominationPrices: {
               ...DENOMINATIONS.reduce((acc, denom) => ({ ...acc, [denom]: 0 }), {}),
               ...(parsed.preferences.denominationPrices || {})
@@ -2154,6 +2170,264 @@ function CoinCollectorApp() {
     </motion.div>
   );
 
+  const renderCoinsByLayout = (coinsToRender: Coin[]) => {
+    const layout = preferences.layoutType;
+
+    switch (layout) {
+      case 'list':
+        return (
+          <div className="flex flex-col gap-2">
+            {coinsToRender.map(coin => (
+              <div key={coin.id} className="w-full">
+                {renderCoinCard({ ...coin, isTextMode: true } as any)}
+              </div>
+            ))}
+          </div>
+        );
+
+      case 'carousel':
+        return (
+          <div className="flex gap-6 overflow-x-auto pb-8 no-scrollbar snap-x">
+            {coinsToRender.map(coin => (
+              <div key={coin.id} className="min-w-[280px] sm:min-w-[320px] snap-center">
+                {renderCoinCard(coin)}
+              </div>
+            ))}
+          </div>
+        );
+
+      case 'masonry':
+        return (
+          <div className="columns-1 sm:columns-2 lg:columns-3 gap-6 space-y-6">
+            {coinsToRender.map(coin => (
+              <div key={coin.id} className="break-inside-avoid">
+                {renderCoinCard(coin)}
+              </div>
+            ))}
+          </div>
+        );
+
+      case 'board': {
+        const foldersMap = folders.reduce((acc, f) => ({ ...acc, [f.id]: f.name }), { 'all': 'Uncategorized' });
+        const groupedByFolder: Record<string, Coin[]> = {};
+        coinsToRender.forEach(c => {
+          const fid = c.folderId || 'all';
+          if (!groupedByFolder[fid]) groupedByFolder[fid] = [];
+          groupedByFolder[fid].push(c);
+        });
+
+        return (
+          <div className="flex gap-6 overflow-x-auto pb-8 no-scrollbar min-h-[400px]">
+            {Object.entries(groupedByFolder).map(([fid, folderCoins]) => (
+              <div key={fid} className="min-w-[300px] flex flex-col gap-4 bg-slate-50/50 dark:bg-slate-800/30 p-4 rounded-[2.5rem] border border-slate-100 dark:border-slate-800">
+                <div className="flex items-center justify-between px-2">
+                  <h4 className="text-xs font-black uppercase tracking-widest text-slate-400">{foldersMap[fid as keyof typeof foldersMap] || 'Unknown'}</h4>
+                  <span className="text-[10px] font-black text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full">{folderCoins.length}</span>
+                </div>
+                <div className="flex flex-col gap-4 overflow-y-auto no-scrollbar">
+                  {folderCoins.map(coin => renderCoinCard(coin))}
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      }
+
+      case 'timeline': {
+        const sortedByYear = [...coinsToRender].sort((a, b) => a.year - b.year);
+        return (
+          <div className="relative pl-8 border-l-2 border-slate-100 dark:border-slate-800 ml-4 space-y-12">
+            {sortedByYear.map((coin) => (
+              <div key={coin.id} className="relative">
+                <div className="absolute -left-[41px] top-6 w-4 h-4 rounded-full bg-amber-500 border-4 border-white dark:border-slate-900 shadow-lg shadow-amber-500/30 z-10" />
+                <div className="absolute -left-8 top-8 w-8 h-px bg-slate-200 dark:bg-slate-800" />
+                <div className="flex flex-col gap-2 mb-4">
+                  <span className="text-2xl font-black text-slate-900 dark:text-white">{coin.year}</span>
+                  <div className="h-px w-12 bg-amber-500/30" />
+                </div>
+                {renderCoinCard(coin)}
+              </div>
+            ))}
+          </div>
+        );
+      }
+
+      case 'gallery':
+        return (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            {coinsToRender.map(coin => (
+              <motion.div
+                key={coin.id}
+                whileHover={{ scale: 1.05 }}
+                onClick={() => setSelectedCoin(coin)}
+                className="aspect-square rounded-3xl overflow-hidden relative group cursor-pointer shadow-xl"
+              >
+                {coin.imageUrl ? (
+                  <img src={coin.imageUrl} alt={coin.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                ) : (
+                  <div className="w-full h-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                    <ImageIcon className="w-8 h-8 text-slate-300" />
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-4 flex flex-col justify-end">
+                  <span className="text-white font-black text-[10px] uppercase tracking-widest mb-1">{coin.denomination}</span>
+                  <p className="text-white font-bold text-xs truncate">{coin.title}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        );
+
+      case 'spotlight': {
+        const currentCoin = coinsToRender[spotlightIndex % coinsToRender.length];
+        if (!currentCoin) return null;
+
+        return (
+          <div className="flex flex-col items-center gap-8 py-12">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentCoin.id}
+                initial={{ opacity: 0, x: 100 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -100 }}
+                className="w-full max-w-xl"
+              >
+                {renderCoinCard(currentCoin)}
+              </motion.div>
+            </AnimatePresence>
+            <div className="flex items-center gap-4">
+              <button 
+                onClick={() => setSpotlightIndex(prev => (prev > 0 ? prev - 1 : coinsToRender.length - 1))}
+                className="p-4 bg-white dark:bg-slate-900 rounded-full border border-slate-100 dark:border-slate-800 shadow-xl hover:scale-110 transition-transform"
+              >
+                <ChevronRight className="w-6 h-6 rotate-180" />
+              </button>
+              <span className="font-black text-sm uppercase tracking-widest text-slate-400">
+                {(spotlightIndex % coinsToRender.length) + 1} / {coinsToRender.length}
+              </span>
+              <button 
+                onClick={() => setSpotlightIndex(prev => (prev < coinsToRender.length - 1 ? prev + 1 : 0))}
+                className="p-4 bg-white dark:bg-slate-900 rounded-full border border-slate-100 dark:border-slate-800 shadow-xl hover:scale-110 transition-transform"
+              >
+                <ChevronRight className="w-6 h-6" />
+              </button>
+            </div>
+          </div>
+        );
+      }
+
+      case 'compact':
+        return (
+          <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+            {coinsToRender.map(coin => (
+              <motion.div
+                key={coin.id}
+                onClick={() => setSelectedCoin(coin)}
+                className={cn(
+                  "aspect-square rounded-2xl overflow-hidden relative group cursor-pointer border-2 transition-all",
+                  coin.isCollected ? "border-emerald-500/30" : "border-slate-100 dark:border-slate-800",
+                  selectedCoinIds.has(coin.id) && "ring-2 ring-amber-500"
+                )}
+              >
+                {coin.imageUrl ? (
+                  <img src={coin.imageUrl} alt={coin.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                ) : (
+                  <div className="w-full h-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[10px] font-black text-slate-400 p-2 text-center">
+                    {coin.denomination}
+                  </div>
+                )}
+                {coin.isCollected && (
+                  <div className="absolute top-1 right-1 bg-emerald-500 text-white p-0.5 rounded-full shadow-lg">
+                    <Check className="w-2 h-2" />
+                  </div>
+                )}
+              </motion.div>
+            ))}
+          </div>
+        );
+
+      case 'split':
+        return (
+          <div className="space-y-6">
+            {coinsToRender.map(coin => (
+              <motion.div
+                key={coin.id}
+                onClick={() => setSelectedCoin(coin)}
+                className="flex h-48 bg-white dark:bg-slate-900 rounded-[2.5rem] overflow-hidden border border-slate-100 dark:border-slate-800 group cursor-pointer hover:shadow-2xl transition-all"
+              >
+                <div className="w-1/3 h-full overflow-hidden relative">
+                  {coin.imageUrl ? (
+                    <img src={coin.imageUrl} alt={coin.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" referrerPolicy="no-referrer" />
+                  ) : (
+                    <div className="w-full h-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                      <ImageIcon className="w-8 h-8 text-slate-300" />
+                    </div>
+                  )}
+                  {coin.isRare && (
+                    <div className="absolute top-4 left-4 bg-amber-500 text-white p-2 rounded-xl">
+                      <Trophy className="w-4 h-4" />
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 p-8 flex flex-col justify-center">
+                  <span className="text-[10px] font-black text-amber-500 uppercase tracking-[0.2em] mb-2">{coin.denomination} • {coin.year}</span>
+                  <h3 className="text-xl font-black mb-2">{coin.title}</h3>
+                  <p className="text-sm text-slate-500 line-clamp-2">{coin.summary}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        );
+
+      case 'hexagon':
+        return (
+          <div className="flex flex-wrap justify-center gap-4 py-8">
+            {coinsToRender.map(coin => (
+              <motion.div
+                key={coin.id}
+                onClick={() => setSelectedCoin(coin)}
+                whileHover={{ scale: 1.1, zIndex: 10 }}
+                className="relative w-32 h-36 cursor-pointer group"
+                style={{
+                  clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)'
+                }}
+              >
+                <div className={cn(
+                  "absolute inset-0 bg-slate-100 dark:bg-slate-800 transition-colors",
+                  coin.isCollected ? "bg-emerald-500/10" : "bg-slate-100 dark:bg-slate-800"
+                )} />
+                {coin.imageUrl ? (
+                  <img src={coin.imageUrl} alt={coin.title} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" referrerPolicy="no-referrer" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center p-4 text-center">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{coin.denomination}</span>
+                  </div>
+                )}
+                <div className="absolute inset-x-0 bottom-4 text-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <span className="text-[8px] font-black text-white bg-black/50 px-2 py-1 rounded-full">{coin.year}</span>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        );
+
+      default: // grid
+        return (
+          <div className={cn(
+            "grid gap-6",
+            preferences.isCompactUI 
+              ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4" 
+              : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3",
+            preferences.isTextMode && "grid-cols-1 gap-0"
+          )}>
+            <AnimatePresence mode="popLayout">
+              {coinsToRender.map((coin) => renderCoinCard(coin))}
+            </AnimatePresence>
+          </div>
+        );
+    }
+  };
+
   const [newCoinImage, setNewCoinImage] = useState<string | null>(null);
   const coinImageInputRef = useRef<HTMLInputElement>(null);
 
@@ -2767,10 +3041,36 @@ function CoinCollectorApp() {
                   {preferences.isGrouped ? "Grouped" : "Ungrouped"}
                 </button>
               </div>
+
+              {preferences.showLayoutSwitcher && (
+                <div className="flex-1 min-w-[140px]">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block">Layout</label>
+                  <div className="relative">
+                    <select 
+                      value={preferences.layoutType}
+                      onChange={(e) => setPreferences(prev => ({ ...prev, layoutType: e.target.value as any }))}
+                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-amber-500 outline-none appearance-none pr-8"
+                    >
+                      <option value="grid">Grid</option>
+                      <option value="list">List</option>
+                      <option value="carousel">Carousel</option>
+                      <option value="masonry">Masonry</option>
+                      <option value="board">Board</option>
+                      <option value="timeline">Timeline</option>
+                      <option value="gallery">Gallery</option>
+                      <option value="spotlight">Spotlight</option>
+                      <option value="compact">Compact</option>
+                      <option value="split">Split</option>
+                      <option value="hexagon">Hexagon</option>
+                    </select>
+                    <Layout className="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none" />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Coin Grid */}
+          {/* Coin List */}
           {preferences.isGrouped && groupedCoins ? (
             <div className="space-y-12">
               {groupedCoins.map((group) => (
@@ -2780,30 +3080,12 @@ function CoinCollectorApp() {
                     <div className="h-px flex-1 bg-slate-100 dark:bg-slate-800" />
                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{group.coins.length} Coins</span>
                   </div>
-                  <div className={cn(
-                    "grid gap-6",
-                    preferences.isCompactUI 
-                      ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4" 
-                      : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3",
-                    preferences.isTextMode && "grid-cols-1 gap-0"
-                  )}>
-                    {group.coins.map((coin) => renderCoinCard(coin))}
-                  </div>
+                  {renderCoinsByLayout(group.coins)}
                 </div>
               ))}
             </div>
           ) : (
-            <div className={cn(
-              "grid gap-6",
-              preferences.isCompactUI 
-                ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4" 
-                : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3",
-              preferences.isTextMode && "grid-cols-1 gap-0"
-            )}>
-              <AnimatePresence mode="popLayout">
-                {filteredCoins.map((coin) => renderCoinCard(coin))}
-              </AnimatePresence>
-            </div>
+            renderCoinsByLayout(filteredCoins)
           )}
 
           {filteredCoins.length === 0 && (
@@ -3066,6 +3348,28 @@ function CoinCollectorApp() {
                           <motion.div 
                             animate={{ x: preferences.isCompactUI ? 24 : 0 }}
                             className="w-6 h-6 bg-white rounded-full shadow-lg"
+                          />
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
+                        <div className="flex items-center gap-3">
+                          <Layout className="w-5 h-5 text-slate-400" />
+                          <div>
+                            <p className="text-sm font-bold">Layout Switcher</p>
+                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Quick switch in toolbar</p>
+                          </div>
+                        </div>
+                        <button 
+                          onClick={() => setPreferences(prev => ({ ...prev, showLayoutSwitcher: !prev.showLayoutSwitcher }))}
+                          className={cn(
+                            "w-12 h-6 rounded-full transition-colors relative",
+                            preferences.showLayoutSwitcher ? "bg-amber-500" : "bg-slate-200 dark:bg-slate-700"
+                          )}
+                        >
+                          <motion.div 
+                            animate={{ x: preferences.showLayoutSwitcher ? 24 : 4 }}
+                            className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm"
                           />
                         </button>
                       </div>
