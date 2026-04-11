@@ -84,6 +84,7 @@ export interface UserPreferences {
   showLayoutSwitcher: boolean;
   showOldEuropeanCoins: boolean;
   europeanCoinFilter: 'modern' | 'old' | 'both';
+  ambientMotion: boolean;
 }
 
 export interface StoryChapter {

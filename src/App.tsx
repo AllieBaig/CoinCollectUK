@@ -172,6 +172,53 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   }
 }
 
+const AmbientBackground: React.FC<{ enabled: boolean }> = ({ enabled }) => {
+  if (!enabled) return null;
+
+  return (
+    <div className="fixed inset-0 pointer-events-none overflow-hidden z-0 opacity-40 dark:opacity-20">
+      <motion.div
+        animate={{
+          x: [0, 50, -50, 0],
+          y: [0, -30, 30, 0],
+          scale: [1, 1.1, 0.9, 1],
+        }}
+        transition={{
+          duration: 25,
+          repeat: Infinity,
+          ease: "linear"
+        }}
+        className="absolute -top-[20%] -left-[10%] w-[60%] h-[60%] rounded-full bg-gradient-to-br from-amber-200/30 to-transparent blur-[120px]"
+      />
+      <motion.div
+        animate={{
+          x: [0, -40, 40, 0],
+          y: [0, 50, -50, 0],
+          scale: [1, 0.9, 1.1, 1],
+        }}
+        transition={{
+          duration: 30,
+          repeat: Infinity,
+          ease: "linear"
+        }}
+        className="absolute -bottom-[10%] -right-[10%] w-[50%] h-[50%] rounded-full bg-gradient-to-tr from-blue-200/20 to-transparent blur-[100px]"
+      />
+      <motion.div
+        animate={{
+          x: [0, 30, -30, 0],
+          y: [0, 40, -40, 0],
+        }}
+        transition={{
+          duration: 20,
+          repeat: Infinity,
+          ease: "linear"
+        }}
+        className="absolute top-[30%] left-[20%] w-[40%] h-[40%] rounded-full bg-gradient-to-r from-purple-200/10 to-transparent blur-[150px]"
+      />
+    </div>
+  );
+};
+
 export default function App() {
   return (
     <ErrorBoundary>
@@ -270,7 +317,8 @@ function CoinCollectorApp() {
         layoutType: 'grid',
         showLayoutSwitcher: true,
         showOldEuropeanCoins: true,
-        europeanCoinFilter: 'both'
+        europeanCoinFilter: 'both',
+        ambientMotion: true
       };
 
       // Extract coins based on version/structure
@@ -378,7 +426,8 @@ function CoinCollectorApp() {
     layoutType: 'grid',
     showLayoutSwitcher: true,
     showOldEuropeanCoins: true,
-    europeanCoinFilter: 'both'
+    europeanCoinFilter: 'both',
+    ambientMotion: true
   });
   
   const [searchQuery, setSearchQuery] = useState('');
@@ -2564,7 +2613,7 @@ function CoinCollectorApp() {
 
   return (
     <div className={cn(
-      "min-h-screen text-slate-900 dark:text-slate-100 transition-colors duration-500 font-sans pb-32",
+      "min-h-screen text-slate-900 dark:text-slate-100 transition-colors duration-500 font-sans pb-32 relative",
       preferences.themeTexture === 'paper' && "theme-paper",
       preferences.themeTexture === 'glass' && "theme-glass",
       preferences.themeTexture === 'wood' && "theme-wood",
@@ -2573,6 +2622,8 @@ function CoinCollectorApp() {
       !preferences.themeTexture || preferences.themeTexture === 'none' ? "bg-slate-50 dark:bg-slate-950" : "",
       "safe-top safe-bottom"
     )}>
+        <AmbientBackground enabled={preferences.ambientMotion} />
+        
         {/* Offline Banner */}
         <AnimatePresence>
           {isOffline && (
@@ -3408,6 +3459,30 @@ function CoinCollectorApp() {
                             </button>
                           ))}
                         </div>
+                      </div>
+
+                      <div className="flex items-center justify-between p-5 bg-slate-50/50 dark:bg-slate-800/50 rounded-[2rem] border border-slate-100 dark:border-slate-800">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 bg-white dark:bg-slate-900 rounded-xl flex items-center justify-center shadow-sm">
+                            <Zap className="w-5 h-5 text-amber-500" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-black tracking-tight">Ambient Motion</p>
+                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Subtle background movement</p>
+                          </div>
+                        </div>
+                        <button 
+                          onClick={() => setPreferences(prev => ({ ...prev, ambientMotion: !prev.ambientMotion }))}
+                          className={cn(
+                            "w-14 h-8 rounded-full transition-all duration-500 relative p-1",
+                            preferences.ambientMotion ? "bg-amber-500" : "bg-slate-200 dark:bg-slate-700"
+                          )}
+                        >
+                          <motion.div 
+                            animate={{ x: preferences.ambientMotion ? 24 : 0 }}
+                            className="w-6 h-6 bg-white rounded-full shadow-lg"
+                          />
+                        </button>
                       </div>
 
                       <div className="flex items-center justify-between p-5 bg-slate-50/50 dark:bg-slate-800/50 rounded-[2rem] border border-slate-100 dark:border-slate-800">
