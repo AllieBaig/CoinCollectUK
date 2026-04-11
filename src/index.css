@@ -7,29 +7,29 @@
 
 @layer base {
   :root {
-    --app-radius: 2.5rem;
-    --card-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.1);
-    --card-shadow-hover: 0 20px 40px -15px rgba(0, 0, 0, 0.15);
-    --ui-spacing: 1.5rem;
+    --app-radius: 1.25rem; /* 20px */
+    --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    --card-shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.12);
+    --ui-spacing: 1rem; /* 16px */
     --ui-font-base: 1rem;
-    --ui-card-padding: 1.5rem;
+    --ui-card-padding: 1rem; /* 16px */
   }
 
   @media (max-width: 380px) {
     :root {
-      --app-radius: 1.5rem;
-      --ui-spacing: 1rem;
+      --app-radius: 1rem; /* 16px */
+      --ui-spacing: 0.75rem; /* 12px */
       --ui-font-base: 0.875rem;
-      --ui-card-padding: 1rem;
+      --ui-card-padding: 0.75rem;
     }
   }
 
   @media (min-width: 1024px) {
     :root {
-      --app-radius: 3rem;
-      --ui-spacing: 2rem;
+      --app-radius: 1.5rem; /* 24px */
+      --ui-spacing: 1.5rem; /* 24px */
       --ui-font-base: 1.125rem;
-      --ui-card-padding: 2rem;
+      --ui-card-padding: 1.5rem;
     }
   }
 
@@ -113,9 +113,9 @@
   }
 
   .premium-button {
-    @apply relative overflow-hidden active:scale-95 transition-all duration-300 font-black uppercase tracking-widest text-xs;
+    @apply relative overflow-hidden active:scale-95 transition-all duration-300 font-black uppercase tracking-widest text-xs flex items-center justify-center min-h-[44px];
     border-radius: calc(var(--app-radius) / 2);
-    padding: calc(var(--ui-spacing) * 0.75) var(--ui-spacing);
+    padding: 0 var(--ui-spacing);
   }
 
   .text-gradient {

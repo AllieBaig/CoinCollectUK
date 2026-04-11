@@ -2081,7 +2081,7 @@ function CoinCollectorApp() {
       )}
     >
       {isMultiSelectMode && (
-        <div className="absolute top-3 right-3 z-20">
+        <div className="absolute top-4 right-4 z-20">
           <div className={cn(
             "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all",
             selectedCoinIds.has(coin.id) 
@@ -2095,7 +2095,7 @@ function CoinCollectorApp() {
       {preferences.isTextMode ? (
         <div className="flex items-center justify-between gap-4">
           <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center gap-2 mb-2">
               <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest">{coin.denomination}</span>
               <span className="text-[10px] font-bold text-slate-400">{coin.year}</span>
               {coin.isRare && <Trophy className="w-3 h-3 text-amber-500" />}
@@ -2121,12 +2121,12 @@ function CoinCollectorApp() {
       ) : (
         <>
           {coin.isRare && (
-            <div className="absolute top-3 left-3 z-10 bg-amber-500 text-white p-1.5 rounded-xl shadow-lg shadow-amber-500/30">
+            <div className="absolute top-4 left-4 z-10 bg-amber-500 text-white p-1.5 rounded-xl shadow-lg shadow-amber-500/30">
               <Trophy className="w-4 h-4" />
             </div>
           )}
           {coins.filter(c => c.title === coin.title && c.denomination === coin.denomination).length > 1 && (
-            <div className="absolute top-3 right-14 z-10 bg-blue-500 text-white px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20">
+            <div className="absolute top-4 right-14 z-10 bg-blue-500 text-white px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20">
               x{coins.filter(c => c.title === coin.title && c.denomination === coin.denomination).length}
             </div>
           )}
@@ -2247,7 +2247,7 @@ function CoinCollectorApp() {
     switch (layout) {
       case 'list':
         return (
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-3">
             {coinsToRender.map(coin => (
               <div key={coin.id} className="w-full">
                 {renderCoinCard({ ...coin, isTextMode: true } as any)}
@@ -2258,7 +2258,7 @@ function CoinCollectorApp() {
 
       case 'carousel':
         return (
-          <div className="flex gap-6 overflow-x-auto pb-8 no-scrollbar snap-x">
+          <div className="flex gap-4 overflow-x-auto pb-8 no-scrollbar snap-x">
             {coinsToRender.map(coin => (
               <div key={coin.id} className="min-w-[280px] sm:min-w-[320px] snap-center">
                 {renderCoinCard(coin)}
@@ -2269,7 +2269,7 @@ function CoinCollectorApp() {
 
       case 'masonry':
         return (
-          <div className="columns-1 sm:columns-2 lg:columns-3 gap-6 space-y-6">
+          <div className="columns-1 sm:columns-2 lg:columns-3 gap-4 space-y-4">
             {coinsToRender.map(coin => (
               <div key={coin.id} className="break-inside-avoid">
                 {renderCoinCard(coin)}
@@ -2288,9 +2288,9 @@ function CoinCollectorApp() {
         });
 
         return (
-          <div className="flex gap-6 overflow-x-auto pb-8 no-scrollbar min-h-[400px]">
+          <div className="flex gap-4 overflow-x-auto pb-8 no-scrollbar min-h-[400px]">
             {Object.entries(groupedByFolder).map(([fid, folderCoins]) => (
-              <div key={fid} className="min-w-[300px] flex flex-col gap-4 bg-slate-50/50 dark:bg-slate-800/30 p-4 rounded-[2.5rem] border border-slate-100 dark:border-slate-800">
+              <div key={fid} className="min-w-[320px] flex flex-col gap-4 bg-slate-50/50 dark:bg-slate-800/30 p-4 rounded-[2.5rem] border border-slate-100 dark:border-slate-800">
                 <div className="flex items-center justify-between px-2">
                   <h4 className="text-xs font-black uppercase tracking-widest text-slate-400">{foldersMap[fid as keyof typeof foldersMap] || 'Unknown'}</h4>
                   <span className="text-[10px] font-black text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full">{folderCoins.length}</span>
@@ -2419,7 +2419,7 @@ function CoinCollectorApp() {
 
       case 'split':
         return (
-          <div className="space-y-6">
+          <div className="space-y-4">
             {coinsToRender.map(coin => (
               <motion.div
                 key={coin.id}
@@ -2485,7 +2485,7 @@ function CoinCollectorApp() {
       default: // grid
         return (
           <div className={cn(
-            "grid gap-6",
+            "grid gap-4",
             preferences.isCompactUI 
               ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4" 
               : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3",
@@ -2613,7 +2613,7 @@ function CoinCollectorApp() {
 
   return (
     <div className={cn(
-      "min-h-screen text-slate-900 dark:text-slate-100 transition-colors duration-500 font-sans pb-32 relative",
+      "min-h-screen text-slate-900 dark:text-slate-100 transition-colors duration-500 font-sans pb-40 relative",
       preferences.themeTexture === 'paper' && "theme-paper",
       preferences.themeTexture === 'glass' && "theme-glass",
       preferences.themeTexture === 'wood' && "theme-wood",
@@ -2679,7 +2679,7 @@ function CoinCollectorApp() {
           </div>
         </header>
 
-        <main className="max-w-5xl mx-auto px-4 py-6">
+        <main className="max-w-5xl mx-auto px-4 py-8">
           {preferences.isPurchaseMode ? (
             <div className="space-y-6">
               <div className="flex items-center justify-between mb-4">
@@ -3047,7 +3047,7 @@ function CoinCollectorApp() {
                 placeholder="Search your collection..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 sm:py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none transition-all shadow-sm text-base sm:text-lg"
+                className="w-full pl-12 pr-4 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none transition-all shadow-sm text-base sm:text-lg"
               />
             </div>
             
@@ -3057,7 +3057,7 @@ function CoinCollectorApp() {
                   key={f}
                   onClick={() => setFilter(f)}
                   className={cn(
-                    "flex-1 py-3 rounded-2xl text-sm font-bold transition-all capitalize border",
+                    "flex-1 py-4 rounded-2xl text-sm font-bold transition-all capitalize border",
                     filter === f 
                       ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-slate-900 dark:border-white shadow-lg" 
                       : "bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-800"
@@ -3094,7 +3094,7 @@ function CoinCollectorApp() {
                 <select 
                   value={preferences.sortBy}
                   onChange={(e) => setPreferences(prev => ({ ...prev, sortBy: e.target.value as any }))}
-                  className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-amber-500 outline-none"
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-xs font-bold focus:ring-2 focus:ring-amber-500 outline-none"
                 >
                   <option value="recently-added">Recently Added</option>
                   <option value="year">Year</option>
@@ -3110,7 +3110,7 @@ function CoinCollectorApp() {
                 <select 
                   value={preferences.groupBy}
                   onChange={(e) => setPreferences(prev => ({ ...prev, groupBy: e.target.value as any }))}
-                  className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-amber-500 outline-none"
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-xs font-bold focus:ring-2 focus:ring-amber-500 outline-none"
                 >
                   <option value="none">No Grouping</option>
                   <option value="year">Year</option>
@@ -3125,7 +3125,7 @@ function CoinCollectorApp() {
                 <button
                   onClick={() => setPreferences(prev => ({ ...prev, isGrouped: !prev.isGrouped }))}
                   className={cn(
-                    "px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all border",
+                    "px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all border",
                     preferences.isGrouped 
                       ? "bg-amber-500 text-white border-amber-500 shadow-lg shadow-amber-500/20" 
                       : "bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-800"
@@ -3142,7 +3142,7 @@ function CoinCollectorApp() {
                     <select 
                       value={preferences.layoutType}
                       onChange={(e) => setPreferences(prev => ({ ...prev, layoutType: e.target.value as any }))}
-                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-amber-500 outline-none appearance-none pr-8"
+                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-xs font-bold focus:ring-2 focus:ring-amber-500 outline-none appearance-none pr-8"
                     >
                       <option value="grid">Grid</option>
                       <option value="list">List</option>
@@ -3176,7 +3176,7 @@ function CoinCollectorApp() {
                 ].filter(sg => sg.coins.length > 0) : null;
 
                 return (
-                  <div key={group.title} className="space-y-6">
+                  <div key={group.title} className="space-y-6 mt-8 first:mt-0">
                     <button 
                       onClick={() => {
                         setCollapsedGroups(prev => {
@@ -3186,7 +3186,7 @@ function CoinCollectorApp() {
                           return next;
                         });
                       }}
-                      className="w-full flex items-center gap-4 group"
+                      className="w-full flex items-center gap-4 group min-h-[44px]"
                     >
                       <h3 className="text-lg font-black tracking-tight text-slate-900 dark:text-white uppercase">{group.title}</h3>
                       <div className="h-px flex-1 bg-slate-100 dark:bg-slate-800 group-hover:bg-amber-500/30 transition-colors" />
@@ -3222,7 +3222,7 @@ function CoinCollectorApp() {
           )}
 
           {filteredCoins.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+            <div className="flex flex-col items-center justify-center py-32 text-slate-400">
               <Search className="w-16 h-16 mb-4 opacity-10" />
               <p className="text-xl font-bold">No coins found</p>
               <button 
@@ -3256,7 +3256,7 @@ function CoinCollectorApp() {
                   setIsSettingsOpen(false);
                 }}
                 className={cn(
-                  "flex flex-col items-center gap-0.5 sm:gap-1 py-2 sm:py-3 px-3 sm:px-5 rounded-3xl transition-all duration-300",
+                  "flex flex-col items-center gap-0.5 sm:gap-1 py-3 sm:py-4 px-4 sm:px-6 rounded-3xl transition-all duration-300",
                   preferences.activeFolderId === 'all' && !isTimelineOpen && !isStoryOpen && !isGameModesOpen && !isPhotoLibraryOpen && !isProfileOpen && !isSettingsOpen
                     ? "bg-amber-500 text-white shadow-lg shadow-amber-500/20 scale-110" 
                     : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
@@ -3275,7 +3275,7 @@ function CoinCollectorApp() {
                   setIsSettingsOpen(false);
                 }}
                 className={cn(
-                  "flex flex-col items-center gap-0.5 sm:gap-1 py-2 sm:py-3 px-3 sm:px-5 rounded-3xl transition-all duration-300",
+                  "flex flex-col items-center gap-0.5 sm:gap-1 py-3 sm:py-4 px-4 sm:px-6 rounded-3xl transition-all duration-300",
                   isTimelineOpen 
                     ? "bg-amber-500 text-white shadow-lg shadow-amber-500/20 scale-110" 
                     : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
@@ -3302,7 +3302,7 @@ function CoinCollectorApp() {
                   setIsSettingsOpen(false);
                 }}
                 className={cn(
-                  "flex flex-col items-center gap-0.5 sm:gap-1 py-2 sm:py-3 px-3 sm:px-5 rounded-3xl transition-all duration-300",
+                  "flex flex-col items-center gap-0.5 sm:gap-1 py-3 sm:py-4 px-4 sm:px-6 rounded-3xl transition-all duration-300",
                   isGameModesOpen 
                     ? "bg-amber-500 text-white shadow-lg shadow-amber-500/20 scale-110" 
                     : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
@@ -3322,7 +3322,7 @@ function CoinCollectorApp() {
                   setIsSettingsOpen(false);
                 }}
                 className={cn(
-                  "flex flex-col items-center gap-0.5 sm:gap-1 py-2 sm:py-3 px-3 sm:px-5 rounded-3xl transition-all duration-300",
+                  "flex flex-col items-center gap-0.5 sm:gap-1 py-3 sm:py-4 px-4 sm:px-6 rounded-3xl transition-all duration-300",
                   isStoryOpen 
                     ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 scale-110" 
                     : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
@@ -3340,7 +3340,7 @@ function CoinCollectorApp() {
                   setIsSettingsOpen(false);
                 }}
                 className={cn(
-                  "flex flex-col items-center gap-0.5 sm:gap-1 py-2 sm:py-3 px-3 sm:px-5 rounded-3xl transition-all duration-300",
+                  "flex flex-col items-center gap-0.5 sm:gap-1 py-3 sm:py-4 px-4 sm:px-6 rounded-3xl transition-all duration-300",
                   isProfileOpen 
                     ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 scale-110" 
                     : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
@@ -3426,7 +3426,7 @@ function CoinCollectorApp() {
                               key={mode}
                               onClick={() => setPreferences(prev => ({ ...prev, themeMode: mode }))}
                               className={cn(
-                                "flex flex-col items-center gap-1 py-3 rounded-xl transition-all",
+                                "flex flex-col items-center gap-1 py-4 rounded-xl transition-all",
                                 preferences.themeMode === mode 
                                   ? "bg-amber-500 text-white shadow-lg shadow-amber-500/20" 
                                   : "text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
@@ -3449,7 +3449,7 @@ function CoinCollectorApp() {
                               key={texture}
                               onClick={() => setPreferences(prev => ({ ...prev, themeTexture: texture }))}
                               className={cn(
-                                "flex flex-col items-center gap-1 py-3 rounded-xl transition-all",
+                                "flex flex-col items-center gap-1 py-4 rounded-xl transition-all",
                                 preferences.themeTexture === texture 
                                   ? "bg-amber-500 text-white shadow-lg shadow-amber-500/20" 
                                   : "text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
