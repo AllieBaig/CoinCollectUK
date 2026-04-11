@@ -13,6 +13,8 @@ export interface Coin {
   amountPaid?: number;
   purchaseDate?: string;
   points?: number;
+  country?: string;
+  currencyType?: 'modern' | 'old';
 }
 
 export interface Folder {
@@ -80,6 +82,8 @@ export interface UserPreferences {
   denominationPrices: Record<string, number>;
   layoutType: LayoutType;
   showLayoutSwitcher: boolean;
+  showOldEuropeanCoins: boolean;
+  europeanCoinFilter: 'modern' | 'old' | 'both';
 }
 
 export interface StoryChapter {

@@ -20,6 +20,17 @@ export const DENOMINATIONS = [
   '50p',
   '£1',
   '£2',
+  'Euro',
+  'Franc (FR)',
+  'Franc (BE)',
+  'Deutsche Mark',
+  'Lira',
+  'Peseta',
+  'Guilder',
+  'Schilling (AT)',
+  'Schilling (IE)',
+  'Penny (IE)',
+  'Florin (IE)',
   'Other'
 ];
 
@@ -124,6 +135,18 @@ export const GAME_MODES: GameMode[] = [
   }
 ];
 
+export const COUNTRIES = [
+  'United Kingdom',
+  'Ireland',
+  'France',
+  'Germany',
+  'Italy',
+  'Spain',
+  'Netherlands',
+  'Belgium',
+  'Austria'
+];
+
 export const INITIAL_COINS: Coin[] = [
   {
     id: '50p-kew-gardens',
@@ -135,7 +158,9 @@ export const INITIAL_COINS: Coin[] = [
     isRare: true,
     category: '50p',
     folderId: 'folder-rare',
-    addedAt: now
+    addedAt: now,
+    country: 'United Kingdom',
+    currencyType: 'modern'
   },
   {
     id: '50p-paddington-station',
@@ -146,7 +171,9 @@ export const INITIAL_COINS: Coin[] = [
     isCollected: false,
     category: '50p',
     folderId: 'folder-commemorative',
-    addedAt: now
+    addedAt: now,
+    country: 'United Kingdom',
+    currencyType: 'modern'
   },
   {
     id: '2-great-fire',
@@ -157,7 +184,9 @@ export const INITIAL_COINS: Coin[] = [
     isCollected: false,
     category: '£2',
     folderId: 'folder-commemorative',
-    addedAt: now
+    addedAt: now,
+    country: 'United Kingdom',
+    currencyType: 'modern'
   },
   {
     id: '2-shakespeare-tragedies',
@@ -168,7 +197,9 @@ export const INITIAL_COINS: Coin[] = [
     isCollected: false,
     category: '£2',
     folderId: 'folder-commemorative',
-    addedAt: now
+    addedAt: now,
+    country: 'United Kingdom',
+    currencyType: 'modern'
   },
   {
     id: '50p-brexit',
@@ -179,7 +210,9 @@ export const INITIAL_COINS: Coin[] = [
     isCollected: false,
     category: '50p',
     folderId: 'folder-circulating',
-    addedAt: now
+    addedAt: now,
+    country: 'United Kingdom',
+    currencyType: 'modern'
   },
   {
     id: '1-nations-of-uk',
@@ -190,7 +223,9 @@ export const INITIAL_COINS: Coin[] = [
     isCollected: false,
     category: '£1',
     folderId: 'folder-circulating',
-    addedAt: now
+    addedAt: now,
+    country: 'United Kingdom',
+    currencyType: 'modern'
   },
   {
     id: '50p-olympic-football',
@@ -202,7 +237,9 @@ export const INITIAL_COINS: Coin[] = [
     isRare: true,
     category: '50p',
     folderId: 'folder-rare',
-    addedAt: now
+    addedAt: now,
+    country: 'United Kingdom',
+    currencyType: 'modern'
   },
   {
     id: '2-commonwealth-games-scotland',
@@ -214,7 +251,74 @@ export const INITIAL_COINS: Coin[] = [
     isRare: true,
     category: '£2',
     folderId: 'folder-rare',
-    addedAt: now
+    addedAt: now,
+    country: 'United Kingdom',
+    currencyType: 'modern'
+  },
+  {
+    id: 'ie-penny-1968',
+    title: 'Irish Penny',
+    denomination: 'Penny (IE)',
+    year: 1968,
+    summary: 'A pre-decimal Irish penny featuring the iconic harp and a hen with chicks.',
+    isCollected: true,
+    category: 'Other',
+    folderId: 'folder-circulating',
+    addedAt: now,
+    country: 'Ireland',
+    currencyType: 'old'
+  },
+  {
+    id: 'fr-franc-1960',
+    title: 'French Franc',
+    denomination: 'Franc (FR)',
+    year: 1960,
+    summary: 'The "Semeuse" (Sower) design, a classic of French numismatics.',
+    isCollected: true,
+    category: 'Other',
+    folderId: 'folder-circulating',
+    addedAt: now,
+    country: 'France',
+    currencyType: 'old'
+  },
+  {
+    id: 'de-mark-1990',
+    title: 'Deutsche Mark',
+    denomination: 'Deutsche Mark',
+    year: 1990,
+    summary: 'A symbol of German economic strength before the Euro.',
+    isCollected: true,
+    category: 'Other',
+    folderId: 'folder-circulating',
+    addedAt: now,
+    country: 'Germany',
+    currencyType: 'old'
+  },
+  {
+    id: 'it-lira-1955',
+    title: 'Italian Lira',
+    denomination: 'Lira',
+    year: 1955,
+    summary: 'Featuring the personification of Italy and a dolphin.',
+    isCollected: true,
+    category: 'Other',
+    folderId: 'folder-circulating',
+    addedAt: now,
+    country: 'Italy',
+    currencyType: 'old'
+  },
+  {
+    id: 'es-peseta-1975',
+    title: 'Spanish Peseta',
+    denomination: 'Peseta',
+    year: 1975,
+    summary: 'Featuring King Juan Carlos I.',
+    isCollected: true,
+    category: 'Other',
+    folderId: 'folder-circulating',
+    addedAt: now,
+    country: 'Spain',
+    currencyType: 'old'
   }
 ];
 
