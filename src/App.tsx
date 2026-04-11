@@ -48,12 +48,13 @@ import {
   Database,
   ArrowUpDown,
   BookOpen,
+  Library,
+  History,
   Book,
   Gamepad2,
   Lock,
   Zap,
   Award,
-  History,
   SearchCode,
   Map,
   Layout,
@@ -68,7 +69,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
-import { Coin, AppState, Folder, UserPreferences, Mission, Achievement, Timeline, TimelineEvent, Story, StoryChapter, GameMode, Era } from './types';
+import { Coin, AppState, Folder, UserPreferences, Mission, Achievement, Timeline, TimelineEvent, Story, StoryChapter, GameMode, Era, ImageLibraryItem } from './types';
 import { INITIAL_COINS, INITIAL_FOLDERS, TIMELINES, GAME_MODES, ERAS, DENOMINATIONS, COUNTRIES } from './constants';
 
 // Error Boundary Component
@@ -360,6 +361,7 @@ function CoinCollectorApp() {
       return {
         version: 3,
         coins,
+        imageLibrary: Array.isArray(data.imageLibrary) ? data.imageLibrary : [],
         folders,
         preferences,
         lastUpdated: String(data.lastUpdated || new Date().toISOString()),
@@ -430,6 +432,7 @@ function CoinCollectorApp() {
     ambientMotion: true
   });
   
+  const [imageLibrary, setImageLibrary] = useState<ImageLibraryItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'collected' | 'missing'>('all');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -437,9 +440,14 @@ function CoinCollectorApp() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isPhotoLibraryOpen, setIsPhotoLibraryOpen] = useState(false);
+  const [isImageLibraryOpen, setIsImageLibraryOpen] = useState(false);
+  const [isImagePickerOpen, setIsImagePickerOpen] = useState(false);
+  const [onImageSelectCallback, setOnImageSelectCallback] = useState<((imageId: string) => void) | null>(null);
   const [selectedCoin, setSelectedCoin] = useState<Coin | null>(null);
   const [editingCoin, setEditingCoin] = useState<Coin | null>(null);
   const [editingCoinId, setEditingCoinId] = useState<string | null>(null);
+  const [editingCoinImage, setEditingCoinImage] = useState<string | null>(null);
+  const [editingCoinImageId, setEditingCoinImageId] = useState<string | null>(null);
   const [importProgress, setImportProgress] = useState<number | null>(null);
   const [recoveryCode, setRecoveryCode] = useState<string>('');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
@@ -497,6 +505,71 @@ function CoinCollectorApp() {
       }
       return next;
     });
+  };
+
+  const compressImage = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 800;
+          const MAX_HEIGHT = 800;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', 0.7)); // Compress to 70% quality
+        };
+        img.onerror = reject;
+      };
+      reader.onerror = reject;
+    });
+  };
+
+  const handleBulkImport = async (files: FileList | null) => {
+    if (!files) return;
+    
+    setImportProgress(0);
+    const newImages: ImageLibraryItem[] = [];
+    const total = files.length;
+
+    for (let i = 0; i < total; i++) {
+      try {
+        const compressed = await compressImage(files[i]);
+        newImages.push({
+          id: Math.random().toString(36).substr(2, 9),
+          data: compressed,
+          name: files[i].name,
+          addedAt: new Date().toISOString()
+        });
+        setImportProgress(Math.round(((i + 1) / total) * 100));
+      } catch (err) {
+        console.error('Error compressing image:', err);
+      }
+    }
+
+    setImageLibrary(prev => [...prev, ...newImages]);
+    setImportProgress(null);
+    setToast({ message: `Successfully imported ${newImages.length} images`, type: 'success' });
   };
 
   const enterMultiSelectMode = (id: string) => {
@@ -1382,6 +1455,7 @@ function CoinCollectorApp() {
         setLastOpenedTimelineId(parsed.lastOpenedTimelineId);
         setLastOpenedStoryId(parsed.lastOpenedStoryId);
         setLastOpenedGameModeId(parsed.lastOpenedGameModeId);
+        setImageLibrary(parsed.imageLibrary || []);
 
         if (parsed.preferences) {
           setPreferences({
@@ -1412,6 +1486,7 @@ function CoinCollectorApp() {
           const converted = convertData(parsed);
           if (converted) {
             setCoins(converted.coins);
+            setImageLibrary(converted.imageLibrary || []);
             setFolders(converted.folders);
             setPreferences(converted.preferences);
             setRecoveryCode(converted.recoveryCode || generateRecoveryCode());
@@ -1540,6 +1615,7 @@ function CoinCollectorApp() {
       const state: AppState = {
         version: 3,
         coins,
+        imageLibrary,
         folders,
         preferences,
         recoveryCode,
@@ -1567,7 +1643,7 @@ function CoinCollectorApp() {
         localStorage.setItem('uk-coin-collection-last-working', stateStr);
       }
     }
-  }, [coins, folders, preferences, recoveryCode, streak, missions, achievements, lastLuckySpinDate, isSafeMode, lastOpenedTimelineId, lastOpenedStoryId, lastOpenedGameModeId, timelineProgress, gameProgress, storyProgress, eraProgress, timelinePoints, storyPoints, gamePoints]);
+  }, [coins, imageLibrary, folders, preferences, recoveryCode, streak, missions, achievements, lastLuckySpinDate, isSafeMode, lastOpenedTimelineId, lastOpenedStoryId, lastOpenedGameModeId, timelineProgress, gameProgress, storyProgress, eraProgress, timelinePoints, storyPoints, gamePoints]);
 
   // Daily Backup Logic
   useEffect(() => {
@@ -2130,13 +2206,13 @@ function CoinCollectorApp() {
               x{coins.filter(c => c.title === coin.title && c.denomination === coin.denomination).length}
             </div>
           )}
-          {coin.imageUrl && (
+          {(coin.imageUrl || coin.imageId) && (
             <div className={cn(
               "w-full overflow-hidden bg-slate-100 dark:bg-slate-800 relative",
               preferences.isCompactUI ? "h-28 sm:h-32" : "h-40 sm:h-48"
             )}>
               <img 
-                src={coin.imageUrl} 
+                src={coin.imageId ? (imageLibrary.find(img => img.id === coin.imageId)?.data || coin.imageUrl) : coin.imageUrl} 
                 alt={coin.title} 
                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                 referrerPolicy="no-referrer"
@@ -2500,6 +2576,7 @@ function CoinCollectorApp() {
   };
 
   const [newCoinImage, setNewCoinImage] = useState<string | null>(null);
+  const [newCoinImageId, setNewCoinImageId] = useState<string | null>(null);
   const coinImageInputRef = useRef<HTMLInputElement>(null);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -2653,9 +2730,16 @@ function CoinCollectorApp() {
               {!preferences.isPurchaseMode && (
                 <>
                   <button 
+                    onClick={() => setIsImageLibraryOpen(true)}
+                    className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    title="Image Library"
+                  >
+                    <Library className="w-5 h-5" />
+                  </button>
+                  <button 
                     onClick={() => setIsPhotoLibraryOpen(true)}
                     className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                    title="Photo Library"
+                    title="Photo Gallery"
                   >
                     <ImageIcon className="w-5 h-5" />
                   </button>
@@ -4332,6 +4416,7 @@ function CoinCollectorApp() {
                         folderId: formData.get('folderId') as string || undefined,
                         addedAt: new Date().toISOString(),
                         imageUrl: newCoinImage || undefined,
+                        imageId: newCoinImageId || undefined,
                         amountPaid,
                         purchaseDate,
                         country: formData.get('country') as string,
@@ -4340,23 +4425,40 @@ function CoinCollectorApp() {
                       setCoins(prev => [newCoin, ...prev]);
                       setIsAddModalOpen(false);
                       setNewCoinImage(null);
+                      setNewCoinImageId(null);
                       showToast('Coin added to collection!');
                     }} className="space-y-5">
-                      <div className="flex justify-center mb-6">
-                        <button 
-                          type="button"
-                          onClick={() => coinImageInputRef.current?.click()}
-                          className="w-32 h-32 rounded-3xl bg-slate-100 dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-700 flex flex-col items-center justify-center gap-2 overflow-hidden group hover:border-amber-500 transition-all"
-                        >
-                          {newCoinImage ? (
-                            <img src={newCoinImage} alt="Preview" className="w-full h-full object-cover" />
-                          ) : (
-                            <>
-                              <Camera className="w-8 h-8 text-slate-400 group-hover:text-amber-500" />
-                              <span className="text-[10px] font-black text-slate-400 uppercase">Add Photo</span>
-                            </>
-                          )}
-                        </button>
+                      <div className="flex flex-col items-center gap-4 mb-6">
+                        <div className="flex gap-4">
+                          <button 
+                            type="button"
+                            onClick={() => coinImageInputRef.current?.click()}
+                            className="w-32 h-32 rounded-3xl bg-slate-100 dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-700 flex flex-col items-center justify-center gap-2 overflow-hidden group hover:border-amber-500 transition-all"
+                          >
+                            {(newCoinImage || newCoinImageId) ? (
+                              <img src={newCoinImageId ? imageLibrary.find(img => img.id === newCoinImageId)?.data : newCoinImage!} alt="Preview" className="w-full h-full object-cover" />
+                            ) : (
+                              <>
+                                <Camera className="w-8 h-8 text-slate-400 group-hover:text-amber-500" />
+                                <span className="text-[10px] font-black text-slate-400 uppercase">Add Photo</span>
+                              </>
+                            )}
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={() => {
+                              setOnImageSelectCallback(() => (id: string) => {
+                                setNewCoinImageId(id);
+                                setNewCoinImage(null);
+                              });
+                              setIsImagePickerOpen(true);
+                            }}
+                            className="w-32 h-32 rounded-3xl bg-slate-100 dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-700 flex flex-col items-center justify-center gap-2 overflow-hidden group hover:border-amber-500 transition-all"
+                          >
+                            <ImageIcon className="w-8 h-8 text-slate-400 group-hover:text-amber-500" />
+                            <span className="text-[10px] font-black text-slate-400 uppercase">From Library</span>
+                          </button>
+                        </div>
                         <input type="file" ref={coinImageInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
                       </div>
 
@@ -4667,7 +4769,7 @@ function CoinCollectorApp() {
                 </div>
                 <div className="p-8 overflow-y-auto flex-1">
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                    {coins.filter(c => c.imageUrl).map(coin => (
+                    {coins.filter(c => c.imageUrl || c.imageId).map(coin => (
                       <div 
                         key={coin.id} 
                         onClick={() => { setSelectedCoin(coin); setIsPhotoLibraryOpen(false); }}
@@ -4681,13 +4783,17 @@ function CoinCollectorApp() {
                             <Trophy className="w-3 h-3" />
                           </div>
                         )}
-                        <img src={coin.imageUrl} alt={coin.title} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                        <img 
+                          src={coin.imageId ? (imageLibrary.find(img => img.id === coin.imageId)?.data || coin.imageUrl) : coin.imageUrl} 
+                          alt={coin.title} 
+                          className="w-full h-full object-cover transition-transform group-hover:scale-110" 
+                        />
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-2 text-center">
                           <span className="text-white text-[10px] font-bold uppercase tracking-widest">{coin.title}</span>
                         </div>
                       </div>
                     ))}
-                    {coins.filter(c => c.imageUrl).length === 0 && (
+                    {coins.filter(c => c.imageUrl || c.imageId).length === 0 && (
                       <div className="col-span-full py-20 text-center text-slate-400">
                         <ImageIcon className="w-12 h-12 mx-auto mb-4 opacity-20" />
                         <p className="font-bold">No photos in your library yet.</p>
@@ -4720,9 +4826,13 @@ function CoinCollectorApp() {
                   preferences.themeTexture === 'glass' && "glass-card"
                 )}
               >
-                {selectedCoin.imageUrl && (
+                {(selectedCoin.imageUrl || selectedCoin.imageId) && (
                   <div className="h-64 w-full relative">
-                    <img src={selectedCoin.imageUrl} alt={selectedCoin.title} className="w-full h-full object-cover" />
+                    <img 
+                      src={selectedCoin.imageId ? (imageLibrary.find(img => img.id === selectedCoin.imageId)?.data || selectedCoin.imageUrl) : selectedCoin.imageUrl} 
+                      alt={selectedCoin.title} 
+                      className="w-full h-full object-cover" 
+                    />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                     <button 
                       onClick={() => setSelectedCoin(null)}
@@ -4881,40 +4991,62 @@ function CoinCollectorApp() {
                     const formData = new FormData(e.currentTarget);
                     const amountPaid = formData.get('amountPaid') ? parseFloat(formData.get('amountPaid') as string) : undefined;
                     
-                    updateCoin({
-                      ...editingCoin,
-                      title: formData.get('title') as string,
-                      denomination: formData.get('denomination') as string,
-                      year: parseInt(formData.get('year') as string),
-                      summary: formData.get('summary') as string,
-                      category: formData.get('denomination') as string,
-                      amountPaid,
-                      purchaseDate: formData.get('purchaseDate') as string || undefined,
-                      folderId: formData.get('folderId') as string || undefined,
-                      isCollected: !!amountPaid || editingCoin.isCollected,
-                      imageUrl: newCoinImage || editingCoin.imageUrl,
-                      isRare: formData.get('isRare') === 'on',
-                      country: formData.get('country') as string,
-                      currencyType: formData.get('currencyType') as 'modern' | 'old'
-                    });
-                    setNewCoinImage(null);
-                    showToast('Coin updated!');
+                      updateCoin({
+                        ...editingCoin,
+                        title: formData.get('title') as string,
+                        denomination: formData.get('denomination') as string,
+                        year: parseInt(formData.get('year') as string),
+                        summary: formData.get('summary') as string,
+                        category: formData.get('denomination') as string,
+                        amountPaid,
+                        purchaseDate: formData.get('purchaseDate') as string || undefined,
+                        folderId: formData.get('folderId') as string || undefined,
+                        isCollected: !!amountPaid || editingCoin.isCollected,
+                        imageUrl: editingCoinImage || editingCoin.imageUrl,
+                        imageId: editingCoinImageId || editingCoin.imageId,
+                        isRare: formData.get('isRare') === 'on',
+                        country: formData.get('country') as string,
+                        currencyType: formData.get('currencyType') as 'modern' | 'old'
+                      });
+                      setEditingCoinImage(null);
+                      setEditingCoinImageId(null);
+                      showToast('Coin updated!');
                   }} className="space-y-5">
-                    <div className="flex justify-center mb-6">
-                      <button 
-                        type="button"
-                        onClick={() => coinImageInputRef.current?.click()}
-                        className="w-32 h-32 rounded-3xl bg-slate-100 dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-700 flex flex-col items-center justify-center gap-2 overflow-hidden group hover:border-amber-500 transition-all"
-                      >
-                        {newCoinImage || editingCoin.imageUrl ? (
-                          <img src={newCoinImage || editingCoin.imageUrl} alt="Preview" className="w-full h-full object-cover" />
-                        ) : (
-                          <>
-                            <Camera className="w-8 h-8 text-slate-400 group-hover:text-amber-500" />
-                            <span className="text-[10px] font-black text-slate-400 uppercase">Add Photo</span>
-                          </>
-                        )}
-                      </button>
+                    <div className="flex flex-col items-center gap-4 mb-6">
+                      <div className="flex gap-4">
+                        <button 
+                          type="button"
+                          onClick={() => coinImageInputRef.current?.click()}
+                          className="w-32 h-32 rounded-3xl bg-slate-100 dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-700 flex flex-col items-center justify-center gap-2 overflow-hidden group hover:border-amber-500 transition-all"
+                        >
+                          {(editingCoinImage || editingCoinImageId || editingCoin.imageUrl || editingCoin.imageId) ? (
+                            <img 
+                              src={editingCoinImageId ? imageLibrary.find(img => img.id === editingCoinImageId)?.data : (editingCoinImage || (editingCoin.imageId ? imageLibrary.find(img => img.id === editingCoin.imageId)?.data : editingCoin.imageUrl))} 
+                              alt="Preview" 
+                              className="w-full h-full object-cover" 
+                            />
+                          ) : (
+                            <>
+                              <Camera className="w-8 h-8 text-slate-400 group-hover:text-amber-500" />
+                              <span className="text-[10px] font-black text-slate-400 uppercase">Change Photo</span>
+                            </>
+                          )}
+                        </button>
+                        <button 
+                          type="button"
+                          onClick={() => {
+                            setOnImageSelectCallback(() => (id: string) => {
+                              setEditingCoinImageId(id);
+                              setEditingCoinImage(null);
+                            });
+                            setIsImagePickerOpen(true);
+                          }}
+                          className="w-32 h-32 rounded-3xl bg-slate-100 dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-700 flex flex-col items-center justify-center gap-2 overflow-hidden group hover:border-amber-500 transition-all"
+                        >
+                          <ImageIcon className="w-8 h-8 text-slate-400 group-hover:text-amber-500" />
+                          <span className="text-[10px] font-black text-slate-400 uppercase">From Library</span>
+                        </button>
+                      </div>
                       <input type="file" ref={coinImageInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
                     </div>
 
@@ -5090,6 +5222,165 @@ function CoinCollectorApp() {
                 </button>
               </div>
             </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {isImageLibraryOpen && (
+            <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsImageLibraryOpen(false)}
+                className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+              />
+              <motion.div 
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                className={cn(
+                  "relative w-full max-w-4xl bg-white dark:bg-slate-900 rounded-[40px] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col",
+                  preferences.themeTexture === 'glass' && "glass-card"
+                )}
+              >
+                <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                  <div>
+                    <h2 className="text-2xl font-black">Image Library</h2>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{imageLibrary.length} Images Stored</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button 
+                      onClick={() => {
+                        const input = document.createElement('input');
+                        input.type = 'file';
+                        input.multiple = true;
+                        input.accept = 'image/*';
+                        input.onchange = (e) => handleBulkImport((e.target as HTMLInputElement).files);
+                        input.click();
+                      }}
+                      className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-amber-500/20 hover:scale-105 transition-all"
+                    >
+                      <Upload className="w-4 h-4" />
+                      Bulk Import
+                    </button>
+                    <button onClick={() => setIsImageLibraryOpen(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full">
+                      <X className="w-6 h-6" />
+                    </button>
+                  </div>
+                </div>
+                <div className="p-8 overflow-y-auto flex-1">
+                  {importProgress !== null && (
+                    <div className="mb-8 p-6 bg-amber-500/10 rounded-3xl border border-amber-500/20">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-xs font-black text-amber-600 uppercase tracking-widest">Compressing & Importing...</span>
+                        <span className="text-xs font-black text-amber-600">{importProgress}%</span>
+                      </div>
+                      <div className="w-full h-2 bg-amber-100 dark:bg-amber-900/30 rounded-full overflow-hidden">
+                        <motion.div 
+                          initial={{ width: 0 }}
+                          animate={{ width: `${importProgress}%` }}
+                          className="h-full bg-amber-500"
+                        />
+                      </div>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                    {imageLibrary.map(img => (
+                      <div 
+                        key={img.id} 
+                        className="group relative aspect-square rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
+                      >
+                        <img src={img.data} alt={img.name} className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-4 text-center gap-2">
+                          <p className="text-white text-[10px] font-bold truncate w-full">{img.name}</p>
+                          <button 
+                            onClick={() => {
+                              setImageLibrary(prev => prev.filter(i => i.id !== img.id));
+                              // Also remove reference from coins
+                              setCoins(prev => prev.map(c => c.imageId === img.id ? { ...c, imageId: undefined } : c));
+                            }}
+                            className="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    {imageLibrary.length === 0 && importProgress === null && (
+                      <div className="col-span-full py-20 text-center text-slate-400">
+                        <ImageIcon className="w-16 h-16 mx-auto mb-4 opacity-20" />
+                        <p className="font-black uppercase tracking-widest text-sm">Library is empty</p>
+                        <p className="text-xs mt-2">Import images to start building your library</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {isImagePickerOpen && (
+            <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsImagePickerOpen(false)}
+                className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+              />
+              <motion.div 
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                className={cn(
+                  "relative w-full max-w-2xl bg-white dark:bg-slate-900 rounded-[40px] shadow-2xl overflow-hidden max-h-[80vh] flex flex-col",
+                  preferences.themeTexture === 'glass' && "glass-card"
+                )}
+              >
+                <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                  <h2 className="text-2xl font-black">Select from Library</h2>
+                  <button onClick={() => setIsImagePickerOpen(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full">
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+                <div className="p-8 overflow-y-auto flex-1">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                    {imageLibrary.map(img => (
+                      <div 
+                        key={img.id} 
+                        onClick={() => {
+                          if (onImageSelectCallback) onImageSelectCallback(img.id);
+                          setIsImagePickerOpen(false);
+                        }}
+                        className="aspect-square rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 cursor-pointer group relative border-2 border-transparent hover:border-amber-500 transition-all"
+                      >
+                        <img src={img.data} alt={img.name} className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-amber-500/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <Check className="w-8 h-8 text-white" />
+                        </div>
+                      </div>
+                    ))}
+                    {imageLibrary.length === 0 && (
+                      <div className="col-span-full py-20 text-center text-slate-400">
+                        <p className="font-bold">Your library is empty.</p>
+                        <button 
+                          onClick={() => {
+                            setIsImagePickerOpen(false);
+                            setIsImageLibraryOpen(true);
+                          }}
+                          className="mt-4 text-amber-500 font-black uppercase tracking-widest text-xs"
+                        >
+                          Go to Library to Import
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            </div>
           )}
         </AnimatePresence>
 

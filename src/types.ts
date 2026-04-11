@@ -10,6 +10,7 @@ export interface Coin {
   folderId?: string;
   addedAt: string;
   imageUrl?: string;
+  imageId?: string;
   amountPaid?: number;
   purchaseDate?: string;
   points?: number;
@@ -134,9 +135,17 @@ export interface Era {
   badge?: string;
 }
 
+export interface ImageLibraryItem {
+  id: string;
+  data: string; // Base64 compressed image
+  name: string;
+  addedAt: string;
+}
+
 export interface AppState {
   version?: number;
   coins: Coin[];
+  imageLibrary?: ImageLibraryItem[];
   folders: Folder[];
   preferences: UserPreferences;
   lastUpdated: string;
