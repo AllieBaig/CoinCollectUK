@@ -72,6 +72,57 @@ import { cn } from './lib/utils';
 import { Coin, AppState, Folder, UserPreferences, Mission, Achievement, Timeline, TimelineEvent, Story, StoryChapter, GameMode, Era, ImageLibraryItem } from './types';
 import { INITIAL_COINS, INITIAL_FOLDERS, TIMELINES, GAME_MODES, ERAS, DENOMINATIONS, COUNTRIES } from './constants';
 
+const AUTO_CORRECT_MAP: Record<string, string> = {
+  'Half pnn': 'Half Penny',
+  'pnn': 'Penny',
+  'Far': 'Farthing',
+  'Shil': 'Shilling',
+  'Flor': 'Florin',
+  'Crn': 'Crown',
+  '1 p': '1p',
+  '2 p': '2p',
+  '5 p': '5p',
+  '10 p': '10p',
+  '20 p': '20p',
+  '50 p': '50p',
+  '£ 1': '£1',
+  '£ 2': '£2',
+};
+
+const validateCoin = (denomination: string, year: number, country: string): string | null => {
+  if (country === 'United Kingdom') {
+    if (denomination === 'Farthing' && year > 1960) return 'Farthings were demonetised in 1960.';
+    if (denomination === 'Half Penny' && year > 1984) return 'Half Pennies were demonetised in 1984.';
+    if (['Threepence', 'Sixpence', 'Shilling', 'Florin', 'Half Crown', 'Crown'].includes(denomination) && year > 1970) {
+      return `${denomination}s were replaced by decimal currency in 1971.`;
+    }
+    if (['1p', '2p', '5p', '10p', '20p', '50p', '£1', '£2'].includes(denomination) && year < 1968) {
+      return 'Decimal coins were introduced starting in 1968-1971.';
+    }
+  }
+  return null;
+};
+
+const getAutoEra = (year: number, country: string): 'modern' | 'old' => {
+  if (country === 'United Kingdom') return year >= 1971 ? 'modern' : 'old';
+  return year >= 2002 ? 'modern' : 'old';
+};
+
+const getAutoCountry = (denomination: string): string => {
+  if (['Farthing', 'Half Penny', 'Penny', 'Threepence', 'Sixpence', 'Shilling', 'Florin', 'Half Crown', 'Crown', '1p', '2p', '5p', '10p', '20p', '50p', '£1', '£2'].includes(denomination)) {
+    return 'United Kingdom';
+  }
+  if (denomination.includes('(IE)')) return 'Ireland';
+  if (denomination.includes('(FR)')) return 'France';
+  if (denomination.includes('(BE)')) return 'Belgium';
+  if (denomination === 'Deutsche Mark') return 'Germany';
+  if (denomination === 'Lira') return 'Italy';
+  if (denomination === 'Peseta') return 'Spain';
+  if (denomination === 'Guilder') return 'Netherlands';
+  if (denomination.includes('(AT)')) return 'Austria';
+  return 'United Kingdom';
+};
+
 // Error Boundary Component
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -438,6 +489,22 @@ function CoinCollectorApp() {
   const [imageLibrary, setImageLibrary] = useState<ImageLibraryItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'collected' | 'missing'>('all');
+  const [addCoinDenomination, setAddCoinDenomination] = useState(DENOMINATIONS[0]);
+  const [addCoinYear, setAddCoinYear] = useState<string>(new Date().getFullYear().toString());
+  const [addCoinCountry, setAddCoinCountry] = useState('United Kingdom');
+  const [addCoinEra, setAddCoinEra] = useState<'modern' | 'old'>('modern');
+  const [addCoinTitle, setAddCoinTitle] = useState('');
+  const [addCoinPrice, setAddCoinPrice] = useState<string>('');
+  const [addCoinWarning, setAddCoinWarning] = useState<string | null>(null);
+
+  const [editCoinDenomination, setEditCoinDenomination] = useState(DENOMINATIONS[0]);
+  const [editCoinYear, setEditCoinYear] = useState<string>('');
+  const [editCoinCountry, setEditCoinCountry] = useState('United Kingdom');
+  const [editCoinEra, setEditCoinEra] = useState<'modern' | 'old'>('modern');
+  const [editCoinTitle, setEditCoinTitle] = useState('');
+  const [editCoinPrice, setEditCoinPrice] = useState<string>('');
+  const [editCoinWarning, setEditCoinWarning] = useState<string | null>(null);
+
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isAddFolderModalOpen, setIsAddFolderModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -492,7 +559,6 @@ function CoinCollectorApp() {
   const [expandedChapterIdx, setExpandedChapterIdx] = useState<number | null>(null);
   const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({});
   const [selectedMindMapCoin, setSelectedMindMapCoin] = useState<Coin | null>(null);
-  const [addCoinDenomination, setAddCoinDenomination] = useState<string>('50p');
   const [selectedCoinIds, setSelectedCoinIds] = useState<Set<string>>(new Set());
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [isBulkFolderModalOpen, setIsBulkFolderModalOpen] = useState(false);
@@ -1422,6 +1488,40 @@ function CoinCollectorApp() {
     }
     return code;
   };
+
+  // Auto-fill and Validation Effects
+  useEffect(() => {
+    if (isAddModalOpen) {
+      const country = getAutoCountry(addCoinDenomination);
+      setAddCoinCountry(country);
+      const era = getAutoEra(parseInt(addCoinYear) || 0, country);
+      setAddCoinEra(era);
+      const price = preferences.denominationPrices[addCoinDenomination] || '';
+      setAddCoinPrice(price.toString());
+      setAddCoinWarning(validateCoin(addCoinDenomination, parseInt(addCoinYear) || 0, country));
+    }
+  }, [addCoinDenomination, addCoinYear, isAddModalOpen, preferences.denominationPrices]);
+
+  useEffect(() => {
+    if (editingCoin) {
+      const country = getAutoCountry(editCoinDenomination);
+      setEditCoinCountry(country);
+      const era = getAutoEra(parseInt(editCoinYear) || 0, country);
+      setEditCoinEra(era);
+      setEditCoinWarning(validateCoin(editCoinDenomination, parseInt(editCoinYear) || 0, country));
+    }
+  }, [editCoinDenomination, editCoinYear, editingCoin]);
+
+  useEffect(() => {
+    if (editingCoin) {
+      setEditCoinDenomination(editingCoin.denomination);
+      setEditCoinYear(editingCoin.year.toString());
+      setEditCoinCountry(editingCoin.country || 'United Kingdom');
+      setEditCoinEra(editingCoin.currencyType || 'modern');
+      setEditCoinTitle(editingCoin.title);
+      setEditCoinPrice(editingCoin.amountPaid?.toString() || '');
+    }
+  }, [editingCoin]);
 
   const showToast = (message: string, type: 'success' | 'info' = 'success') => {
     setToast({ message, type });
@@ -4460,31 +4560,33 @@ function CoinCollectorApp() {
                     <form onSubmit={(e) => {
                       e.preventDefault();
                       const formData = new FormData(e.currentTarget);
-                      const amountPaid = formData.get('amountPaid') ? parseFloat(formData.get('amountPaid') as string) : undefined;
+                      const amountPaid = addCoinPrice ? parseFloat(addCoinPrice) : undefined;
                       const purchaseDate = formData.get('purchaseDate') as string || undefined;
                       
                       const newCoin: Coin = {
                         id: `custom-${Date.now()}`,
-                        title: formData.get('title') as string,
-                        denomination: formData.get('denomination') as string,
-                        year: parseInt(formData.get('year') as string),
+                        title: addCoinTitle,
+                        denomination: addCoinDenomination,
+                        year: parseInt(addCoinYear),
                         summary: formData.get('summary') as string,
                         isCollected: !!amountPaid || false,
                         isRare: formData.get('isRare') === 'on',
-                        category: formData.get('denomination') as string,
+                        category: addCoinDenomination,
                         folderId: formData.get('folderId') as string || undefined,
                         addedAt: new Date().toISOString(),
                         imageUrl: newCoinImage || undefined,
                         imageId: newCoinImageId || undefined,
                         amountPaid,
                         purchaseDate,
-                        country: formData.get('country') as string,
-                        currencyType: formData.get('currencyType') as 'modern' | 'old'
+                        country: addCoinCountry,
+                        currencyType: addCoinEra
                       };
                       setCoins(prev => [newCoin, ...prev]);
                       setIsAddModalOpen(false);
                       setNewCoinImage(null);
                       setNewCoinImageId(null);
+                      setAddCoinTitle('');
+                      setAddCoinYear(new Date().getFullYear().toString());
                       showToast('Coin added to collection!');
                     }} className="space-y-5">
                       <div className="flex flex-col items-center gap-4 mb-6">
@@ -4523,7 +4625,23 @@ function CoinCollectorApp() {
 
                       <div>
                         <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Coin Title</label>
-                        <input name="title" required placeholder="e.g. Peter Rabbit" className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold" />
+                        <input 
+                          name="title" 
+                          required 
+                          placeholder="e.g. Peter Rabbit" 
+                          value={addCoinTitle}
+                          onChange={(e) => {
+                            let val = e.target.value;
+                            // Auto-correct
+                            Object.entries(AUTO_CORRECT_MAP).forEach(([typo, correct]) => {
+                              if (val.toLowerCase().includes(typo.toLowerCase())) {
+                                val = val.replace(new RegExp(typo, 'gi'), correct);
+                              }
+                            });
+                            setAddCoinTitle(val);
+                          }}
+                          className="w-full h-[56px] px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold" 
+                        />
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
@@ -4533,7 +4651,7 @@ function CoinCollectorApp() {
                             required 
                             value={addCoinDenomination}
                             onChange={(e) => setAddCoinDenomination(e.target.value)}
-                            className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold appearance-none"
+                            className="w-full h-[56px] px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold appearance-none"
                           >
                             {DENOMINATIONS.map(d => (
                               <option key={d} value={d}>{d}</option>
@@ -4542,13 +4660,38 @@ function CoinCollectorApp() {
                         </div>
                         <div>
                           <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Year</label>
-                          <input name="year" type="number" required placeholder="e.g. 2023" className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold" />
+                          <input 
+                            name="year" 
+                            type="number" 
+                            required 
+                            placeholder="e.g. 2023" 
+                            value={addCoinYear}
+                            onChange={(e) => setAddCoinYear(e.target.value)}
+                            className="w-full h-[56px] px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold" 
+                          />
                         </div>
                       </div>
+
+                      {addCoinWarning && (
+                        <motion.div 
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-xl flex items-center gap-2 text-amber-600 dark:text-amber-400 text-xs font-bold"
+                        >
+                          <AlertCircle className="w-4 h-4 shrink-0" />
+                          <span>{addCoinWarning}</span>
+                        </motion.div>
+                      )}
+
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Country</label>
-                          <select name="country" defaultValue="United Kingdom" className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold appearance-none">
+                          <select 
+                            name="country" 
+                            value={addCoinCountry}
+                            onChange={(e) => setAddCoinCountry(e.target.value)}
+                            className="w-full h-[56px] px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold appearance-none"
+                          >
                             {COUNTRIES.map(c => (
                               <option key={c} value={c}>{c}</option>
                             ))}
@@ -4556,9 +4699,14 @@ function CoinCollectorApp() {
                         </div>
                         <div>
                           <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Era</label>
-                          <select name="currencyType" defaultValue="modern" className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold appearance-none">
-                            <option value="modern">Modern (Euro/Current)</option>
-                            <option value="old">Old (Pre-Euro/Legacy)</option>
+                          <select 
+                            name="currencyType" 
+                            value={addCoinEra}
+                            onChange={(e) => setAddCoinEra(e.target.value as 'modern' | 'old')}
+                            className="w-full h-[56px] px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold appearance-none"
+                          >
+                            <option value="modern">Modern Era</option>
+                            <option value="old">Old Era</option>
                           </select>
                         </div>
                       </div>
@@ -4570,45 +4718,59 @@ function CoinCollectorApp() {
                             type="number" 
                             step="0.01" 
                             placeholder="0.00" 
-                            key={`price-${addCoinDenomination}`}
-                            defaultValue={preferences.denominationPrices[addCoinDenomination] || ''}
-                            className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold" 
+                            value={addCoinPrice}
+                            onChange={(e) => setAddCoinPrice(e.target.value)}
+                            className="w-full h-[56px] px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold" 
                           />
                         </div>
                         <div>
                           <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Purchase Date</label>
-                          <input name="purchaseDate" type="date" defaultValue={new Date().toISOString().split('T')[0]} className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold" />
+                          <div className="relative">
+                            <input 
+                              name="purchaseDate" 
+                              type="date" 
+                              defaultValue={new Date().toISOString().split('T')[0]} 
+                              className="w-full h-[56px] px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold appearance-none" 
+                            />
+                            <Calendar className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                          </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3 p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl">
-                        <input type="checkbox" name="isRare" id="isRare" className="w-5 h-5 accent-amber-500 rounded" />
-                        <label htmlFor="isRare" className="text-sm font-bold flex items-center gap-2">
-                          <AlertTriangle className="w-4 h-4 text-amber-500" />
-                          Mark as Rare Coin (5x Points)
-                        </label>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Folder</label>
+                          <select name="folderId" className="w-full h-[56px] px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold appearance-none">
+                            <option value="">No Folder</option>
+                            {folders.map(f => (
+                              <option key={f.id} value={f.id}>{f.icon} {f.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="flex items-end">
+                          <div className="flex items-center gap-3 p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl w-full h-[56px]">
+                            <input type="checkbox" name="isRare" id="isRare" className="w-5 h-5 accent-amber-500 rounded" />
+                            <label htmlFor="isRare" className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                              Rare Coin
+                            </label>
+                          </div>
+                        </div>
                       </div>
                       <div>
-                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Folder</label>
-                        <select name="folderId" className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold appearance-none">
-                          <option value="">No Folder</option>
-                          {folders.map(f => (
-                            <option key={f.id} value={f.id}>{f.icon} {f.name}</option>
-                          ))}
-                        </select>
+                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Summary (2 sentences)</label>
+                        <textarea name="summary" required rows={3} placeholder="A brief description..." className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none resize-none font-medium text-sm" />
                       </div>
-                    <div>
-                      <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Summary (2 sentences)</label>
-                      <textarea name="summary" required rows={3} placeholder="A brief description..." className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none resize-none font-medium text-sm" />
-                    </div>
-                    <button type="submit" className="w-full py-5 bg-amber-500 hover:bg-amber-600 text-white font-black rounded-2xl shadow-xl shadow-amber-500/30 transition-all mt-4 uppercase tracking-widest">
-                      Add to Collection
-                    </button>
-                  </form>
-                </div>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
+                      <button 
+                        type="submit"
+                        className="w-full py-5 bg-amber-500 text-white font-black rounded-2xl shadow-xl shadow-amber-500/20 uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all"
+                      >
+                        Add to Collection
+                      </button>
+                    </form>
+                  </div>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>
 
         {/* Profile Modal */}
         <AnimatePresence>
@@ -4953,6 +5115,20 @@ function CoinCollectorApp() {
                     </div>
 
                     <div>
+                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Details</h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl">
+                          <span className="block text-[10px] font-black text-slate-400 uppercase mb-1">Country</span>
+                          <span className="font-bold text-sm">{selectedCoin.country || 'United Kingdom'}</span>
+                        </div>
+                        <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl">
+                          <span className="block text-[10px] font-black text-slate-400 uppercase mb-1">Era</span>
+                          <span className="font-bold text-sm capitalize">{selectedCoin.currencyType || 'Modern'} Era</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
                       <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Summary</h4>
                       <p className="text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
                         {selectedCoin.summary}
@@ -5048,15 +5224,15 @@ function CoinCollectorApp() {
                   <form onSubmit={(e) => {
                     e.preventDefault();
                     const formData = new FormData(e.currentTarget);
-                    const amountPaid = formData.get('amountPaid') ? parseFloat(formData.get('amountPaid') as string) : undefined;
+                    const amountPaid = editCoinPrice ? parseFloat(editCoinPrice) : undefined;
                     
                       updateCoin({
                         ...editingCoin,
-                        title: formData.get('title') as string,
-                        denomination: formData.get('denomination') as string,
-                        year: parseInt(formData.get('year') as string),
+                        title: editCoinTitle,
+                        denomination: editCoinDenomination,
+                        year: parseInt(editCoinYear),
                         summary: formData.get('summary') as string,
-                        category: formData.get('denomination') as string,
+                        category: editCoinDenomination,
                         amountPaid,
                         purchaseDate: formData.get('purchaseDate') as string || undefined,
                         folderId: formData.get('folderId') as string || undefined,
@@ -5064,11 +5240,12 @@ function CoinCollectorApp() {
                         imageUrl: editingCoinImage || editingCoin.imageUrl,
                         imageId: editingCoinImageId || editingCoin.imageId,
                         isRare: formData.get('isRare') === 'on',
-                        country: formData.get('country') as string,
-                        currencyType: formData.get('currencyType') as 'modern' | 'old'
+                        country: editCoinCountry,
+                        currencyType: editCoinEra
                       });
                       setEditingCoinImage(null);
                       setEditingCoinImageId(null);
+                      setEditingCoin(null);
                       showToast('Coin updated!');
                   }} className="space-y-5">
                     <div className="flex flex-col items-center gap-4 mb-6">
@@ -5111,7 +5288,22 @@ function CoinCollectorApp() {
 
                     <div>
                       <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Coin Title</label>
-                      <input name="title" required defaultValue={editingCoin.title} className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold" />
+                      <input 
+                        name="title" 
+                        required 
+                        value={editCoinTitle}
+                        onChange={(e) => {
+                          let val = e.target.value;
+                          // Auto-correct
+                          Object.entries(AUTO_CORRECT_MAP).forEach(([typo, correct]) => {
+                            if (val.toLowerCase().includes(typo.toLowerCase())) {
+                              val = val.replace(new RegExp(typo, 'gi'), correct);
+                            }
+                          });
+                          setEditCoinTitle(val);
+                        }}
+                        className="w-full h-[56px] px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold" 
+                      />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
@@ -5119,8 +5311,9 @@ function CoinCollectorApp() {
                         <select 
                           name="denomination" 
                           required 
-                          defaultValue={editingCoin.denomination}
-                          className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold appearance-none"
+                          value={editCoinDenomination}
+                          onChange={(e) => setEditCoinDenomination(e.target.value)}
+                          className="w-full h-[56px] px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold appearance-none"
                         >
                           {DENOMINATIONS.map(d => (
                             <option key={d} value={d}>{d}</option>
@@ -5129,13 +5322,37 @@ function CoinCollectorApp() {
                       </div>
                       <div>
                         <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Year</label>
-                        <input name="year" type="number" required defaultValue={editingCoin.year} className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold" />
+                        <input 
+                          name="year" 
+                          type="number" 
+                          required 
+                          value={editCoinYear}
+                          onChange={(e) => setEditCoinYear(e.target.value)}
+                          className="w-full h-[56px] px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold" 
+                        />
                       </div>
                     </div>
+
+                    {editCoinWarning && (
+                      <motion.div 
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-xl flex items-center gap-2 text-amber-600 dark:text-amber-400 text-xs font-bold"
+                      >
+                        <AlertCircle className="w-4 h-4 shrink-0" />
+                        <span>{editCoinWarning}</span>
+                      </motion.div>
+                    )}
+
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Country</label>
-                        <select name="country" defaultValue={editingCoin.country || 'United Kingdom'} className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold appearance-none">
+                        <select 
+                          name="country" 
+                          value={editCoinCountry}
+                          onChange={(e) => setEditCoinCountry(e.target.value)}
+                          className="w-full h-[56px] px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold appearance-none"
+                        >
                           {COUNTRIES.map(c => (
                             <option key={c} value={c}>{c}</option>
                           ))}
@@ -5143,34 +5360,69 @@ function CoinCollectorApp() {
                       </div>
                       <div>
                         <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Era</label>
-                        <select name="currencyType" defaultValue={editingCoin.currencyType || 'modern'} className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold appearance-none">
-                          <option value="modern">Modern (Euro/Current)</option>
-                          <option value="old">Old (Pre-Euro/Legacy)</option>
+                        <select 
+                          name="currencyType" 
+                          value={editCoinEra}
+                          onChange={(e) => setEditCoinEra(e.target.value as 'modern' | 'old')}
+                          className="w-full h-[56px] px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold appearance-none"
+                        >
+                          <option value="modern">Modern Era</option>
+                          <option value="old">Old Era</option>
                         </select>
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Amount Paid (£)</label>
-                        <input name="amountPaid" type="number" step="0.01" defaultValue={editingCoin.amountPaid} className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold" />
+                        <input 
+                          name="amountPaid" 
+                          type="number" 
+                          step="0.01" 
+                          value={editCoinPrice}
+                          onChange={(e) => setEditCoinPrice(e.target.value)}
+                          className="w-full h-[56px] px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold" 
+                        />
                       </div>
                       <div>
                         <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Purchase Date</label>
-                        <input name="purchaseDate" type="date" defaultValue={editingCoin.purchaseDate} className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold" />
+                        <div className="relative">
+                          <input 
+                            name="purchaseDate" 
+                            type="date" 
+                            defaultValue={editingCoin.purchaseDate} 
+                            className="w-full h-[56px] px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold appearance-none" 
+                          />
+                          <Calendar className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl">
-                      <input type="checkbox" name="isRare" id="editIsRare" defaultChecked={editingCoin.isRare} className="w-5 h-5 accent-amber-500 rounded" />
-                      <label htmlFor="editIsRare" className="text-sm font-bold flex items-center gap-2">
-                        <AlertTriangle className="w-4 h-4 text-amber-500" />
-                        Rare Coin (5x Points)
-                      </label>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Folder</label>
+                        <select name="folderId" defaultValue={editingCoin.folderId} className="w-full h-[56px] px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold appearance-none">
+                          <option value="">No Folder</option>
+                          {folders.map(f => (
+                            <option key={f.id} value={f.id}>{f.icon} {f.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="flex items-end">
+                        <div className="flex items-center gap-3 p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl w-full h-[56px]">
+                          <input type="checkbox" name="isRare" id="editIsRare" defaultChecked={editingCoin.isRare} className="w-5 h-5 accent-amber-500 rounded" />
+                          <label htmlFor="editIsRare" className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                            Rare Coin
+                          </label>
+                        </div>
+                      </div>
                     </div>
                     <div>
                       <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Summary</label>
                       <textarea name="summary" required rows={3} defaultValue={editingCoin.summary} className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none resize-none font-medium text-sm" />
                     </div>
-                    <button type="submit" className="w-full py-5 bg-amber-500 hover:bg-amber-600 text-white font-black rounded-2xl shadow-xl shadow-amber-500/30 transition-all mt-4 uppercase tracking-widest">
+                    <button 
+                      type="submit" 
+                      className="w-full py-5 bg-amber-500 text-white font-black rounded-2xl shadow-xl shadow-amber-500/20 uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all"
+                    >
                       Save Changes
                     </button>
                   </form>
