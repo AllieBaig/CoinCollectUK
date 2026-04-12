@@ -319,7 +319,8 @@ function CoinCollectorApp() {
         showLayoutSwitcher: true,
         showOldEuropeanCoins: true,
         europeanCoinFilter: 'both',
-        ambientMotion: true
+        ambientMotion: true,
+        enableImageLibrary: true
       };
 
       // Extract coins based on version/structure
@@ -353,7 +354,8 @@ function CoinCollectorApp() {
           sortBy: data.preferences.sortBy || 'recently-added',
           groupBy: data.preferences.groupBy || 'none',
           isGrouped: Boolean(data.preferences.isGrouped ?? false),
-          activeFolderId: data.preferences.activeFolderId || 'all'
+          activeFolderId: data.preferences.activeFolderId || 'all',
+          enableImageLibrary: data.preferences.enableImageLibrary ?? true
         };
       }
 
@@ -429,7 +431,8 @@ function CoinCollectorApp() {
     showLayoutSwitcher: true,
     showOldEuropeanCoins: true,
     europeanCoinFilter: 'both',
-    ambientMotion: true
+    ambientMotion: true,
+    enableImageLibrary: true
   });
   
   const [imageLibrary, setImageLibrary] = useState<ImageLibraryItem[]>([]);
@@ -448,6 +451,10 @@ function CoinCollectorApp() {
   const [editingCoinId, setEditingCoinId] = useState<string | null>(null);
   const [editingCoinImage, setEditingCoinImage] = useState<string | null>(null);
   const [editingCoinImageId, setEditingCoinImageId] = useState<string | null>(null);
+  const [selectedLibraryImageIds, setSelectedLibraryImageIds] = useState<Set<string>>(new Set());
+  const [isLibraryMultiSelectMode, setIsLibraryMultiSelectMode] = useState(false);
+  const [imageToDelete, setImageToDelete] = useState<ImageLibraryItem | null>(null);
+  const [imagesToDelete, setImagesToDelete] = useState<ImageLibraryItem[] | null>(null);
   const [importProgress, setImportProgress] = useState<number | null>(null);
   const [recoveryCode, setRecoveryCode] = useState<string>('');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
@@ -570,6 +577,27 @@ function CoinCollectorApp() {
     setImageLibrary(prev => [...prev, ...newImages]);
     setImportProgress(null);
     setToast({ message: `Successfully imported ${newImages.length} images`, type: 'success' });
+  };
+
+  const deleteLibraryImages = (ids: string[]) => {
+    setImageLibrary(prev => prev.filter(img => !ids.includes(img.id)));
+    setCoins(prev => prev.map(coin => 
+      coin.imageId && ids.includes(coin.imageId) ? { ...coin, imageId: undefined } : coin
+    ));
+    setSelectedLibraryImageIds(new Set());
+    setIsLibraryMultiSelectMode(false);
+    setImageToDelete(null);
+    setImagesToDelete(null);
+    showToast(`Deleted ${ids.length} images`, 'success');
+  };
+
+  const toggleLibraryImageSelection = (id: string) => {
+    setSelectedLibraryImageIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   };
 
   const enterMultiSelectMode = (id: string) => {
@@ -2127,10 +2155,9 @@ function CoinCollectorApp() {
   const renderCoinCard = (coin: Coin) => (
     <motion.div
       key={coin.id}
-      layout
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.9 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
       onClick={() => {
         if (isMultiSelectMode) {
           toggleCoinSelection(coin.id);
@@ -2146,13 +2173,14 @@ function CoinCollectorApp() {
       className={cn(
         "group relative app-card transition-all duration-500 overflow-hidden flex flex-col cursor-pointer",
         "hover:shadow-2xl hover:-translate-y-2",
+        preferences.isCompactUI ? "h-[280px]" : "h-[380px]",
         selectedCoinIds.has(coin.id) && "ring-4 ring-amber-500 ring-offset-2 dark:ring-offset-slate-900",
         coin.isRare 
           ? "border-amber-500/50 ring-4 ring-amber-500/10" 
           : coin.isCollected 
             ? "border-emerald-500/30" 
             : "border-slate-100 dark:border-slate-800",
-        preferences.isTextMode && "rounded-none border-0 border-b border-slate-100 dark:border-slate-800 p-4 bg-transparent dark:bg-transparent",
+        preferences.isTextMode && "rounded-none border-0 border-b border-slate-100 dark:border-slate-800 p-4 bg-transparent dark:bg-transparent h-auto",
         preferences.themeTexture === 'glass' && "glass-card"
       )}
     >
@@ -2206,9 +2234,9 @@ function CoinCollectorApp() {
               x{coins.filter(c => c.title === coin.title && c.denomination === coin.denomination).length}
             </div>
           )}
-          {(coin.imageUrl || coin.imageId) && (
+          {(coin.imageUrl || coin.imageId) ? (
             <div className={cn(
-              "w-full overflow-hidden bg-slate-100 dark:bg-slate-800 relative",
+              "w-full overflow-hidden bg-slate-100 dark:bg-slate-800 relative shrink-0",
               preferences.isCompactUI ? "h-28 sm:h-32" : "h-40 sm:h-48"
             )}>
               <img 
@@ -2216,27 +2244,35 @@ function CoinCollectorApp() {
                 alt={coin.title} 
                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                 referrerPolicy="no-referrer"
+                loading="lazy"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
                 <span className="text-white text-[10px] font-bold uppercase tracking-widest">{coin.denomination}</span>
               </div>
             </div>
+          ) : (
+            <div className={cn(
+              "w-full bg-slate-100 dark:bg-slate-800 relative shrink-0 flex items-center justify-center",
+              preferences.isCompactUI ? "h-28 sm:h-32" : "h-40 sm:h-48"
+            )}>
+              <ImageIcon className="w-8 h-8 text-slate-300 dark:text-slate-600" />
+            </div>
           )}
           <div className={cn(
-            "flex-1 flex flex-col",
+            "flex-1 flex flex-col min-h-0",
             preferences.isCompactUI ? "p-4" : "p-6"
           )}>
-            <div className="flex justify-between items-start mb-4">
-              <div className="flex flex-col flex-1 mr-2">
-                <span className="text-[10px] font-black text-amber-500 uppercase tracking-[0.2em] mb-1">
+            <div className="flex justify-between items-start mb-2">
+              <div className="flex flex-col flex-1 mr-2 min-w-0">
+                <span className="text-[10px] font-black text-amber-500 uppercase tracking-[0.2em] mb-1 truncate">
                   {coin.denomination} • {coin.year}
                 </span>
                 <h3 className={cn(
-                  "font-bold flex items-center gap-2 leading-tight",
+                  "font-bold flex items-center gap-2 leading-tight line-clamp-2 h-[2.5em]",
                   preferences.isCompactUI ? "text-sm" : "text-lg"
                 )}>
                   {coin.title}
-                  {coin.isRare && <Trophy className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />}
+                  {coin.isRare && <Trophy className="w-3.5 h-3.5 text-amber-500 fill-amber-500 shrink-0" />}
                 </h3>
               </div>
               <button 
@@ -2255,15 +2291,12 @@ function CoinCollectorApp() {
                 }
               </button>
             </div>
-
-            {!preferences.isCompactUI && (
-              <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 mb-4 italic leading-relaxed">
-                {coin.summary}
-              </p>
-            )}
+            <p className="text-xs text-slate-500 line-clamp-2 mt-2 h-[3em] overflow-hidden">
+              {coin.summary}
+            </p>
 
             {coin.amountPaid !== undefined && !preferences.isCompactUI && preferences.showPriceInNormalMode && (
-              <div className="flex items-center gap-4 mb-6 text-xs font-bold">
+              <div className="flex items-center gap-4 mt-4 text-xs font-bold">
                 <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
                   <PoundSterling className="w-3.5 h-3.5" />
                   <span>{coin.amountPaid.toFixed(2)}</span>
@@ -2690,7 +2723,7 @@ function CoinCollectorApp() {
 
   return (
     <div className={cn(
-      "min-h-screen text-slate-900 dark:text-slate-100 transition-colors duration-500 font-sans pb-40 relative",
+      "h-screen flex flex-col text-slate-900 dark:text-slate-100 transition-colors duration-500 font-sans relative overflow-hidden",
       preferences.themeTexture === 'paper' && "theme-paper",
       preferences.themeTexture === 'glass' && "theme-glass",
       preferences.themeTexture === 'wood' && "theme-wood",
@@ -2708,7 +2741,7 @@ function CoinCollectorApp() {
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              className="bg-amber-500 text-white text-center py-2 text-xs font-bold flex items-center justify-center gap-2"
+              className="bg-amber-500 text-white text-center py-2 text-xs font-bold flex items-center justify-center gap-2 flex-none"
             >
               <WifiOff className="w-3 h-3" />
               Offline Mode - Changes saved locally
@@ -2717,7 +2750,7 @@ function CoinCollectorApp() {
         </AnimatePresence>
 
         {/* Header */}
-        <header className="sticky top-0 z-30 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
+        <header className="flex-none z-30 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 safe-top">
           <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-amber-500 rounded-full flex items-center justify-center shadow-lg shadow-amber-500/20">
@@ -2729,13 +2762,15 @@ function CoinCollectorApp() {
             <div className="flex items-center gap-2">
               {!preferences.isPurchaseMode && (
                 <>
-                  <button 
-                    onClick={() => setIsImageLibraryOpen(true)}
-                    className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                    title="Image Library"
-                  >
-                    <Library className="w-5 h-5" />
-                  </button>
+                  {preferences.enableImageLibrary && (
+                    <button 
+                      onClick={() => setIsImageLibraryOpen(true)}
+                      className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                      title="Image Library"
+                    >
+                      <Library className="w-5 h-5" />
+                    </button>
+                  )}
                   <button 
                     onClick={() => setIsPhotoLibraryOpen(true)}
                     className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
@@ -2763,7 +2798,8 @@ function CoinCollectorApp() {
           </div>
         </header>
 
-        <main className="max-w-5xl mx-auto px-4 py-8">
+        <main className="flex-1 overflow-y-auto relative no-scrollbar">
+          <div className="max-w-5xl mx-auto px-4 py-8 pb-40">
           {preferences.isPurchaseMode ? (
             <div className="space-y-6">
               <div className="flex items-center justify-between mb-4">
@@ -3319,6 +3355,7 @@ function CoinCollectorApp() {
           )}
             </>
           )}
+          </div>
         </main>
 
         {/* Bottom Navigation */}
@@ -3817,6 +3854,28 @@ function CoinCollectorApp() {
                     onToggle={() => setOpenSettingSection(openSettingSection === 'management' ? null : 'management')}
                   >
                     <div className="space-y-3">
+                      <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
+                        <div className="flex items-center gap-3">
+                          <Library className="w-5 h-5 text-slate-400" />
+                          <div>
+                            <p className="text-sm font-bold">Enable Image Library</p>
+                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Bulk import & central storage</p>
+                          </div>
+                        </div>
+                        <button 
+                          onClick={() => setPreferences(prev => ({ ...prev, enableImageLibrary: !prev.enableImageLibrary }))}
+                          className={cn(
+                            "w-12 h-6 rounded-full transition-colors relative",
+                            preferences.enableImageLibrary ? "bg-amber-500" : "bg-slate-200 dark:bg-slate-700"
+                          )}
+                        >
+                          <motion.div 
+                            animate={{ x: preferences.enableImageLibrary ? 24 : 4 }}
+                            className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm"
+                          />
+                        </button>
+                      </div>
+
                       <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
                         <div className="flex items-center gap-3">
                           <ShoppingBag className="w-5 h-5 text-slate-400" />
@@ -5232,7 +5291,11 @@ function CoinCollectorApp() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                onClick={() => setIsImageLibraryOpen(false)}
+                onClick={() => {
+                  setIsImageLibraryOpen(false);
+                  setIsLibraryMultiSelectMode(false);
+                  setSelectedLibraryImageIds(new Set());
+                }}
                 className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
               />
               <motion.div 
@@ -5247,26 +5310,68 @@ function CoinCollectorApp() {
                 <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
                   <div>
                     <h2 className="text-2xl font-black">Image Library</h2>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{imageLibrary.length} Images Stored</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                      {isLibraryMultiSelectMode ? `${selectedLibraryImageIds.size} Selected` : `${imageLibrary.length} Images Stored`}
+                    </p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <button 
-                      onClick={() => {
-                        const input = document.createElement('input');
-                        input.type = 'file';
-                        input.multiple = true;
-                        input.accept = 'image/*';
-                        input.onchange = (e) => handleBulkImport((e.target as HTMLInputElement).files);
-                        input.click();
-                      }}
-                      className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-amber-500/20 hover:scale-105 transition-all"
-                    >
-                      <Upload className="w-4 h-4" />
-                      Bulk Import
-                    </button>
-                    <button onClick={() => setIsImageLibraryOpen(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full">
-                      <X className="w-6 h-6" />
-                    </button>
+                    {isLibraryMultiSelectMode ? (
+                      <>
+                        <button 
+                          onClick={() => {
+                            const linkedImages = imageLibrary.filter(img => 
+                              selectedLibraryImageIds.has(img.id) && 
+                              coins.some(c => c.imageId === img.id)
+                            );
+                            if (linkedImages.length > 0) {
+                              setImagesToDelete(imageLibrary.filter(img => selectedLibraryImageIds.has(img.id)));
+                            } else {
+                              deleteLibraryImages(Array.from(selectedLibraryImageIds));
+                            }
+                          }}
+                          className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-red-500/20 hover:scale-105 transition-all"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Delete ({selectedLibraryImageIds.size})
+                        </button>
+                        <button 
+                          onClick={() => {
+                            setIsLibraryMultiSelectMode(false);
+                            setSelectedLibraryImageIds(new Set());
+                          }}
+                          className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-xl text-xs font-black uppercase tracking-widest"
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button 
+                          onClick={() => {
+                            const input = document.createElement('input');
+                            input.type = 'file';
+                            input.multiple = true;
+                            input.accept = 'image/*';
+                            input.onchange = (e) => handleBulkImport((e.target as HTMLInputElement).files);
+                            input.click();
+                          }}
+                          className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-amber-500/20 hover:scale-105 transition-all"
+                        >
+                          <Upload className="w-4 h-4" />
+                          Bulk Import
+                        </button>
+                        <button 
+                          onClick={() => setIsLibraryMultiSelectMode(true)}
+                          className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full"
+                          title="Select Multiple"
+                        >
+                          <CheckCircle2 className="w-6 h-6" />
+                        </button>
+                        <button onClick={() => setIsImageLibraryOpen(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full">
+                          <X className="w-6 h-6" />
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
                 <div className="p-8 overflow-y-auto flex-1">
@@ -5289,22 +5394,48 @@ function CoinCollectorApp() {
                     {imageLibrary.map(img => (
                       <div 
                         key={img.id} 
-                        className="group relative aspect-square rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
+                        onClick={() => {
+                          if (isLibraryMultiSelectMode) {
+                            toggleLibraryImageSelection(img.id);
+                          }
+                        }}
+                        className={cn(
+                          "group relative aspect-square rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 border-2 transition-all cursor-pointer",
+                          selectedLibraryImageIds.has(img.id) ? "border-amber-500 scale-95" : "border-slate-200 dark:border-slate-700"
+                        )}
                       >
                         <img src={img.data} alt={img.name} className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-4 text-center gap-2">
-                          <p className="text-white text-[10px] font-bold truncate w-full">{img.name}</p>
-                          <button 
-                            onClick={() => {
-                              setImageLibrary(prev => prev.filter(i => i.id !== img.id));
-                              // Also remove reference from coins
-                              setCoins(prev => prev.map(c => c.imageId === img.id ? { ...c, imageId: undefined } : c));
-                            }}
-                            className="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
+                        {isLibraryMultiSelectMode && (
+                          <div className="absolute top-2 right-2 z-10">
+                            <div className={cn(
+                              "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all",
+                              selectedLibraryImageIds.has(img.id) 
+                                ? "bg-amber-500 border-amber-500 text-white" 
+                                : "bg-white/50 border-white text-transparent"
+                            )}>
+                              <Check className="w-4 h-4" />
+                            </div>
+                          </div>
+                        )}
+                        {!isLibraryMultiSelectMode && (
+                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-4 text-center gap-2">
+                            <p className="text-white text-[10px] font-bold truncate w-full">{img.name}</p>
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const isLinked = coins.some(c => c.imageId === img.id);
+                                if (isLinked) {
+                                  setImageToDelete(img);
+                                } else {
+                                  deleteLibraryImages([img.id]);
+                                }
+                              }}
+                              className="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        )}
                       </div>
                     ))}
                     {imageLibrary.length === 0 && importProgress === null && (
@@ -5512,6 +5643,67 @@ function CoinCollectorApp() {
                     Update {selectedCoinIds.size} Coins
                   </button>
                 </form>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* Image Delete Confirmation Modal */}
+        <AnimatePresence>
+          {(imageToDelete || imagesToDelete) && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => {
+                  setImageToDelete(null);
+                  setImagesToDelete(null);
+                }}
+                className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+              />
+              <motion.div 
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                className={cn(
+                  "relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-[40px] shadow-2xl overflow-hidden p-8 text-center",
+                  preferences.themeTexture === 'glass' && "glass-card"
+                )}
+              >
+                <div className="w-20 h-20 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <AlertTriangle className="w-10 h-10 text-red-500" />
+                </div>
+                <h2 className="text-2xl font-black mb-2">Linked Images</h2>
+                <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mb-8">
+                  {imageToDelete 
+                    ? `This image is linked to ${coins.filter(c => c.imageId === imageToDelete.id).length} coins. Deleting it will remove the image from those coins.`
+                    : `Some of these images are linked to coins. Deleting them will remove the images from those coins.`
+                  }
+                </p>
+                <div className="space-y-3">
+                  <button 
+                    onClick={() => {
+                      if (imageToDelete) {
+                        deleteLibraryImages([imageToDelete.id]);
+                      } else if (imagesToDelete) {
+                        deleteLibraryImages(imagesToDelete.map(img => img.id));
+                      }
+                    }}
+                    className="w-full py-4 bg-red-500 text-white font-black rounded-2xl shadow-xl shadow-red-500/20 uppercase tracking-widest hover:bg-red-600 transition-all"
+                  >
+                    Delete Anyway
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setImageToDelete(null);
+                      setImagesToDelete(null);
+                    }}
+                    className="w-full py-4 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-black rounded-2xl uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
+                  >
+                    Cancel
+                  </button>
+                </div>
               </motion.div>
             </div>
           )}
