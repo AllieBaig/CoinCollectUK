@@ -4588,183 +4588,207 @@ function CoinCollectorApp() {
                       setAddCoinTitle('');
                       setAddCoinYear(new Date().getFullYear().toString());
                       showToast('Coin added to collection!');
-                    }} className="space-y-5">
-                      <div className="flex flex-col items-center gap-4 mb-6">
-                        <div className="flex gap-4">
-                          <button 
-                            type="button"
-                            onClick={() => coinImageInputRef.current?.click()}
-                            className="w-32 h-32 rounded-3xl bg-slate-100 dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-700 flex flex-col items-center justify-center gap-2 overflow-hidden group hover:border-amber-500 transition-all"
-                          >
-                            {(newCoinImage || newCoinImageId) ? (
-                              <img src={newCoinImageId ? imageLibrary.find(img => img.id === newCoinImageId)?.data : newCoinImage!} alt="Preview" className="w-full h-full object-cover" />
-                            ) : (
-                              <>
-                                <Camera className="w-8 h-8 text-slate-400 group-hover:text-amber-500" />
-                                <span className="text-[10px] font-black text-slate-400 uppercase">Add Photo</span>
-                              </>
-                            )}
-                          </button>
-                          <button 
-                            type="button"
-                            onClick={() => {
-                              setOnImageSelectCallback(() => (id: string) => {
-                                setNewCoinImageId(id);
-                                setNewCoinImage(null);
-                              });
-                              setIsImagePickerOpen(true);
-                            }}
-                            className="w-32 h-32 rounded-3xl bg-slate-100 dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-700 flex flex-col items-center justify-center gap-2 overflow-hidden group hover:border-amber-500 transition-all"
-                          >
-                            <ImageIcon className="w-8 h-8 text-slate-400 group-hover:text-amber-500" />
-                            <span className="text-[10px] font-black text-slate-400 uppercase">From Library</span>
-                          </button>
-                        </div>
-                        <input type="file" ref={coinImageInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Coin Title</label>
-                        <input 
-                          name="title" 
-                          required 
-                          placeholder="e.g. Peter Rabbit" 
-                          value={addCoinTitle}
-                          onChange={(e) => {
-                            let val = e.target.value;
-                            // Auto-correct
-                            Object.entries(AUTO_CORRECT_MAP).forEach(([typo, correct]) => {
-                              if (val.toLowerCase().includes(typo.toLowerCase())) {
-                                val = val.replace(new RegExp(typo, 'gi'), correct);
-                              }
+                    }} className="space-y-6 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
+                      {/* Image Selection */}
+                      <div className="flex justify-center gap-4 mb-2">
+                        <button 
+                          type="button"
+                          onClick={() => coinImageInputRef.current?.click()}
+                          className="w-28 h-28 rounded-[2rem] bg-slate-50 dark:bg-slate-800/50 border-2 border-dashed border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center gap-2 overflow-hidden group hover:border-amber-500 transition-all"
+                        >
+                          {(newCoinImage || newCoinImageId) ? (
+                            <img src={newCoinImageId ? imageLibrary.find(img => img.id === newCoinImageId)?.data : newCoinImage!} alt="Preview" className="w-full h-full object-cover" />
+                          ) : (
+                            <>
+                              <Camera className="w-6 h-6 text-slate-400 group-hover:text-amber-500" />
+                              <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Add Photo</span>
+                            </>
+                          )}
+                        </button>
+                        <button 
+                          type="button"
+                          onClick={() => {
+                            setOnImageSelectCallback(() => (id: string) => {
+                              setNewCoinImageId(id);
+                              setNewCoinImage(null);
                             });
-                            setAddCoinTitle(val);
+                            setIsImagePickerOpen(true);
                           }}
-                          className="w-full h-[56px] px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold" 
-                        />
+                          className="w-28 h-28 rounded-[2rem] bg-slate-50 dark:bg-slate-800/50 border-2 border-dashed border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center gap-2 overflow-hidden group hover:border-amber-500 transition-all"
+                        >
+                          <ImageIcon className="w-6 h-6 text-slate-400 group-hover:text-amber-500" />
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Library</span>
+                        </button>
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
+                      <input type="file" ref={coinImageInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
+
+                      {/* Basic Info Section */}
+                      <div className="bg-slate-50 dark:bg-slate-800/40 p-6 rounded-[2.5rem] space-y-4">
+                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Basic Info</h3>
                         <div>
-                          <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Denomination</label>
-                          <select 
-                            name="denomination" 
-                            required 
-                            value={addCoinDenomination}
-                            onChange={(e) => setAddCoinDenomination(e.target.value)}
-                            className="w-full h-[56px] px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold appearance-none"
-                          >
-                            {DENOMINATIONS.map(d => (
-                              <option key={d} value={d}>{d}</option>
-                            ))}
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Year</label>
+                          <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1.5 ml-1">Coin Title</label>
                           <input 
-                            name="year" 
-                            type="number" 
+                            name="title" 
                             required 
-                            placeholder="e.g. 2023" 
-                            value={addCoinYear}
-                            onChange={(e) => setAddCoinYear(e.target.value)}
-                            className="w-full h-[56px] px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold" 
+                            placeholder="e.g. Peter Rabbit" 
+                            value={addCoinTitle}
+                            onChange={(e) => {
+                              let val = e.target.value;
+                              Object.entries(AUTO_CORRECT_MAP).forEach(([typo, correct]) => {
+                                if (val.toLowerCase().includes(typo.toLowerCase())) {
+                                  val = val.replace(new RegExp(typo, 'gi'), correct);
+                                }
+                              });
+                              setAddCoinTitle(val);
+                            }}
+                            className="w-full h-14 px-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none font-bold transition-all" 
                           />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1.5 ml-1">Denomination</label>
+                            <select 
+                              name="denomination" 
+                              required 
+                              value={addCoinDenomination}
+                              onChange={(e) => setAddCoinDenomination(e.target.value)}
+                              className="w-full h-14 px-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none font-bold appearance-none transition-all"
+                            >
+                              {DENOMINATIONS.map(d => (
+                                <option key={d} value={d}>{d}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1.5 ml-1">Year</label>
+                            <input 
+                              name="year" 
+                              type="number" 
+                              required 
+                              placeholder="2023" 
+                              value={addCoinYear}
+                              onChange={(e) => setAddCoinYear(e.target.value)}
+                              className="w-full h-14 px-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none font-bold transition-all" 
+                            />
+                          </div>
                         </div>
                       </div>
 
                       {addCoinWarning && (
                         <motion.div 
-                          initial={{ opacity: 0, y: -10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-xl flex items-center gap-2 text-amber-600 dark:text-amber-400 text-xs font-bold"
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          className="mx-2 p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center gap-3 text-amber-600 dark:text-amber-400 text-[11px] font-bold"
                         >
                           <AlertCircle className="w-4 h-4 shrink-0" />
                           <span>{addCoinWarning}</span>
                         </motion.div>
                       )}
 
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Country</label>
-                          <select 
-                            name="country" 
-                            value={addCoinCountry}
-                            onChange={(e) => setAddCoinCountry(e.target.value)}
-                            className="w-full h-[56px] px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold appearance-none"
-                          >
-                            {COUNTRIES.map(c => (
-                              <option key={c} value={c}>{c}</option>
-                            ))}
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Era</label>
-                          <select 
-                            name="currencyType" 
-                            value={addCoinEra}
-                            onChange={(e) => setAddCoinEra(e.target.value as 'modern' | 'old')}
-                            className="w-full h-[56px] px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold appearance-none"
-                          >
-                            <option value="modern">Modern Era</option>
-                            <option value="old">Old Era</option>
-                          </select>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Amount Paid (£)</label>
-                          <input 
-                            name="amountPaid" 
-                            type="number" 
-                            step="0.01" 
-                            placeholder="0.00" 
-                            value={addCoinPrice}
-                            onChange={(e) => setAddCoinPrice(e.target.value)}
-                            className="w-full h-[56px] px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold" 
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Purchase Date</label>
-                          <div className="relative">
-                            <input 
-                              name="purchaseDate" 
-                              type="date" 
-                              defaultValue={new Date().toISOString().split('T')[0]} 
-                              className="w-full h-[56px] px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold appearance-none" 
-                            />
-                            <Calendar className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                      {/* Details Section */}
+                      <div className="bg-slate-50 dark:bg-slate-800/40 p-6 rounded-[2.5rem] space-y-4">
+                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Details</h3>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1.5 ml-1">Country</label>
+                            <select 
+                              name="country" 
+                              value={addCoinCountry}
+                              onChange={(e) => setAddCoinCountry(e.target.value)}
+                              className="w-full h-14 px-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none font-bold appearance-none transition-all"
+                            >
+                              {COUNTRIES.map(c => (
+                                <option key={c} value={c}>{c}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1.5 ml-1">Era</label>
+                            <select 
+                              name="currencyType" 
+                              value={addCoinEra}
+                              onChange={(e) => setAddCoinEra(e.target.value as 'modern' | 'old')}
+                              className="w-full h-14 px-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none font-bold appearance-none transition-all"
+                            >
+                              <option value="modern">Modern Era</option>
+                              <option value="old">Old Era</option>
+                            </select>
                           </div>
                         </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Folder</label>
-                          <select name="folderId" className="w-full h-[56px] px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold appearance-none">
+                          <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1.5 ml-1">Folder</label>
+                          <select name="folderId" className="w-full h-14 px-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none font-bold appearance-none transition-all">
                             <option value="">No Folder</option>
                             {folders.map(f => (
                               <option key={f.id} value={f.id}>{f.icon} {f.name}</option>
                             ))}
                           </select>
                         </div>
-                        <div className="flex items-end">
-                          <div className="flex items-center gap-3 p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl w-full h-[56px]">
-                            <input type="checkbox" name="isRare" id="isRare" className="w-5 h-5 accent-amber-500 rounded" />
-                            <label htmlFor="isRare" className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
-                              Rare Coin
-                            </label>
+                      </div>
+
+                      {/* Purchase Section */}
+                      <div className="bg-slate-50 dark:bg-slate-800/40 p-6 rounded-[2.5rem] space-y-4">
+                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Purchase</h3>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1.5 ml-1">Price (£)</label>
+                            <input 
+                              name="amountPaid" 
+                              type="number" 
+                              step="0.01" 
+                              placeholder="0.00" 
+                              value={addCoinPrice}
+                              onChange={(e) => setAddCoinPrice(e.target.value)}
+                              className="w-full h-14 px-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none font-bold transition-all" 
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1.5 ml-1">Date</label>
+                            <div className="relative">
+                              <input 
+                                name="purchaseDate" 
+                                type="date" 
+                                defaultValue={new Date().toISOString().split('T')[0]} 
+                                className="w-full h-14 px-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none font-bold appearance-none transition-all" 
+                              />
+                              <Calendar className="absolute right-5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                            </div>
                           </div>
                         </div>
                       </div>
-                      <div>
-                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Summary (2 sentences)</label>
-                        <textarea name="summary" required rows={3} placeholder="A brief description..." className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none resize-none font-medium text-sm" />
+
+                      {/* Extras Section */}
+                      <div className="bg-slate-50 dark:bg-slate-800/40 p-6 rounded-[2.5rem] space-y-4">
+                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Extras</h3>
+                        <div className="flex items-center justify-between p-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                              <Trophy className="w-4 h-4 text-amber-500" />
+                            </div>
+                            <span className="text-xs font-bold">Rare Coin</span>
+                          </div>
+                          <input type="checkbox" name="isRare" className="w-6 h-6 accent-amber-500 rounded-lg cursor-pointer" />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1.5 ml-1">Summary</label>
+                          <textarea 
+                            name="summary" 
+                            required 
+                            rows={3} 
+                            placeholder="A brief description..." 
+                            className="w-full px-6 py-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none resize-none font-medium text-sm transition-all" 
+                          />
+                        </div>
                       </div>
-                      <button 
-                        type="submit"
-                        className="w-full py-5 bg-amber-500 text-white font-black rounded-2xl shadow-xl shadow-amber-500/20 uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all"
-                      >
-                        Add to Collection
-                      </button>
+
+                      <div className="pt-2">
+                        <button 
+                          type="submit"
+                          className="w-full py-5 bg-amber-500 text-white font-black rounded-[2rem] shadow-xl shadow-amber-500/20 uppercase tracking-[0.2em] text-xs hover:scale-[1.02] active:scale-[0.98] transition-all"
+                        >
+                          Add to Collection
+                        </button>
+                      </div>
                     </form>
                   </div>
                 </motion.div>
@@ -5247,184 +5271,208 @@ function CoinCollectorApp() {
                       setEditingCoinImageId(null);
                       setEditingCoin(null);
                       showToast('Coin updated!');
-                  }} className="space-y-5">
-                    <div className="flex flex-col items-center gap-4 mb-6">
-                      <div className="flex gap-4">
-                        <button 
-                          type="button"
-                          onClick={() => coinImageInputRef.current?.click()}
-                          className="w-32 h-32 rounded-3xl bg-slate-100 dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-700 flex flex-col items-center justify-center gap-2 overflow-hidden group hover:border-amber-500 transition-all"
-                        >
-                          {(editingCoinImage || editingCoinImageId || editingCoin.imageUrl || editingCoin.imageId) ? (
-                            <img 
-                              src={editingCoinImageId ? imageLibrary.find(img => img.id === editingCoinImageId)?.data : (editingCoinImage || (editingCoin.imageId ? imageLibrary.find(img => img.id === editingCoin.imageId)?.data : editingCoin.imageUrl))} 
-                              alt="Preview" 
-                              className="w-full h-full object-cover" 
-                            />
-                          ) : (
-                            <>
-                              <Camera className="w-8 h-8 text-slate-400 group-hover:text-amber-500" />
-                              <span className="text-[10px] font-black text-slate-400 uppercase">Change Photo</span>
-                            </>
-                          )}
-                        </button>
-                        <button 
-                          type="button"
-                          onClick={() => {
-                            setOnImageSelectCallback(() => (id: string) => {
-                              setEditingCoinImageId(id);
-                              setEditingCoinImage(null);
-                            });
-                            setIsImagePickerOpen(true);
-                          }}
-                          className="w-32 h-32 rounded-3xl bg-slate-100 dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-700 flex flex-col items-center justify-center gap-2 overflow-hidden group hover:border-amber-500 transition-all"
-                        >
-                          <ImageIcon className="w-8 h-8 text-slate-400 group-hover:text-amber-500" />
-                          <span className="text-[10px] font-black text-slate-400 uppercase">From Library</span>
-                        </button>
-                      </div>
-                      <input type="file" ref={coinImageInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Coin Title</label>
-                      <input 
-                        name="title" 
-                        required 
-                        value={editCoinTitle}
-                        onChange={(e) => {
-                          let val = e.target.value;
-                          // Auto-correct
-                          Object.entries(AUTO_CORRECT_MAP).forEach(([typo, correct]) => {
-                            if (val.toLowerCase().includes(typo.toLowerCase())) {
-                              val = val.replace(new RegExp(typo, 'gi'), correct);
-                            }
+                  }} className="space-y-6 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
+                    {/* Image Selection */}
+                    <div className="flex justify-center gap-4 mb-2">
+                      <button 
+                        type="button"
+                        onClick={() => coinImageInputRef.current?.click()}
+                        className="w-28 h-28 rounded-[2rem] bg-slate-50 dark:bg-slate-800/50 border-2 border-dashed border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center gap-2 overflow-hidden group hover:border-amber-500 transition-all"
+                      >
+                        {(editingCoinImage || editingCoinImageId || editingCoin.imageUrl || editingCoin.imageId) ? (
+                          <img 
+                            src={editingCoinImageId ? imageLibrary.find(img => img.id === editingCoinImageId)?.data : (editingCoinImage || (editingCoin.imageId ? imageLibrary.find(img => img.id === editingCoin.imageId)?.data : editingCoin.imageUrl))} 
+                            alt="Preview" 
+                            className="w-full h-full object-cover" 
+                          />
+                        ) : (
+                          <>
+                            <Camera className="w-6 h-6 text-slate-400 group-hover:text-amber-500" />
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Change</span>
+                          </>
+                        )}
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          setOnImageSelectCallback(() => (id: string) => {
+                            setEditingCoinImageId(id);
+                            setEditingCoinImage(null);
                           });
-                          setEditCoinTitle(val);
+                          setIsImagePickerOpen(true);
                         }}
-                        className="w-full h-[56px] px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold" 
-                      />
+                        className="w-28 h-28 rounded-[2rem] bg-slate-50 dark:bg-slate-800/50 border-2 border-dashed border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center gap-2 overflow-hidden group hover:border-amber-500 transition-all"
+                      >
+                        <ImageIcon className="w-6 h-6 text-slate-400 group-hover:text-amber-500" />
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Library</span>
+                      </button>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <input type="file" ref={coinImageInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
+
+                    {/* Basic Info Section */}
+                    <div className="bg-slate-50 dark:bg-slate-800/40 p-6 rounded-[2.5rem] space-y-4">
+                      <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Basic Info</h3>
                       <div>
-                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Denomination</label>
-                        <select 
-                          name="denomination" 
-                          required 
-                          value={editCoinDenomination}
-                          onChange={(e) => setEditCoinDenomination(e.target.value)}
-                          className="w-full h-[56px] px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold appearance-none"
-                        >
-                          {DENOMINATIONS.map(d => (
-                            <option key={d} value={d}>{d}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Year</label>
+                        <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1.5 ml-1">Coin Title</label>
                         <input 
-                          name="year" 
-                          type="number" 
+                          name="title" 
                           required 
-                          value={editCoinYear}
-                          onChange={(e) => setEditCoinYear(e.target.value)}
-                          className="w-full h-[56px] px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold" 
+                          value={editCoinTitle}
+                          onChange={(e) => {
+                            let val = e.target.value;
+                            Object.entries(AUTO_CORRECT_MAP).forEach(([typo, correct]) => {
+                              if (val.toLowerCase().includes(typo.toLowerCase())) {
+                                val = val.replace(new RegExp(typo, 'gi'), correct);
+                              }
+                            });
+                            setEditCoinTitle(val);
+                          }}
+                          className="w-full h-14 px-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none font-bold transition-all" 
                         />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1.5 ml-1">Denomination</label>
+                          <select 
+                            name="denomination" 
+                            required 
+                            value={editCoinDenomination}
+                            onChange={(e) => setEditCoinDenomination(e.target.value)}
+                            className="w-full h-14 px-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none font-bold appearance-none transition-all"
+                          >
+                            {DENOMINATIONS.map(d => (
+                              <option key={d} value={d}>{d}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1.5 ml-1">Year</label>
+                          <input 
+                            name="year" 
+                            type="number" 
+                            required 
+                            value={editCoinYear}
+                            onChange={(e) => setEditCoinYear(e.target.value)}
+                            className="w-full h-14 px-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none font-bold transition-all" 
+                          />
+                        </div>
                       </div>
                     </div>
 
                     {editCoinWarning && (
                       <motion.div 
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-xl flex items-center gap-2 text-amber-600 dark:text-amber-400 text-xs font-bold"
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="mx-2 p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center gap-3 text-amber-600 dark:text-amber-400 text-[11px] font-bold"
                       >
                         <AlertCircle className="w-4 h-4 shrink-0" />
                         <span>{editCoinWarning}</span>
                       </motion.div>
                     )}
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Country</label>
-                        <select 
-                          name="country" 
-                          value={editCoinCountry}
-                          onChange={(e) => setEditCoinCountry(e.target.value)}
-                          className="w-full h-[56px] px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold appearance-none"
-                        >
-                          {COUNTRIES.map(c => (
-                            <option key={c} value={c}>{c}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Era</label>
-                        <select 
-                          name="currencyType" 
-                          value={editCoinEra}
-                          onChange={(e) => setEditCoinEra(e.target.value as 'modern' | 'old')}
-                          className="w-full h-[56px] px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold appearance-none"
-                        >
-                          <option value="modern">Modern Era</option>
-                          <option value="old">Old Era</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Amount Paid (£)</label>
-                        <input 
-                          name="amountPaid" 
-                          type="number" 
-                          step="0.01" 
-                          value={editCoinPrice}
-                          onChange={(e) => setEditCoinPrice(e.target.value)}
-                          className="w-full h-[56px] px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold" 
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Purchase Date</label>
-                        <div className="relative">
-                          <input 
-                            name="purchaseDate" 
-                            type="date" 
-                            defaultValue={editingCoin.purchaseDate} 
-                            className="w-full h-[56px] px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold appearance-none" 
-                          />
-                          <Calendar className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                    {/* Details Section */}
+                    <div className="bg-slate-50 dark:bg-slate-800/40 p-6 rounded-[2.5rem] space-y-4">
+                      <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Details</h3>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1.5 ml-1">Country</label>
+                          <select 
+                            name="country" 
+                            value={editCoinCountry}
+                            onChange={(e) => setEditCoinCountry(e.target.value)}
+                            className="w-full h-14 px-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none font-bold appearance-none transition-all"
+                          >
+                            {COUNTRIES.map(c => (
+                              <option key={c} value={c}>{c}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1.5 ml-1">Era</label>
+                          <select 
+                            name="currencyType" 
+                            value={editCoinEra}
+                            onChange={(e) => setEditCoinEra(e.target.value as 'modern' | 'old')}
+                            className="w-full h-14 px-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none font-bold appearance-none transition-all"
+                          >
+                            <option value="modern">Modern Era</option>
+                            <option value="old">Old Era</option>
+                          </select>
                         </div>
                       </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Folder</label>
-                        <select name="folderId" defaultValue={editingCoin.folderId} className="w-full h-[56px] px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none font-bold appearance-none">
+                        <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1.5 ml-1">Folder</label>
+                        <select name="folderId" defaultValue={editingCoin.folderId} className="w-full h-14 px-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none font-bold appearance-none transition-all">
                           <option value="">No Folder</option>
                           {folders.map(f => (
                             <option key={f.id} value={f.id}>{f.icon} {f.name}</option>
                           ))}
                         </select>
                       </div>
-                      <div className="flex items-end">
-                        <div className="flex items-center gap-3 p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl w-full h-[56px]">
-                          <input type="checkbox" name="isRare" id="editIsRare" defaultChecked={editingCoin.isRare} className="w-5 h-5 accent-amber-500 rounded" />
-                          <label htmlFor="editIsRare" className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
-                            Rare Coin
-                          </label>
+                    </div>
+
+                    {/* Purchase Section */}
+                    <div className="bg-slate-50 dark:bg-slate-800/40 p-6 rounded-[2.5rem] space-y-4">
+                      <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Purchase</h3>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1.5 ml-1">Price (£)</label>
+                          <input 
+                            name="amountPaid" 
+                            type="number" 
+                            step="0.01" 
+                            value={editCoinPrice}
+                            onChange={(e) => setEditCoinPrice(e.target.value)}
+                            className="w-full h-14 px-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none font-bold transition-all" 
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1.5 ml-1">Date</label>
+                          <div className="relative">
+                            <input 
+                              name="purchaseDate" 
+                              type="date" 
+                              defaultValue={editingCoin.purchaseDate} 
+                              className="w-full h-14 px-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none font-bold appearance-none transition-all" 
+                            />
+                            <Calendar className="absolute right-5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                          </div>
                         </div>
                       </div>
                     </div>
-                    <div>
-                      <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Summary</label>
-                      <textarea name="summary" required rows={3} defaultValue={editingCoin.summary} className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none resize-none font-medium text-sm" />
+
+                    {/* Extras Section */}
+                    <div className="bg-slate-50 dark:bg-slate-800/40 p-6 rounded-[2.5rem] space-y-4">
+                      <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Extras</h3>
+                      <div className="flex items-center justify-between p-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                            <Trophy className="w-4 h-4 text-amber-500" />
+                          </div>
+                          <span className="text-xs font-bold">Rare Coin</span>
+                        </div>
+                        <input type="checkbox" name="isRare" id="editIsRare" defaultChecked={editingCoin.isRare} className="w-6 h-6 accent-amber-500 rounded-lg cursor-pointer" />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1.5 ml-1">Summary</label>
+                        <textarea 
+                          name="summary" 
+                          required 
+                          rows={3} 
+                          defaultValue={editingCoin.summary} 
+                          className="w-full px-6 py-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none resize-none font-medium text-sm transition-all" 
+                        />
+                      </div>
                     </div>
-                    <button 
-                      type="submit" 
-                      className="w-full py-5 bg-amber-500 text-white font-black rounded-2xl shadow-xl shadow-amber-500/20 uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all"
-                    >
-                      Save Changes
-                    </button>
+
+                    <div className="pt-2">
+                      <button 
+                        type="submit" 
+                        className="w-full py-5 bg-amber-500 text-white font-black rounded-[2rem] shadow-xl shadow-amber-500/20 uppercase tracking-[0.2em] text-xs hover:scale-[1.02] active:scale-[0.98] transition-all"
+                      >
+                        Save Changes
+                      </button>
+                    </div>
                   </form>
                 </div>
               </motion.div>
