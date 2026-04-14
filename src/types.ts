@@ -100,6 +100,7 @@ export interface UserPreferences {
     mint: boolean;
     condition: boolean;
   };
+  scrollOrientation: 'vertical' | 'horizontal';
 }
 
 export interface StoryChapter {

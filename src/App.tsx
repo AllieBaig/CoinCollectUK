@@ -604,6 +604,7 @@ function CoinCollectorApp() {
         europeanCoinFilter: 'both',
         territoryFilter: 'both',
         activeRegion: 'all',
+        scrollOrientation: 'horizontal',
         ambientMotion: true,
         enableImageLibrary: true,
         enabledLayouts: {
@@ -758,7 +759,8 @@ function CoinCollectorApp() {
       year: true,
       mint: true,
       condition: true
-    }
+    },
+    scrollOrientation: 'horizontal'
   });
   
   const [imageLibrary, setImageLibrary] = useState<ImageLibraryItem[]>([]);
@@ -1465,7 +1467,8 @@ function CoinCollectorApp() {
           setLastOpenedStoryId(story.id);
         }}
         className={cn(
-          "flex-shrink-0 w-72 p-8 rounded-[2.5rem] text-left transition-all duration-500 group relative overflow-hidden",
+          "flex-shrink-0 p-8 rounded-[2.5rem] text-left transition-all duration-500 group relative overflow-hidden",
+          preferences.scrollOrientation === 'horizontal' ? "w-72" : "w-full",
           "shadow-sm hover:shadow-2xl hover:-translate-y-2",
           lastOpenedStoryId === story.id 
             ? "bg-emerald-500 text-white shadow-xl shadow-emerald-500/30" 
@@ -1520,9 +1523,12 @@ function CoinCollectorApp() {
         <h2 className="text-2xl font-black tracking-tight text-gradient">{title}</h2>
         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-full">{items.length} Stories</span>
       </div>
-      <div className="flex gap-6 overflow-x-auto pb-8 px-6 no-scrollbar">
+      <div className={cn(
+        "flex gap-6 pb-8 px-6 no-scrollbar",
+        preferences.scrollOrientation === 'horizontal' ? "overflow-x-auto" : "flex-col overflow-y-visible"
+      )}>
         {items.map(story => (
-          <div key={story.id}>
+          <div key={story.id} className={cn(preferences.scrollOrientation === 'vertical' && "w-full")}>
             <StoryCard story={story} />
           </div>
         ))}
@@ -1590,7 +1596,8 @@ function CoinCollectorApp() {
           setLastOpenedTimelineId(timeline.id);
         }}
         className={cn(
-          "flex-shrink-0 w-64 p-8 rounded-[2.5rem] text-left transition-all duration-500 group relative overflow-hidden",
+          "flex-shrink-0 p-8 rounded-[2.5rem] text-left transition-all duration-500 group relative overflow-hidden",
+          preferences.scrollOrientation === 'horizontal' ? "w-64" : "w-full",
           "shadow-sm hover:shadow-2xl hover:-translate-y-2",
           lastOpenedTimelineId === timeline.id 
             ? "bg-amber-500 text-white shadow-xl shadow-amber-500/30" 
@@ -1637,8 +1644,15 @@ function CoinCollectorApp() {
         <h2 className="text-2xl font-black tracking-tight text-gradient">{title}</h2>
         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-full">{items.length} Timelines</span>
       </div>
-      <div className="flex gap-6 overflow-x-auto px-6 pb-8 no-scrollbar">
-        {items.map(t => <TimelineCard key={t.id} timeline={t} />)}
+      <div className={cn(
+        "flex gap-6 px-6 pb-8 no-scrollbar",
+        preferences.scrollOrientation === 'horizontal' ? "overflow-x-auto" : "flex-col overflow-y-visible"
+      )}>
+        {items.map(t => (
+          <div key={t.id} className={cn(preferences.scrollOrientation === 'vertical' && "w-full")}>
+            <TimelineCard timeline={t} />
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -1875,6 +1889,7 @@ function CoinCollectorApp() {
             isGrouped: parsed.preferences.isGrouped ?? false,
             territoryFilter: parsed.preferences.territoryFilter || 'both',
             activeRegion: parsed.preferences.activeRegion || 'all',
+            scrollOrientation: parsed.preferences.scrollOrientation || 'horizontal',
             showBottomMenu: parsed.preferences.showBottomMenu ?? true,
             isCompactUI: parsed.preferences.isCompactUI ?? false,
             isTextMode: parsed.preferences.isTextMode ?? false,
@@ -2753,7 +2768,7 @@ function CoinCollectorApp() {
     switch (layout) {
       case 'card':
         return (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {coinsToRender.map(coin => (
               <div key={coin.id} className="p-6 bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all group cursor-pointer h-[200px] flex flex-col" onClick={() => setSelectedCoin(coin)}>
                 <div className="flex justify-between items-start mb-4">
@@ -2778,30 +2793,30 @@ function CoinCollectorApp() {
 
       case 'table':
         return (
-          <div className="overflow-x-auto -mx-4 sm:mx-0">
-            <table className="w-full text-left border-collapse min-w-[600px]">
+          <div className="overflow-x-auto -mx-4 sm:mx-0 custom-scrollbar">
+            <table className="coin-table min-w-[600px]">
               <thead>
-                <tr className="border-b border-slate-100 dark:border-slate-800">
-                  <th className="px-4 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Name</th>
-                  {preferences.visibleFields.year && <th className="px-4 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Year</th>}
-                  {preferences.visibleFields.mint && <th className="px-4 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Mint</th>}
-                  <th className="px-4 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Value</th>
-                  {preferences.visibleFields.condition && <th className="px-4 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Condition</th>}
+                <tr>
+                  <th>Name</th>
+                  {preferences.visibleFields.year && <th>Year</th>}
+                  {preferences.visibleFields.mint && <th>Mint</th>}
+                  <th>Value</th>
+                  {preferences.visibleFields.condition && <th>Condition</th>}
                 </tr>
               </thead>
               <tbody>
                 {coinsToRender.map(coin => (
-                  <tr key={coin.id} className="border-b border-slate-50 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors cursor-pointer" onClick={() => setSelectedCoin(coin)}>
-                    <td className="px-4 py-4">
+                  <tr key={coin.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors cursor-pointer" onClick={() => setSelectedCoin(coin)}>
+                    <td>
                       <div className="flex items-center gap-3">
-                        <div className={cn("w-2 h-2 rounded-full", coin.isCollected ? "bg-emerald-500" : "bg-slate-300")} />
-                        <span className="font-bold text-sm">{coin.title}</span>
+                        <div className={cn("w-2 h-2 rounded-full shrink-0", coin.isCollected ? "bg-emerald-500" : "bg-slate-300")} />
+                        <span className="font-bold text-sm truncate">{coin.title}</span>
                       </div>
                     </td>
-                    {preferences.visibleFields.year && <td className="px-4 py-4 text-sm text-slate-500">{coin.year}</td>}
-                    {preferences.visibleFields.mint && <td className="px-4 py-4 text-sm text-slate-500">{coin.mint || '-'}</td>}
-                    <td className="px-4 py-4 text-sm font-bold text-emerald-600">£{(coin.amountPaid || 0).toFixed(2)}</td>
-                    {preferences.visibleFields.condition && <td className="px-4 py-4 text-sm text-slate-500">{coin.condition || '-'}</td>}
+                    {preferences.visibleFields.year && <td className="text-slate-500">{coin.year}</td>}
+                    {preferences.visibleFields.mint && <td className="text-slate-500">{coin.mint || '-'}</td>}
+                    <td className="font-bold text-emerald-600">£{(coin.amountPaid || 0).toFixed(2)}</td>
+                    {preferences.visibleFields.condition && <td className="text-slate-500">{coin.condition || '-'}</td>}
                   </tr>
                 ))}
               </tbody>
@@ -2885,7 +2900,7 @@ function CoinCollectorApp() {
 
       case 'masonry':
         return (
-          <div className="columns-1 sm:columns-2 lg:columns-3 gap-4 space-y-4">
+          <div className="columns-1 md:columns-2 gap-4 space-y-4">
             {coinsToRender.map(coin => (
               <div key={coin.id} className="break-inside-avoid">
                 <CoinCard 
@@ -2990,7 +3005,7 @@ function CoinCollectorApp() {
 
       case 'gallery':
         return (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {coinsToRender.map(coin => (
               <motion.div
                 key={coin.id}
@@ -3070,7 +3085,7 @@ function CoinCollectorApp() {
 
       case 'compact':
         return (
-          <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
             {coinsToRender.map(coin => (
               <motion.div
                 key={coin.id}
@@ -3168,8 +3183,8 @@ function CoinCollectorApp() {
           <div className={cn(
             "grid gap-4",
             preferences.isCompactUI 
-              ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4" 
-              : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3",
+              ? "grid-cols-2 md:grid-cols-3 lg:grid-cols-4" 
+              : "grid-cols-1 md:grid-cols-2",
             preferences.isTextMode && "grid-cols-1 gap-0"
           )}>
             <AnimatePresence mode="popLayout">
@@ -3322,7 +3337,7 @@ function CoinCollectorApp() {
 
         {/* Header */}
         <header className="fixed-header bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 safe-top">
-          <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="apple-container py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-amber-500 rounded-full flex items-center justify-center shadow-lg shadow-amber-500/20">
                 <span className="text-white font-bold text-xl">£</span>
@@ -3370,7 +3385,7 @@ function CoinCollectorApp() {
         </header>
 
         <main className="scroll-content no-scrollbar">
-          <div className="max-w-5xl mx-auto px-4 py-8 pb-40">
+          <div className="apple-container section-spacing pb-40">
           {preferences.isPurchaseMode ? (
             <div className="space-y-6">
               <div className="flex items-center justify-between mb-4">
@@ -3591,7 +3606,7 @@ function CoinCollectorApp() {
             </div>
           ) : isStoryOpen ? (
             <div className="pb-32">
-              <div className="px-4 sm:px-6 pt-6 sm:pt-8 mb-6 sm:mb-8 flex justify-between items-end">
+              <div className="pt-6 sm:pt-8 mb-6 sm:mb-8 flex justify-between items-end">
                 <div>
                   <h1 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight text-gradient">Story Mode</h1>
                   <p className="text-slate-500 dark:text-slate-400 font-medium mt-1 sm:mt-2 text-xs sm:text-sm">Your coins, your narrative. Unlock the past.</p>
@@ -3617,7 +3632,7 @@ function CoinCollectorApp() {
             </div>
           ) : isTimelineOpen ? (
             <div className="pb-32">
-              <div className="px-4 sm:px-6 pt-6 sm:pt-8 mb-6 sm:mb-8 flex justify-between items-end">
+              <div className="pt-6 sm:pt-8 mb-6 sm:mb-8 flex justify-between items-end">
                 <div>
                   <h1 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight text-gradient">Timeline Hub</h1>
                   <p className="text-slate-500 dark:text-slate-400 font-medium mt-1 sm:mt-2 text-xs sm:text-sm">Explore history through your collection.</p>
@@ -4195,6 +4210,38 @@ function CoinCollectorApp() {
                               <span className="text-[10px] font-black uppercase tracking-widest">{texture}</span>
                             </button>
                           ))}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between p-5 bg-slate-50/50 dark:bg-slate-800/50 rounded-[2rem] border border-slate-100 dark:border-slate-800">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 bg-white dark:bg-slate-900 rounded-xl flex items-center justify-center shadow-sm">
+                            <ArrowUpDown className="w-5 h-5 text-slate-400" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-black tracking-tight">Scroll Orientation</p>
+                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Timeline & Story Hub</p>
+                          </div>
+                        </div>
+                        <div className="flex bg-slate-200 dark:bg-slate-700 p-1 rounded-xl">
+                          <button 
+                            onClick={() => setPreferences(prev => ({ ...prev, scrollOrientation: 'horizontal' }))}
+                            className={cn(
+                              "px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
+                              preferences.scrollOrientation === 'horizontal' ? "bg-white dark:bg-slate-900 text-amber-500 shadow-sm" : "text-slate-500"
+                            )}
+                          >
+                            Horiz
+                          </button>
+                          <button 
+                            onClick={() => setPreferences(prev => ({ ...prev, scrollOrientation: 'vertical' }))}
+                            className={cn(
+                              "px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
+                              preferences.scrollOrientation === 'vertical' ? "bg-white dark:bg-slate-900 text-amber-500 shadow-sm" : "text-slate-500"
+                            )}
+                          >
+                            Vert
+                          </button>
                         </div>
                       </div>
 
@@ -5240,7 +5287,7 @@ function CoinCollectorApp() {
                               required 
                               value={addCoinDenomination}
                               onChange={(e) => setAddCoinDenomination(e.target.value)}
-                              className="w-full h-14 px-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none font-bold appearance-none transition-all"
+                              className="w-full h-12 px-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none font-bold appearance-none transition-all"
                             >
                               {DENOMINATIONS.map(d => (
                                 <option key={d} value={d}>{d}</option>
@@ -5256,7 +5303,7 @@ function CoinCollectorApp() {
                               placeholder="2023" 
                               value={addCoinYear}
                               onChange={(e) => setAddCoinYear(e.target.value)}
-                              className="w-full h-14 px-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none font-bold transition-all" 
+                              className="w-full h-12 px-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none font-bold transition-all" 
                             />
                           </div>
                         </div>
@@ -5283,7 +5330,7 @@ function CoinCollectorApp() {
                               name="country" 
                               value={addCoinCountry}
                               onChange={(e) => setAddCoinCountry(e.target.value)}
-                              className="w-full h-14 px-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none font-bold appearance-none transition-all"
+                              className="w-full h-12 px-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none font-bold appearance-none transition-all"
                             >
                               {COUNTRIES.map(c => (
                                 <option key={c} value={c}>{c}</option>
@@ -5294,7 +5341,7 @@ function CoinCollectorApp() {
                             <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1.5 ml-1">Region</label>
                             <select 
                               name="region" 
-                              className="w-full h-14 px-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none font-bold appearance-none transition-all"
+                              className="w-full h-12 px-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none font-bold appearance-none transition-all"
                             >
                               {REGIONS.map(r => (
                                 <option key={r} value={r}>{r}</option>
@@ -5308,7 +5355,7 @@ function CoinCollectorApp() {
                             name="currencyType" 
                             value={addCoinEra}
                             onChange={(e) => setAddCoinEra(e.target.value as 'modern' | 'old')}
-                            className="w-full h-14 px-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none font-bold appearance-none transition-all"
+                            className="w-full h-12 px-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none font-bold appearance-none transition-all"
                           >
                             <option value="modern">Modern Era</option>
                             <option value="old">Old Era</option>
@@ -5316,7 +5363,7 @@ function CoinCollectorApp() {
                         </div>
                         <div>
                           <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1.5 ml-1">Folder</label>
-                          <select name="folderId" className="w-full h-14 px-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none font-bold appearance-none transition-all">
+                          <select name="folderId" className="w-full h-12 px-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none font-bold appearance-none transition-all">
                             <option value="">No Folder</option>
                             {folders.map(f => (
                               <option key={f.id} value={f.id}>{f.icon} {f.name}</option>
@@ -5331,7 +5378,7 @@ function CoinCollectorApp() {
                               placeholder="e.g. Royal Mint" 
                               value={addCoinMint}
                               onChange={(e) => setAddCoinMint(e.target.value)}
-                              className="w-full h-14 px-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none font-bold transition-all" 
+                              className="w-full h-12 px-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none font-bold transition-all" 
                             />
                           </div>
                           <div>
@@ -5340,7 +5387,7 @@ function CoinCollectorApp() {
                               name="condition" 
                               value={addCoinCondition}
                               onChange={(e) => setAddCoinCondition(e.target.value)}
-                              className="w-full h-14 px-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none font-bold appearance-none transition-all"
+                              className="w-full h-12 px-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none font-bold appearance-none transition-all"
                             >
                               <option value="Circulated">Circulated</option>
                               <option value="Uncirculated">Uncirculated</option>
