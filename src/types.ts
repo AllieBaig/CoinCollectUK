@@ -16,6 +16,8 @@ export interface Coin {
   points?: number;
   country?: string;
   currencyType?: 'modern' | 'old';
+  mint?: string;
+  condition?: string;
 }
 
 export interface Folder {
@@ -64,7 +66,7 @@ export interface Timeline {
   };
 }
 
-export type LayoutType = 'grid' | 'list' | 'carousel' | 'masonry' | 'board' | 'timeline' | 'gallery' | 'spotlight' | 'compact' | 'split' | 'hexagon';
+export type LayoutType = 'card' | 'table' | 'list' | 'compact' | 'grid' | 'carousel' | 'masonry' | 'board' | 'timeline' | 'gallery' | 'spotlight' | 'split' | 'hexagon';
 
 export interface UserPreferences {
   isDarkMode: boolean;
@@ -87,6 +89,13 @@ export interface UserPreferences {
   europeanCoinFilter: 'modern' | 'old' | 'both';
   ambientMotion: boolean;
   enableImageLibrary: boolean;
+  enabledLayouts: Record<string, boolean>;
+  visibleFields: {
+    denomination: boolean;
+    year: boolean;
+    mint: boolean;
+    condition: boolean;
+  };
 }
 
 export interface StoryChapter {

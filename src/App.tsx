@@ -371,7 +371,20 @@ function CoinCollectorApp() {
         showOldEuropeanCoins: true,
         europeanCoinFilter: 'both',
         ambientMotion: true,
-        enableImageLibrary: true
+        enableImageLibrary: true,
+        enabledLayouts: {
+          card: true,
+          table: true,
+          list: true,
+          compact: true,
+          grid: true
+        },
+        visibleFields: {
+          denomination: true,
+          year: true,
+          mint: true,
+          condition: true
+        }
       };
 
       // Extract coins based on version/structure
@@ -406,7 +419,20 @@ function CoinCollectorApp() {
           groupBy: data.preferences.groupBy || 'none',
           isGrouped: Boolean(data.preferences.isGrouped ?? false),
           activeFolderId: data.preferences.activeFolderId || 'all',
-          enableImageLibrary: data.preferences.enableImageLibrary ?? true
+          enableImageLibrary: data.preferences.enableImageLibrary ?? true,
+          enabledLayouts: data.preferences.enabledLayouts || {
+            card: true,
+            table: true,
+            list: true,
+            compact: true,
+            grid: true
+          },
+          visibleFields: data.preferences.visibleFields || {
+            denomination: true,
+            year: true,
+            mint: true,
+            condition: true
+          }
         };
       }
 
@@ -483,7 +509,20 @@ function CoinCollectorApp() {
     showOldEuropeanCoins: true,
     europeanCoinFilter: 'both',
     ambientMotion: true,
-    enableImageLibrary: true
+    enableImageLibrary: true,
+    enabledLayouts: {
+      card: true,
+      table: true,
+      list: true,
+      compact: true,
+      grid: true
+    },
+    visibleFields: {
+      denomination: true,
+      year: true,
+      mint: true,
+      condition: true
+    }
   });
   
   const [imageLibrary, setImageLibrary] = useState<ImageLibraryItem[]>([]);
@@ -495,6 +534,8 @@ function CoinCollectorApp() {
   const [addCoinEra, setAddCoinEra] = useState<'modern' | 'old'>('modern');
   const [addCoinTitle, setAddCoinTitle] = useState('');
   const [addCoinPrice, setAddCoinPrice] = useState<string>('');
+  const [addCoinMint, setAddCoinMint] = useState('');
+  const [addCoinCondition, setAddCoinCondition] = useState('Circulated');
   const [addCoinWarning, setAddCoinWarning] = useState<string | null>(null);
 
   const [editCoinDenomination, setEditCoinDenomination] = useState(DENOMINATIONS[0]);
@@ -503,6 +544,8 @@ function CoinCollectorApp() {
   const [editCoinEra, setEditCoinEra] = useState<'modern' | 'old'>('modern');
   const [editCoinTitle, setEditCoinTitle] = useState('');
   const [editCoinPrice, setEditCoinPrice] = useState<string>('');
+  const [editCoinMint, setEditCoinMint] = useState('');
+  const [editCoinCondition, setEditCoinCondition] = useState('');
   const [editCoinWarning, setEditCoinWarning] = useState<string | null>(null);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -1520,6 +1563,8 @@ function CoinCollectorApp() {
       setEditCoinEra(editingCoin.currencyType || 'modern');
       setEditCoinTitle(editingCoin.title);
       setEditCoinPrice(editingCoin.amountPaid?.toString() || '');
+      setEditCoinMint(editingCoin.mint || '');
+      setEditCoinCondition(editingCoin.condition || 'Circulated');
     }
   }, [editingCoin]);
 
@@ -2454,12 +2499,107 @@ function CoinCollectorApp() {
     const layout = preferences.layoutType;
 
     switch (layout) {
+      case 'card':
+        return (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {coinsToRender.map(coin => (
+              <div key={coin.id} className="p-6 bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all group cursor-pointer" onClick={() => setSelectedCoin(coin)}>
+                <div className="flex justify-between items-start mb-4">
+                  <h3 className="font-black text-lg leading-tight">{coin.title}</h3>
+                  <div className={cn(
+                    "w-8 h-8 rounded-full flex items-center justify-center transition-all",
+                    coin.isCollected ? "bg-emerald-500 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-400"
+                  )}>
+                    {coin.isCollected ? <CheckCircle2 className="w-5 h-5" /> : <Circle className="w-5 h-5" />}
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {preferences.visibleFields.denomination && <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest bg-amber-500/10 px-2 py-1 rounded-lg">{coin.denomination}</span>}
+                  {preferences.visibleFields.year && <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-lg">{coin.year}</span>}
+                  {preferences.visibleFields.condition && coin.condition && <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest bg-emerald-500/10 px-2 py-1 rounded-lg">{coin.condition}</span>}
+                  {preferences.visibleFields.mint && coin.mint && <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest bg-blue-500/10 px-2 py-1 rounded-lg">{coin.mint}</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+
+      case 'table':
+        return (
+          <div className="overflow-x-auto -mx-4 sm:mx-0">
+            <table className="w-full text-left border-collapse min-w-[600px]">
+              <thead>
+                <tr className="border-b border-slate-100 dark:border-slate-800">
+                  <th className="px-4 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Name</th>
+                  {preferences.visibleFields.year && <th className="px-4 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Year</th>}
+                  {preferences.visibleFields.mint && <th className="px-4 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Mint</th>}
+                  <th className="px-4 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Value</th>
+                  {preferences.visibleFields.condition && <th className="px-4 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Condition</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {coinsToRender.map(coin => (
+                  <tr key={coin.id} className="border-b border-slate-50 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors cursor-pointer" onClick={() => setSelectedCoin(coin)}>
+                    <td className="px-4 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className={cn("w-2 h-2 rounded-full", coin.isCollected ? "bg-emerald-500" : "bg-slate-300")} />
+                        <span className="font-bold text-sm">{coin.title}</span>
+                      </div>
+                    </td>
+                    {preferences.visibleFields.year && <td className="px-4 py-4 text-sm text-slate-500">{coin.year}</td>}
+                    {preferences.visibleFields.mint && <td className="px-4 py-4 text-sm text-slate-500">{coin.mint || '-'}</td>}
+                    <td className="px-4 py-4 text-sm font-bold text-emerald-600">£{(coin.amountPaid || 0).toFixed(2)}</td>
+                    {preferences.visibleFields.condition && <td className="px-4 py-4 text-sm text-slate-500">{coin.condition || '-'}</td>}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+
       case 'list':
         return (
-          <div className="flex flex-col gap-3">
+          <div className="space-y-4">
             {coinsToRender.map(coin => (
-              <div key={coin.id} className="w-full">
-                {renderCoinCard({ ...coin, isTextMode: true } as any)}
+              <div key={coin.id} className="flex items-start gap-4 p-4 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 hover:shadow-md transition-all cursor-pointer" onClick={() => setSelectedCoin(coin)}>
+                <div className={cn(
+                  "w-10 h-10 rounded-2xl flex items-center justify-center shrink-0",
+                  coin.isCollected ? "bg-emerald-500 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-400"
+                )}>
+                  {coin.isCollected ? <CheckCircle2 className="w-6 h-6" /> : <Circle className="w-6 h-6" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-black text-base truncate">{coin.title}</h3>
+                    {coin.isRare && <Trophy className="w-3 h-3 text-amber-500" />}
+                  </div>
+                  <div className="flex flex-wrap gap-x-3 gap-y-1">
+                    {preferences.visibleFields.denomination && <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest">{coin.denomination}</span>}
+                    {preferences.visibleFields.year && <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{coin.year}</span>}
+                    {preferences.visibleFields.mint && coin.mint && <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Mint: {coin.mint}</span>}
+                    {preferences.visibleFields.condition && coin.condition && <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">{coin.condition}</span>}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+
+      case 'compact':
+        return (
+          <div className="space-y-2">
+            {coinsToRender.map(coin => (
+              <div key={coin.id} className="flex items-center justify-between p-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-amber-500/50 transition-all cursor-pointer group" onClick={() => setSelectedCoin(coin)}>
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className={cn("w-2 h-2 rounded-full shrink-0", coin.isCollected ? "bg-emerald-500" : "bg-slate-300")} />
+                  <span className="font-bold text-sm truncate">{coin.title}</span>
+                  {preferences.visibleFields.year && <span className="text-xs text-slate-400 shrink-0">{coin.year}</span>}
+                  {coin.isRare && <Star className="w-3 h-3 text-amber-500 fill-amber-500 shrink-0" />}
+                </div>
+                <div className="flex items-center gap-3 shrink-0">
+                  {preferences.visibleFields.condition && coin.condition && <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">{coin.condition}</span>}
+                  <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-amber-500 transition-colors" />
+                </div>
               </div>
             ))}
           </div>
@@ -3364,17 +3504,23 @@ function CoinCollectorApp() {
                       onChange={(e) => setPreferences(prev => ({ ...prev, layoutType: e.target.value as any }))}
                       className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-xs font-bold focus:ring-2 focus:ring-amber-500 outline-none appearance-none pr-8"
                     >
-                      <option value="grid">Grid</option>
-                      <option value="list">List</option>
-                      <option value="carousel">Carousel</option>
-                      <option value="masonry">Masonry</option>
-                      <option value="board">Board</option>
-                      <option value="timeline">Timeline</option>
-                      <option value="gallery">Gallery</option>
-                      <option value="spotlight">Spotlight</option>
-                      <option value="compact">Compact</option>
-                      <option value="split">Split</option>
-                      <option value="hexagon">Hexagon</option>
+                      <optgroup label="Text Layouts">
+                        {preferences.enabledLayouts.card && <option value="card">Card</option>}
+                        {preferences.enabledLayouts.table && <option value="table">Table</option>}
+                        {preferences.enabledLayouts.list && <option value="list">List</option>}
+                        {preferences.enabledLayouts.compact && <option value="compact">Compact</option>}
+                      </optgroup>
+                      <optgroup label="Visual Layouts">
+                        <option value="grid">Grid</option>
+                        <option value="carousel">Carousel</option>
+                        <option value="masonry">Masonry</option>
+                        <option value="board">Board</option>
+                        <option value="timeline">Timeline</option>
+                        <option value="gallery">Gallery</option>
+                        <option value="spotlight">Spotlight</option>
+                        <option value="split">Split</option>
+                        <option value="hexagon">Hexagon</option>
+                      </optgroup>
                     </select>
                     <Layout className="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none" />
                   </div>
@@ -3860,6 +4006,74 @@ function CoinCollectorApp() {
                             className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm"
                           />
                         </button>
+                      </div>
+                    </div>
+                  </SettingSection>
+
+                  {/* View Modes Settings */}
+                  <SettingSection 
+                    title="View Modes" 
+                    icon={Layout} 
+                    isOpen={openSettingSection === 'view-modes'} 
+                    onToggle={() => setOpenSettingSection(openSettingSection === 'view-modes' ? null : 'view-modes')}
+                  >
+                    <div className="space-y-6">
+                      <div className="space-y-3">
+                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Enabled Layouts</label>
+                        <div className="grid grid-cols-2 gap-3">
+                          {['card', 'table', 'list', 'compact'].map((layout) => (
+                            <div key={layout} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+                              <span className="text-xs font-bold capitalize">{layout}</span>
+                              <button 
+                                onClick={() => setPreferences(prev => ({
+                                  ...prev,
+                                  enabledLayouts: {
+                                    ...prev.enabledLayouts,
+                                    [layout]: !prev.enabledLayouts[layout]
+                                  }
+                                }))}
+                                className={cn(
+                                  "w-10 h-5 rounded-full transition-colors relative",
+                                  preferences.enabledLayouts[layout] ? "bg-amber-500" : "bg-slate-200 dark:bg-slate-700"
+                                )}
+                              >
+                                <motion.div 
+                                  animate={{ x: preferences.enabledLayouts[layout] ? 20 : 4 }}
+                                  className="absolute top-1 w-3 h-3 bg-white rounded-full shadow-sm"
+                                />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Visible Fields (Text Layouts)</label>
+                        <div className="grid grid-cols-2 gap-3">
+                          {Object.keys(preferences.visibleFields).map((field) => (
+                            <div key={field} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+                              <span className="text-xs font-bold capitalize">{field}</span>
+                              <button 
+                                onClick={() => setPreferences(prev => ({
+                                  ...prev,
+                                  visibleFields: {
+                                    ...prev.visibleFields,
+                                    [field]: !prev.visibleFields[field as keyof typeof prev.visibleFields]
+                                  }
+                                }))}
+                                className={cn(
+                                  "w-10 h-5 rounded-full transition-colors relative",
+                                  preferences.visibleFields[field as keyof typeof preferences.visibleFields] ? "bg-amber-500" : "bg-slate-200 dark:bg-slate-700"
+                                )}
+                              >
+                                <motion.div 
+                                  animate={{ x: preferences.visibleFields[field as keyof typeof preferences.visibleFields] ? 20 : 4 }}
+                                  className="absolute top-1 w-3 h-3 bg-white rounded-full shadow-sm"
+                                />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   </SettingSection>
@@ -4579,7 +4793,9 @@ function CoinCollectorApp() {
                         amountPaid,
                         purchaseDate,
                         country: addCoinCountry,
-                        currencyType: addCoinEra
+                        currencyType: addCoinEra,
+                        mint: addCoinMint,
+                        condition: addCoinCondition
                       };
                       setCoins(prev => [newCoin, ...prev]);
                       setIsAddModalOpen(false);
@@ -4723,6 +4939,34 @@ function CoinCollectorApp() {
                               <option key={f.id} value={f.id}>{f.icon} {f.name}</option>
                             ))}
                           </select>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1.5 ml-1">Mint</label>
+                            <input 
+                              name="mint" 
+                              placeholder="e.g. Royal Mint" 
+                              value={addCoinMint}
+                              onChange={(e) => setAddCoinMint(e.target.value)}
+                              className="w-full h-14 px-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none font-bold transition-all" 
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1.5 ml-1">Condition</label>
+                            <select 
+                              name="condition" 
+                              value={addCoinCondition}
+                              onChange={(e) => setAddCoinCondition(e.target.value)}
+                              className="w-full h-14 px-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none font-bold appearance-none transition-all"
+                            >
+                              <option value="Circulated">Circulated</option>
+                              <option value="Uncirculated">Uncirculated</option>
+                              <option value="Proof">Proof</option>
+                              <option value="Fine">Fine</option>
+                              <option value="Very Fine">Very Fine</option>
+                              <option value="Extremely Fine">Extremely Fine</option>
+                            </select>
+                          </div>
                         </div>
                       </div>
 
@@ -5265,7 +5509,9 @@ function CoinCollectorApp() {
                         imageId: editingCoinImageId || editingCoin.imageId,
                         isRare: formData.get('isRare') === 'on',
                         country: editCoinCountry,
-                        currencyType: editCoinEra
+                        currencyType: editCoinEra,
+                        mint: editCoinMint,
+                        condition: editCoinCondition
                       });
                       setEditingCoinImage(null);
                       setEditingCoinImageId(null);
@@ -5408,6 +5654,34 @@ function CoinCollectorApp() {
                             <option key={f.id} value={f.id}>{f.icon} {f.name}</option>
                           ))}
                         </select>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1.5 ml-1">Mint</label>
+                          <input 
+                            name="mint" 
+                            placeholder="e.g. Royal Mint" 
+                            value={editCoinMint}
+                            onChange={(e) => setEditCoinMint(e.target.value)}
+                            className="w-full h-14 px-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none font-bold transition-all" 
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1.5 ml-1">Condition</label>
+                          <select 
+                            name="condition" 
+                            value={editCoinCondition}
+                            onChange={(e) => setEditCoinCondition(e.target.value)}
+                            className="w-full h-14 px-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none font-bold appearance-none transition-all"
+                          >
+                            <option value="Circulated">Circulated</option>
+                            <option value="Uncirculated">Uncirculated</option>
+                            <option value="Proof">Proof</option>
+                            <option value="Fine">Fine</option>
+                            <option value="Very Fine">Very Fine</option>
+                            <option value="Extremely Fine">Extremely Fine</option>
+                          </select>
+                        </div>
                       </div>
                     </div>
 
