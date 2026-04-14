@@ -2974,17 +2974,17 @@ function CoinCollectorApp() {
     )}>
         <AmbientBackground enabled={preferences.ambientMotion} />
         
-        {/* Offline Banner */}
+        {/* Offline Indicator */}
         <AnimatePresence>
           {isOffline && (
             <motion.div 
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="bg-amber-500 text-white text-center py-2 text-xs font-bold flex items-center justify-center gap-2 flex-none"
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="fixed top-24 left-1/2 -translate-x-1/2 z-[100] bg-slate-900/90 dark:bg-white/90 backdrop-blur-md text-white dark:text-slate-900 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 shadow-2xl border border-white/10 dark:border-slate-900/10"
             >
-              <WifiOff className="w-3 h-3" />
-              Offline Mode - Changes saved locally
+              <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+              Offline Mode
             </motion.div>
           )}
         </AnimatePresence>
