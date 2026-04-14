@@ -98,14 +98,68 @@
   .safe-bottom {
     padding-bottom: env(safe-area-inset-bottom);
   }
+
+  /* Fixed Layout System */
+  .fixed-layout {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .fixed-header {
+    flex: none;
+    z-index: 50;
+  }
+
+  .scroll-content {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    position: relative;
+    z-index: 10;
+  }
+
+  .fixed-nav {
+    flex: none;
+    z-index: 50;
+    position: relative;
+  }
+
+  /* Stability Utilities */
+  .no-layout-shift {
+    contain: layout size;
+  }
+
+  .image-placeholder {
+    background-color: #f1f5f9;
+    position: relative;
+    overflow: hidden;
+  }
+  .dark .image-placeholder {
+    background-color: #1e293b;
+  }
 }
 
 @layer components {
   .app-card {
-    @apply bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm transition-all duration-500;
+    @apply bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm transition-all duration-300;
     border-radius: var(--app-radius);
     padding: var(--ui-card-padding);
     box-shadow: var(--card-shadow);
+    height: 420px; /* Fixed height for stability */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex-shrink: 0;
+    flex-grow: 0;
+  }
+
+  .app-card.compact {
+    height: 300px;
   }
   
   .app-card:hover {

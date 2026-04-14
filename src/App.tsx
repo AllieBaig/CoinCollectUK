@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useMemo, useRef, Component, ErrorInfo, ReactNode } from 'react';
+import React, { useState, useEffect, useMemo, useRef, Component, ErrorInfo, ReactNode, memo } from 'react';
 import { 
   Moon, 
   Sun, 
@@ -270,6 +270,238 @@ const AmbientBackground: React.FC<{ enabled: boolean }> = ({ enabled }) => {
     </div>
   );
 };
+
+interface CoinCardProps {
+  coin: Coin;
+  isMultiSelectMode: boolean;
+  selectedCoinIds: Set<string>;
+  toggleCoinSelection: (id: string) => void;
+  setSelectedCoin: (coin: Coin) => void;
+  handleCoinPressStart: (id: string) => void;
+  handleCoinPressEnd: () => void;
+  preferences: UserPreferences;
+  toggleCollected: (id: string) => void;
+  setEditingCoin: (coin: Coin) => void;
+  deleteCoin: (id: string) => void;
+  folders: Folder[];
+  coins: Coin[];
+  imageLibrary: ImageLibraryItem[];
+}
+
+const CoinCard = memo(({ 
+  coin, 
+  isMultiSelectMode, 
+  selectedCoinIds, 
+  toggleCoinSelection, 
+  setSelectedCoin, 
+  handleCoinPressStart, 
+  handleCoinPressEnd, 
+  preferences, 
+  toggleCollected, 
+  setEditingCoin, 
+  deleteCoin,
+  folders,
+  coins,
+  imageLibrary
+}: CoinCardProps) => {
+  const isSelected = selectedCoinIds.has(coin.id);
+  const folderName = folders.find(f => f.id === coin.folderId)?.name || 'Folder';
+  const duplicateCount = coins.filter(c => c.title === coin.title && c.denomination === coin.denomination).length;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={() => {
+        if (isMultiSelectMode) {
+          toggleCoinSelection(coin.id);
+        } else {
+          setSelectedCoin(coin);
+        }
+      }}
+      onMouseDown={() => handleCoinPressStart(coin.id)}
+      onMouseUp={handleCoinPressEnd}
+      onMouseLeave={handleCoinPressEnd}
+      onTouchStart={() => handleCoinPressStart(coin.id)}
+      onTouchEnd={handleCoinPressEnd}
+      className={cn(
+        "group relative app-card no-layout-shift overflow-hidden flex flex-col cursor-pointer",
+        "hover:shadow-2xl hover:-translate-y-1",
+        preferences.isCompactUI ? "compact" : "",
+        isSelected && "ring-4 ring-amber-500 ring-offset-2 dark:ring-offset-slate-900",
+        coin.isRare 
+          ? "border-amber-500/50 ring-4 ring-amber-500/10" 
+          : coin.isCollected 
+            ? "border-emerald-500/30" 
+            : "border-slate-100 dark:border-slate-800",
+        preferences.isTextMode && "rounded-none border-0 border-b border-slate-100 dark:border-slate-800 p-4 bg-transparent dark:bg-transparent h-auto",
+        preferences.themeTexture === 'glass' && "glass-card"
+      )}
+    >
+      {isMultiSelectMode && (
+        <div className="absolute top-4 right-4 z-20">
+          <div className={cn(
+            "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all",
+            isSelected 
+              ? "bg-amber-500 border-amber-500 text-white" 
+              : "bg-white/50 border-white text-transparent"
+          )}>
+            <Check className="w-4 h-4" />
+          </div>
+        </div>
+      )}
+      {preferences.isTextMode ? (
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest">{coin.denomination}</span>
+              <span className="text-[10px] font-bold text-slate-400">{coin.year}</span>
+              {coin.isRare && <Trophy className="w-3 h-3 text-amber-500" />}
+            </div>
+            <h3 className="font-bold text-sm truncate">{coin.title}</h3>
+            <p className="text-xs text-slate-500 line-clamp-1">{coin.summary}</p>
+          </div>
+          <div className="flex items-center gap-4 shrink-0">
+            {coin.amountPaid !== undefined && preferences.showPriceInNormalMode && (
+              <span className="text-xs font-bold text-emerald-600">£{coin.amountPaid.toFixed(2)}</span>
+            )}
+            <button 
+              onClick={(e) => { e.stopPropagation(); toggleCollected(coin.id); }}
+              className={cn(
+                "w-8 h-8 rounded-full flex items-center justify-center transition-all",
+                coin.isCollected ? "bg-emerald-500 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-400"
+              )}
+            >
+              {coin.isCollected ? <CheckCircle2 className="w-5 h-5" /> : <Circle className="w-5 h-5" />}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          {coin.isRare && (
+            <div className="absolute top-4 left-4 z-10 bg-amber-500 text-white p-1.5 rounded-xl shadow-lg shadow-amber-500/30">
+              <Trophy className="w-4 h-4" />
+            </div>
+          )}
+          {duplicateCount > 1 && (
+            <div className="absolute top-4 right-14 z-10 bg-blue-500 text-white px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20">
+              x{duplicateCount}
+            </div>
+          )}
+          <div className={cn(
+            "w-full overflow-hidden bg-slate-100 dark:bg-slate-800 relative shrink-0 image-placeholder",
+            preferences.isCompactUI ? "h-28 sm:h-32" : "h-40 sm:h-48"
+          )}>
+            {(coin.imageUrl || coin.imageId) ? (
+              <img 
+                src={coin.imageId ? (imageLibrary.find(img => img.id === coin.imageId)?.data || coin.imageUrl) : coin.imageUrl} 
+                alt={coin.title} 
+                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                referrerPolicy="no-referrer"
+                loading="lazy"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <ImageIcon className="w-8 h-8 text-slate-300 dark:text-slate-600" />
+              </div>
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
+              <span className="text-white text-[10px] font-bold uppercase tracking-widest">{coin.denomination}</span>
+            </div>
+          </div>
+          <div className={cn(
+            "flex-1 flex flex-col min-h-0",
+            preferences.isCompactUI ? "p-4" : "p-6"
+          )}>
+            <div className="flex justify-between items-start mb-2">
+              <div className="flex flex-col flex-1 mr-2 min-w-0">
+                <span className="text-[10px] font-black text-amber-500 uppercase tracking-[0.2em] mb-1 truncate">
+                  {coin.denomination} • {coin.year}
+                </span>
+                <h3 className={cn(
+                  "font-bold flex items-center gap-2 leading-tight line-clamp-2 h-[2.5em] overflow-hidden",
+                  preferences.isCompactUI ? "text-sm" : "text-lg"
+                )}>
+                  {coin.title}
+                  {coin.isRare && <Trophy className="w-3.5 h-3.5 text-amber-500 fill-amber-500 shrink-0" />}
+                </h3>
+              </div>
+              <button 
+                onClick={(e) => { e.stopPropagation(); toggleCollected(coin.id); }}
+                className={cn(
+                  "rounded-2xl flex items-center justify-center transition-all shrink-0",
+                  preferences.isCompactUI ? "w-8 h-8 rounded-xl" : "w-12 h-12 rounded-2xl",
+                  coin.isCollected 
+                    ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20" 
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-emerald-500"
+                )}
+              >
+                {coin.isCollected 
+                  ? <CheckCircle2 className={preferences.isCompactUI ? "w-5 h-5" : "w-7 h-7"} /> 
+                  : <Circle className={preferences.isCompactUI ? "w-5 h-5" : "w-7 h-7"} />
+                }
+              </button>
+            </div>
+            <p className="text-xs text-slate-500 line-clamp-2 mt-2 h-[3em] overflow-hidden">
+              {coin.summary}
+            </p>
+
+            {coin.amountPaid !== undefined && !preferences.isCompactUI && preferences.showPriceInNormalMode && (
+              <div className="flex items-center gap-4 mt-4 text-xs font-bold shrink-0">
+                <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                  <PoundSterling className="w-3.5 h-3.5" />
+                  <span>{coin.amountPaid.toFixed(2)}</span>
+                </div>
+                {coin.purchaseDate && (
+                  <div className="flex items-center gap-1.5 text-slate-400">
+                    <Calendar className="w-3.5 h-3.5" />
+                    <span>{new Date(coin.purchaseDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className={cn(
+              "mt-auto flex items-center justify-between border-t border-slate-100 dark:border-slate-800 shrink-0",
+              preferences.isCompactUI ? "pt-2" : "pt-4"
+            )}>
+              <div className="flex items-center gap-2">
+                <span className={cn(
+                  "text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider",
+                  coin.isCollected 
+                    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" 
+                    : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
+                )}>
+                  {coin.isCollected ? 'Collected' : 'Missing'}
+                </span>
+                {coin.folderId && !preferences.isCompactUI && (
+                  <span className="text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                    {folderName}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-1">
+                <button 
+                  onClick={(e) => { e.stopPropagation(); setEditingCoin(coin); }}
+                  className="p-2 text-slate-300 hover:text-amber-500 transition-colors"
+                >
+                  <Edit2 className="w-4 h-4" />
+                </button>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); deleteCoin(coin.id); }}
+                  className="p-2 text-slate-300 hover:text-red-500 transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+    </motion.div>
+  );
+});
 
 export default function App() {
   return (
@@ -2503,17 +2735,17 @@ function CoinCollectorApp() {
         return (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {coinsToRender.map(coin => (
-              <div key={coin.id} className="p-6 bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all group cursor-pointer" onClick={() => setSelectedCoin(coin)}>
+              <div key={coin.id} className="p-6 bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all group cursor-pointer h-[200px] flex flex-col" onClick={() => setSelectedCoin(coin)}>
                 <div className="flex justify-between items-start mb-4">
-                  <h3 className="font-black text-lg leading-tight">{coin.title}</h3>
+                  <h3 className="font-black text-lg leading-tight line-clamp-2 h-[2.5em] overflow-hidden">{coin.title}</h3>
                   <div className={cn(
-                    "w-8 h-8 rounded-full flex items-center justify-center transition-all",
+                    "w-8 h-8 rounded-full flex items-center justify-center transition-all shrink-0",
                     coin.isCollected ? "bg-emerald-500 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-400"
                   )}>
                     {coin.isCollected ? <CheckCircle2 className="w-5 h-5" /> : <Circle className="w-5 h-5" />}
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="mt-auto flex flex-wrap gap-2">
                   {preferences.visibleFields.denomination && <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest bg-amber-500/10 px-2 py-1 rounded-lg">{coin.denomination}</span>}
                   {preferences.visibleFields.year && <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-lg">{coin.year}</span>}
                   {preferences.visibleFields.condition && coin.condition && <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest bg-emerald-500/10 px-2 py-1 rounded-lg">{coin.condition}</span>}
@@ -2610,7 +2842,22 @@ function CoinCollectorApp() {
           <div className="flex gap-4 overflow-x-auto pb-8 no-scrollbar snap-x">
             {coinsToRender.map(coin => (
               <div key={coin.id} className="min-w-[280px] sm:min-w-[320px] snap-center">
-                {renderCoinCard(coin)}
+                <CoinCard 
+                  coin={coin}
+                  isMultiSelectMode={isMultiSelectMode}
+                  selectedCoinIds={selectedCoinIds}
+                  toggleCoinSelection={toggleCoinSelection}
+                  setSelectedCoin={setSelectedCoin}
+                  handleCoinPressStart={handleCoinPressStart}
+                  handleCoinPressEnd={handleCoinPressEnd}
+                  preferences={preferences}
+                  toggleCollected={toggleCollected}
+                  setEditingCoin={setEditingCoin}
+                  deleteCoin={deleteCoin}
+                  folders={folders}
+                  coins={coins}
+                  imageLibrary={imageLibrary}
+                />
               </div>
             ))}
           </div>
@@ -2621,7 +2868,22 @@ function CoinCollectorApp() {
           <div className="columns-1 sm:columns-2 lg:columns-3 gap-4 space-y-4">
             {coinsToRender.map(coin => (
               <div key={coin.id} className="break-inside-avoid">
-                {renderCoinCard(coin)}
+                <CoinCard 
+                  coin={coin}
+                  isMultiSelectMode={isMultiSelectMode}
+                  selectedCoinIds={selectedCoinIds}
+                  toggleCoinSelection={toggleCoinSelection}
+                  setSelectedCoin={setSelectedCoin}
+                  handleCoinPressStart={handleCoinPressStart}
+                  handleCoinPressEnd={handleCoinPressEnd}
+                  preferences={preferences}
+                  toggleCollected={toggleCollected}
+                  setEditingCoin={setEditingCoin}
+                  deleteCoin={deleteCoin}
+                  folders={folders}
+                  coins={coins}
+                  imageLibrary={imageLibrary}
+                />
               </div>
             ))}
           </div>
@@ -2645,7 +2907,25 @@ function CoinCollectorApp() {
                   <span className="text-[10px] font-black text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full">{folderCoins.length}</span>
                 </div>
                 <div className="flex flex-col gap-4 overflow-y-auto no-scrollbar">
-                  {folderCoins.map(coin => renderCoinCard(coin))}
+                  {folderCoins.map(coin => (
+                    <CoinCard 
+                      key={coin.id}
+                      coin={coin}
+                      isMultiSelectMode={isMultiSelectMode}
+                      selectedCoinIds={selectedCoinIds}
+                      toggleCoinSelection={toggleCoinSelection}
+                      setSelectedCoin={setSelectedCoin}
+                      handleCoinPressStart={handleCoinPressStart}
+                      handleCoinPressEnd={handleCoinPressEnd}
+                      preferences={preferences}
+                      toggleCollected={toggleCollected}
+                      setEditingCoin={setEditingCoin}
+                      deleteCoin={deleteCoin}
+                      folders={folders}
+                      coins={coins}
+                      imageLibrary={imageLibrary}
+                    />
+                  ))}
                 </div>
               </div>
             ))}
@@ -2665,7 +2945,23 @@ function CoinCollectorApp() {
                   <span className="text-2xl font-black text-slate-900 dark:text-white">{coin.year}</span>
                   <div className="h-px w-12 bg-amber-500/30" />
                 </div>
-                {renderCoinCard(coin)}
+                {/* Use CoinCard for timeline layout */}
+                <CoinCard 
+                  coin={coin}
+                  isMultiSelectMode={isMultiSelectMode}
+                  selectedCoinIds={selectedCoinIds}
+                  toggleCoinSelection={toggleCoinSelection}
+                  setSelectedCoin={setSelectedCoin}
+                  handleCoinPressStart={handleCoinPressStart}
+                  handleCoinPressEnd={handleCoinPressEnd}
+                  preferences={preferences}
+                  toggleCollected={toggleCollected}
+                  setEditingCoin={setEditingCoin}
+                  deleteCoin={deleteCoin}
+                  folders={folders}
+                  coins={coins}
+                  imageLibrary={imageLibrary}
+                />
               </div>
             ))}
           </div>
@@ -2712,7 +3008,23 @@ function CoinCollectorApp() {
                 exit={{ opacity: 0, x: -100 }}
                 className="w-full max-w-xl"
               >
-                {renderCoinCard(currentCoin)}
+                {/* Use CoinCard for spotlight layout */}
+                <CoinCard 
+                  coin={currentCoin}
+                  isMultiSelectMode={isMultiSelectMode}
+                  selectedCoinIds={selectedCoinIds}
+                  toggleCoinSelection={toggleCoinSelection}
+                  setSelectedCoin={setSelectedCoin}
+                  handleCoinPressStart={handleCoinPressStart}
+                  handleCoinPressEnd={handleCoinPressEnd}
+                  preferences={preferences}
+                  toggleCollected={toggleCollected}
+                  setEditingCoin={setEditingCoin}
+                  deleteCoin={deleteCoin}
+                  folders={folders}
+                  coins={coins}
+                  imageLibrary={imageLibrary}
+                />
               </motion.div>
             </AnimatePresence>
             <div className="flex items-center gap-4">
@@ -2963,14 +3275,13 @@ function CoinCollectorApp() {
 
   return (
     <div className={cn(
-      "h-screen flex flex-col text-slate-900 dark:text-slate-100 transition-colors duration-500 font-sans relative overflow-hidden",
+      "fixed-layout text-slate-900 dark:text-slate-100 transition-colors duration-500 font-sans",
       preferences.themeTexture === 'paper' && "theme-paper",
       preferences.themeTexture === 'glass' && "theme-glass",
       preferences.themeTexture === 'wood' && "theme-wood",
       preferences.themeTexture === 'metal' && "theme-metal",
       preferences.themeTexture === 'fabric' && "theme-fabric",
-      !preferences.themeTexture || preferences.themeTexture === 'none' ? "bg-slate-50 dark:bg-slate-950" : "",
-      "safe-top safe-bottom"
+      !preferences.themeTexture || preferences.themeTexture === 'none' ? "bg-slate-50 dark:bg-slate-950" : ""
     )}>
         <AmbientBackground enabled={preferences.ambientMotion} />
         
@@ -2990,7 +3301,7 @@ function CoinCollectorApp() {
         </AnimatePresence>
 
         {/* Header */}
-        <header className="flex-none z-30 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 safe-top">
+        <header className="fixed-header bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 safe-top">
           <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-amber-500 rounded-full flex items-center justify-center shadow-lg shadow-amber-500/20">
@@ -3038,7 +3349,7 @@ function CoinCollectorApp() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto relative no-scrollbar">
+        <main className="scroll-content no-scrollbar">
           <div className="max-w-5xl mx-auto px-4 py-8 pb-40">
           {preferences.isPurchaseMode ? (
             <div className="space-y-6">
@@ -3606,7 +3917,7 @@ function CoinCollectorApp() {
 
         {/* Bottom Navigation */}
         {preferences.showBottomMenu && !preferences.isPurchaseMode && (
-          <div className="fixed bottom-4 sm:bottom-8 left-0 right-0 z-50 px-4 sm:px-6 pointer-events-none">
+          <div className="fixed-nav z-50 px-4 sm:px-6 pointer-events-none">
             <nav className={cn(
               "max-w-lg mx-auto pointer-events-auto flex items-center justify-between p-1.5 sm:p-2 rounded-[2.5rem] shadow-2xl border border-white/20 dark:border-slate-800/50",
               "bg-white/70 dark:bg-slate-900/70 backdrop-blur-3xl",
