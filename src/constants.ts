@@ -20,6 +20,7 @@ export const DENOMINATIONS = [
   '50p',
   '£1',
   '£2',
+  '£5',
   'Euro',
   'Franc (FR)',
   'Franc (BE)',
@@ -145,6 +146,13 @@ export const COUNTRIES = [
   'Netherlands',
   'Belgium',
   'Austria'
+];
+
+export const REGIONS = [
+  'Mainland UK',
+  'Jersey',
+  'Guernsey',
+  'Isle of Man'
 ];
 
 export const INITIAL_COINS: Coin[] = [
@@ -319,6 +327,100 @@ export const INITIAL_COINS: Coin[] = [
     addedAt: now,
     country: 'Spain',
     currencyType: 'old'
+  },
+  // Jersey
+  {
+    id: 'jersey-1p-1971',
+    title: 'Jersey 1p',
+    denomination: '1p',
+    year: 1971,
+    summary: 'The first decimal penny of Jersey, featuring the island\'s crest.',
+    isCollected: false,
+    category: '1p',
+    folderId: 'folder-circulating',
+    addedAt: now,
+    country: 'United Kingdom',
+    region: 'Jersey',
+    coinType: 'Territory',
+    currencyType: 'modern'
+  },
+  {
+    id: 'jersey-50p-2012',
+    title: 'Jersey 50p - Diamond Jubilee',
+    denomination: '50p',
+    year: 2012,
+    summary: 'Commemorating the Queen\'s Diamond Jubilee with Jersey-specific heraldry.',
+    isCollected: false,
+    category: '50p',
+    folderId: 'folder-commemorative',
+    addedAt: now,
+    country: 'United Kingdom',
+    region: 'Jersey',
+    coinType: 'Territory',
+    currencyType: 'modern'
+  },
+  // Guernsey
+  {
+    id: 'guernsey-2p-1971',
+    title: 'Guernsey 2p',
+    denomination: '2p',
+    year: 1971,
+    summary: 'Guernsey decimal 2p featuring the island\'s distinct animal symbols.',
+    isCollected: false,
+    category: '2p',
+    folderId: 'folder-circulating',
+    addedAt: now,
+    country: 'United Kingdom',
+    region: 'Guernsey',
+    coinType: 'Territory',
+    currencyType: 'modern'
+  },
+  {
+    id: 'guernsey-1-2000',
+    title: 'Guernsey £1 - Millennium',
+    denomination: '£1',
+    year: 2000,
+    summary: 'A special £1 coin for the new millennium issued by the States of Guernsey.',
+    isCollected: false,
+    category: '£1',
+    folderId: 'folder-commemorative',
+    addedAt: now,
+    country: 'United Kingdom',
+    region: 'Guernsey',
+    coinType: 'Territory',
+    currencyType: 'modern'
+  },
+  // Isle of Man
+  {
+    id: 'iom-50p-tt',
+    title: 'Isle of Man 50p - TT Races',
+    denomination: '50p',
+    year: 1981,
+    summary: 'The iconic TT Races 50p, highly sought after by collectors. Features the triskelion.',
+    isCollected: false,
+    isRare: true,
+    category: '50p',
+    folderId: 'folder-rare',
+    addedAt: now,
+    country: 'United Kingdom',
+    region: 'Isle of Man',
+    coinType: 'Territory',
+    currencyType: 'modern'
+  },
+  {
+    id: 'iom-5-2022',
+    title: 'Isle of Man £5 - Platinum Jubilee',
+    denomination: '£5',
+    year: 2022,
+    summary: 'A large commemorative £5 coin marking the Platinum Jubilee of Elizabeth II.',
+    isCollected: false,
+    category: '£5',
+    folderId: 'folder-commemorative',
+    addedAt: now,
+    country: 'United Kingdom',
+    region: 'Isle of Man',
+    coinType: 'Territory',
+    currencyType: 'modern'
   }
 ];
 

@@ -70,7 +70,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
 import { Coin, AppState, Folder, UserPreferences, Mission, Achievement, Timeline, TimelineEvent, Story, StoryChapter, GameMode, Era, ImageLibraryItem } from './types';
-import { INITIAL_COINS, INITIAL_FOLDERS, TIMELINES, GAME_MODES, ERAS, DENOMINATIONS, COUNTRIES } from './constants';
+import { INITIAL_COINS, INITIAL_FOLDERS, TIMELINES, GAME_MODES, ERAS, DENOMINATIONS, COUNTRIES, REGIONS } from './constants';
 
 const AUTO_CORRECT_MAP: Record<string, string> = {
   'Half pnn': 'Half Penny',
@@ -356,7 +356,7 @@ const CoinCard = memo(({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-2">
               <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest">{coin.denomination}</span>
-              <span className="text-[10px] font-bold text-slate-400">{coin.year}</span>
+              <span className="text-[10px] font-bold text-slate-400">{coin.year} {coin.region && coin.region !== 'Mainland UK' && `• ${coin.region}`}</span>
               {coin.isRare && <Trophy className="w-3 h-3 text-amber-500" />}
             </div>
             <h3 className="font-bold text-sm truncate">{coin.title}</h3>
@@ -417,7 +417,7 @@ const CoinCard = memo(({
             <div className="flex justify-between items-start mb-2">
               <div className="flex flex-col flex-1 mr-2 min-w-0">
                 <span className="text-[10px] font-black text-amber-500 uppercase tracking-[0.2em] mb-1 truncate">
-                  {coin.denomination} • {coin.year}
+                  {coin.denomination} • {coin.year} {coin.region && coin.region !== 'Mainland UK' && `• ${coin.region}`}
                 </span>
                 <h3 className={cn(
                   "font-bold flex items-center gap-2 leading-tight line-clamp-2 h-[2.5em] overflow-hidden",
@@ -602,6 +602,8 @@ function CoinCollectorApp() {
         showLayoutSwitcher: true,
         showOldEuropeanCoins: true,
         europeanCoinFilter: 'both',
+        territoryFilter: 'both',
+        activeRegion: 'all',
         ambientMotion: true,
         enableImageLibrary: true,
         enabledLayouts: {
@@ -740,6 +742,8 @@ function CoinCollectorApp() {
     showLayoutSwitcher: true,
     showOldEuropeanCoins: true,
     europeanCoinFilter: 'both',
+    territoryFilter: 'both',
+    activeRegion: 'all',
     ambientMotion: true,
     enableImageLibrary: true,
     enabledLayouts: {
@@ -1869,6 +1873,8 @@ function CoinCollectorApp() {
             sortBy: parsed.preferences.sortBy || 'recently-added',
             groupBy: parsed.preferences.groupBy || 'none',
             isGrouped: parsed.preferences.isGrouped ?? false,
+            territoryFilter: parsed.preferences.territoryFilter || 'both',
+            activeRegion: parsed.preferences.activeRegion || 'all',
             showBottomMenu: parsed.preferences.showBottomMenu ?? true,
             isCompactUI: parsed.preferences.isCompactUI ?? false,
             isTextMode: parsed.preferences.isTextMode ?? false,
@@ -2399,7 +2405,21 @@ function CoinCollectorApp() {
         }
       }
       
-      return matchesSearch && matchesFilter && matchesFolder && matchesEuroFilter;
+      // Territory Filter
+      let matchesTerritoryFilter = true;
+      if (preferences.territoryFilter === 'mainland') {
+        matchesTerritoryFilter = coin.coinType !== 'Territory';
+      } else if (preferences.territoryFilter === 'territories') {
+        matchesTerritoryFilter = coin.coinType === 'Territory';
+      }
+
+      // Region Filter
+      let matchesRegionFilter = true;
+      if (preferences.activeRegion !== 'all') {
+        matchesRegionFilter = coin.region === preferences.activeRegion;
+      }
+      
+      return matchesSearch && matchesFilter && matchesFolder && matchesEuroFilter && matchesTerritoryFilter && matchesRegionFilter;
     });
 
     // Sorting logic
@@ -3758,6 +3778,45 @@ function CoinCollectorApp() {
               </div>
             )}
 
+            {/* Territory Filter */}
+            <div className="space-y-3">
+              <div className="flex gap-2 p-1 bg-slate-100 dark:bg-slate-800/50 rounded-2xl">
+                {(['both', 'mainland', 'territories'] as const).map((f) => (
+                  <button
+                    key={f}
+                    onClick={() => setPreferences(prev => ({ ...prev, territoryFilter: f }))}
+                    className={cn(
+                      "flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
+                      preferences.territoryFilter === f 
+                        ? "bg-white dark:bg-slate-700 text-amber-500 shadow-sm" 
+                        : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                    )}
+                  >
+                    {f === 'both' ? 'All UK' : f === 'mainland' ? 'Mainland' : 'Territories'}
+                  </button>
+                ))}
+              </div>
+
+              {preferences.territoryFilter !== 'mainland' && (
+                <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+                  {['all', 'Jersey', 'Guernsey', 'Isle of Man'].map((region) => (
+                    <button
+                      key={region}
+                      onClick={() => setPreferences(prev => ({ ...prev, activeRegion: region }))}
+                      className={cn(
+                        "px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border whitespace-nowrap",
+                        preferences.activeRegion === region 
+                          ? "bg-amber-500 border-amber-500 text-white shadow-lg shadow-amber-500/20" 
+                          : "bg-white dark:bg-slate-900 text-slate-400 border-slate-100 dark:border-slate-800"
+                      )}
+                    >
+                      {region}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Sort & Group Controls */}
             <div className="flex flex-wrap gap-3">
               <div className="flex-1 min-w-[140px]">
@@ -5088,26 +5147,28 @@ function CoinCollectorApp() {
                       const amountPaid = addCoinPrice ? parseFloat(addCoinPrice) : undefined;
                       const purchaseDate = formData.get('purchaseDate') as string || undefined;
                       
-                      const newCoin: Coin = {
-                        id: `custom-${Date.now()}`,
-                        title: addCoinTitle,
-                        denomination: addCoinDenomination,
-                        year: parseInt(addCoinYear),
-                        summary: formData.get('summary') as string,
-                        isCollected: !!amountPaid || false,
-                        isRare: formData.get('isRare') === 'on',
-                        category: addCoinDenomination,
-                        folderId: formData.get('folderId') as string || undefined,
-                        addedAt: new Date().toISOString(),
-                        imageUrl: newCoinImage || undefined,
-                        imageId: newCoinImageId || undefined,
-                        amountPaid,
-                        purchaseDate,
-                        country: addCoinCountry,
-                        currencyType: addCoinEra,
-                        mint: addCoinMint,
-                        condition: addCoinCondition
-                      };
+                        const newCoin: Coin = {
+                          id: `custom-${Date.now()}`,
+                          title: addCoinTitle,
+                          denomination: addCoinDenomination,
+                          year: parseInt(addCoinYear),
+                          summary: formData.get('summary') as string,
+                          isCollected: !!amountPaid || false,
+                          isRare: formData.get('isRare') === 'on',
+                          category: addCoinDenomination,
+                          folderId: formData.get('folderId') as string || undefined,
+                          addedAt: new Date().toISOString(),
+                          imageUrl: newCoinImage || undefined,
+                          imageId: newCoinImageId || undefined,
+                          amountPaid,
+                          purchaseDate,
+                          country: addCoinCountry,
+                          region: formData.get('region') as string || undefined,
+                          coinType: (formData.get('region') && formData.get('region') !== 'Mainland UK') ? 'Territory' : 'Mainland',
+                          currencyType: addCoinEra,
+                          mint: addCoinMint,
+                          condition: addCoinCondition
+                        };
                       setCoins(prev => [newCoin, ...prev]);
                       setIsAddModalOpen(false);
                       setNewCoinImage(null);
@@ -5230,17 +5291,28 @@ function CoinCollectorApp() {
                             </select>
                           </div>
                           <div>
-                            <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1.5 ml-1">Era</label>
+                            <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1.5 ml-1">Region</label>
                             <select 
-                              name="currencyType" 
-                              value={addCoinEra}
-                              onChange={(e) => setAddCoinEra(e.target.value as 'modern' | 'old')}
+                              name="region" 
                               className="w-full h-14 px-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none font-bold appearance-none transition-all"
                             >
-                              <option value="modern">Modern Era</option>
-                              <option value="old">Old Era</option>
+                              {REGIONS.map(r => (
+                                <option key={r} value={r}>{r}</option>
+                              ))}
                             </select>
                           </div>
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1.5 ml-1">Era</label>
+                          <select 
+                            name="currencyType" 
+                            value={addCoinEra}
+                            onChange={(e) => setAddCoinEra(e.target.value as 'modern' | 'old')}
+                            className="w-full h-14 px-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none font-bold appearance-none transition-all"
+                          >
+                            <option value="modern">Modern Era</option>
+                            <option value="old">Old Era</option>
+                          </select>
                         </div>
                         <div>
                           <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1.5 ml-1">Folder</label>

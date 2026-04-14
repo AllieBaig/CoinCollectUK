@@ -15,6 +15,8 @@ export interface Coin {
   purchaseDate?: string;
   points?: number;
   country?: string;
+  region?: string;
+  coinType?: 'Mainland' | 'Territory';
   currencyType?: 'modern' | 'old';
   mint?: string;
   condition?: string;
@@ -87,6 +89,8 @@ export interface UserPreferences {
   showLayoutSwitcher: boolean;
   showOldEuropeanCoins: boolean;
   europeanCoinFilter: 'modern' | 'old' | 'both';
+  territoryFilter: 'mainland' | 'territories' | 'both';
+  activeRegion: string | 'all';
   ambientMotion: boolean;
   enableImageLibrary: boolean;
   enabledLayouts: Record<string, boolean>;
