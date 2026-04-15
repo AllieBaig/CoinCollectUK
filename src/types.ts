@@ -159,6 +159,7 @@ export interface ImageLibraryItem {
 
 export interface AppState {
   version?: number;
+  appVersion?: string;
   coins: Coin[];
   imageLibrary?: ImageLibraryItem[];
   folders: Folder[];

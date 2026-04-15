@@ -71,6 +71,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
 import { Coin, AppState, Folder, UserPreferences, Mission, Achievement, Timeline, TimelineEvent, Story, StoryChapter, GameMode, Era, ImageLibraryItem } from './types';
 import { INITIAL_COINS, INITIAL_FOLDERS, TIMELINES, GAME_MODES, ERAS, DENOMINATIONS, COUNTRIES, REGIONS } from './constants';
+import { convertToVersion, AppVersion } from './lib/schemas';
 
 const AUTO_CORRECT_MAP: Record<string, string> = {
   'Half pnn': 'Half Penny',
@@ -579,7 +580,7 @@ function CoinCollectorApp() {
       if (!data || typeof data !== 'object') return null;
 
       // Detect version
-      const version = data.version || (Array.isArray(data) ? 1 : 2);
+      const version = data.appVersion || data.version || (Array.isArray(data) ? 1 : 2);
       
       let coins: Coin[] = [];
       let folders: Folder[] = data.folders || INITIAL_FOLDERS;
@@ -789,6 +790,7 @@ function CoinCollectorApp() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isAddFolderModalOpen, setIsAddFolderModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [exportVersion, setExportVersion] = useState<AppVersion>('3.0');
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isPhotoLibraryOpen, setIsPhotoLibraryOpen] = useState(false);
   const [isImageLibraryOpen, setIsImageLibraryOpen] = useState(false);
@@ -2277,6 +2279,7 @@ function CoinCollectorApp() {
     }
     const state: AppState = { 
       version: 3,
+      appVersion: '3.0',
       coins, 
       folders, 
       preferences, 
@@ -2297,16 +2300,20 @@ function CoinCollectorApp() {
       gamePoints,
       lastUpdated: new Date().toISOString() 
     };
-    const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+
+    // Apply schema conversion before export
+    const convertedData = convertToVersion(state, exportVersion);
+
+    const blob = new Blob([JSON.stringify(convertedData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     const now = new Date();
     const dateStr = now.toISOString().split('T')[0];
-    const timeStr = now.toTimeString().split(' ')[0].replace(/:/g, '-');
-    a.download = `uk-coins-backup-${dateStr}-${timeStr}.json`;
+    // Filename: coins_vX.X_YYYY-MM-DD.json
+    a.download = `coins_v${exportVersion}_${dateStr}.json`;
     a.click();
-    showToast("Data exported successfully!", "success");
+    showToast(`Data exported for v${exportVersion} successfully!`, "success");
   };
 
   const importData = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -2331,6 +2338,7 @@ function CoinCollectorApp() {
           const converted = convertData(rawData);
 
           if (converted) {
+            const version = rawData.appVersion || rawData.version || 'unknown';
             // Backup current data
             const currentState: AppState = { 
               version: 3,
@@ -2358,7 +2366,7 @@ function CoinCollectorApp() {
             if (converted.achievements) setAchievements(converted.achievements);
             if (converted.lastLuckySpinDate) setLastLuckySpinDate(converted.lastLuckySpinDate);
             
-            showToast('Data imported and validated successfully!', 'success');
+            showToast(`Data v${version} imported and validated successfully!`, 'success');
           } else {
             showToast('Import failed. The file format is invalid or corrupt.', 'info');
           }
@@ -4503,6 +4511,25 @@ function CoinCollectorApp() {
                     onToggle={() => setOpenSettingSection(openSettingSection === 'data' ? null : 'data')}
                   >
                     <div className="grid grid-cols-2 gap-3">
+                      <div className="col-span-2 space-y-2 mb-2">
+                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Export for Version</label>
+                        <div className="grid grid-cols-3 gap-2 p-1 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
+                          {(['3.0', '2.5', '2.0'] as const).map((v) => (
+                            <button
+                              key={v}
+                              onClick={() => setExportVersion(v)}
+                              className={cn(
+                                "py-2 rounded-xl transition-all text-[10px] font-black uppercase tracking-widest",
+                                exportVersion === v 
+                                  ? "bg-amber-500 text-white shadow-lg shadow-amber-500/20" 
+                                  : "text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
+                              )}
+                            >
+                              v{v} {v === '3.0' && '(Current)'}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                       <button 
                         onClick={exportData}
                         className="flex flex-col items-center gap-2 p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-800 hover:bg-amber-50 transition-colors"
