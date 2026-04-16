@@ -65,7 +65,9 @@ import {
   Maximize2,
   Rows,
   Split,
-  Hexagon
+  Hexagon,
+  CreditCard,
+  Presentation
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
@@ -512,6 +514,112 @@ export default function App() {
   );
 }
 
+const LayoutPreview = ({ type }: { type: string }) => {
+  const boxClass = "bg-slate-200 dark:bg-slate-700 rounded-[2px]";
+  switch (type) {
+    case 'grid':
+      return (
+        <div className="grid grid-cols-3 gap-0.5 w-6 h-6 p-0.5">
+          {[...Array(9)].map((_, i) => <div key={i} className={boxClass} />)}
+        </div>
+      );
+    case 'carousel':
+      return (
+        <div className="flex gap-0.5 w-6 h-6 p-0.5 items-center">
+          <div className="w-1 h-3 bg-slate-300 dark:bg-slate-600 rounded-[1px]" />
+          <div className="w-2.5 h-4 bg-amber-500 rounded-[2px]" />
+          <div className="w-1 h-3 bg-slate-300 dark:bg-slate-600 rounded-[1px]" />
+        </div>
+      );
+    case 'masonry':
+      return (
+        <div className="grid grid-cols-2 gap-0.5 w-6 h-6 p-0.5">
+          <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded-[1px]" />
+          <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-[1px]" />
+          <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded-[1px]" />
+          <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded-[1px]" />
+        </div>
+      );
+    case 'table':
+      return (
+        <div className="flex flex-col gap-0.5 w-6 h-6 p-0.5">
+          <div className="h-1 bg-amber-500 rounded-[1px] w-full" />
+          {[...Array(3)].map((_, i) => <div key={i} className="h-0.5 bg-slate-200 dark:bg-slate-700 w-full" />)}
+        </div>
+      );
+    case 'list':
+      return (
+        <div className="flex flex-col gap-0.5 w-6 h-6 p-0.5">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="flex gap-0.5 items-center">
+              <div className="w-1 h-1 rounded-full bg-slate-300" />
+              <div className="h-0.5 bg-slate-200 dark:bg-slate-700 w-full" />
+            </div>
+          ))}
+        </div>
+      );
+    case 'card':
+      return (
+        <div className="grid grid-cols-1 gap-1 w-6 h-6 p-0.5">
+          <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-[1px]" />
+          <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-[1px]" />
+        </div>
+      );
+    case 'compact':
+      return (
+        <div className="flex flex-col gap-0.5 w-6 h-6 p-0.5">
+          {[...Array(6)].map((_, i) => <div key={i} className="h-0.5 bg-slate-200 dark:bg-slate-700 w-full" />)}
+        </div>
+      );
+    case 'gallery':
+      return (
+        <div className="flex gap-0.5 w-6 h-6 p-0.5">
+          <div className="w-3.5 h-full bg-amber-500 rounded-[2px]" />
+          <div className="w-2 h-full bg-slate-200 dark:bg-slate-700 rounded-[2px]" />
+        </div>
+      );
+    case 'timeline':
+      return (
+        <div className="flex flex-col gap-0.5 w-6 h-6 p-0.5 items-center">
+          <div className="w-0.5 h-full bg-slate-300 relative">
+            <div className="absolute top-1 -left-0.5 w-1.5 h-1.5 rounded-full bg-amber-500" />
+          </div>
+        </div>
+      );
+    case 'board':
+      return (
+        <div className="flex gap-0.5 w-6 h-6 p-0.5">
+          <div className="w-2 h-full bg-slate-200 dark:bg-slate-700 rounded-[1px]" />
+          <div className="w-2 h-full bg-slate-200 dark:bg-slate-700 rounded-[1px]" />
+        </div>
+      );
+    case 'spotlight':
+      return (
+        <div className="w-6 h-6 p-0.5 flex items-center justify-center">
+          <div className="w-5 h-5 bg-amber-500 rounded-[4px] shadow-sm" />
+        </div>
+      );
+    case 'split':
+      return (
+        <div className="flex gap-0.5 w-6 h-6 p-0.5">
+          <div className="w-2 h-full bg-amber-500 rounded-[1px]" />
+          <div className="flex-1 space-y-0.5">
+            <div className="h-1 bg-slate-200 dark:bg-slate-700 rounded-[1px]" />
+            <div className="h-1 bg-slate-200 dark:bg-slate-700 rounded-[1px]" />
+          </div>
+        </div>
+      );
+    case 'hexagon':
+      return (
+        <div className="flex items-center justify-center w-6 h-6">
+          <Hexagon className="w-4 h-4 text-amber-500 fill-amber-500/20" />
+        </div>
+      );
+    default:
+      return null;
+  }
+};
+
 function CoinCollectorApp() {
   const [coins, setCoins] = useState<Coin[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
@@ -620,7 +728,8 @@ function CoinCollectorApp() {
           year: true,
           mint: true,
           condition: true
-        }
+        },
+        layoutCategory: 'visual'
       };
 
       // Extract coins based on version/structure
@@ -761,7 +870,8 @@ function CoinCollectorApp() {
       mint: true,
       condition: true
     },
-    scrollOrientation: 'horizontal'
+    scrollOrientation: 'horizontal',
+    layoutCategory: 'visual'
   });
   
   const [imageLibrary, setImageLibrary] = useState<ImageLibraryItem[]>([]);
@@ -790,6 +900,7 @@ function CoinCollectorApp() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isAddFolderModalOpen, setIsAddFolderModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isLayoutSheetOpen, setIsLayoutSheetOpen] = useState(false);
   const [exportVersion, setExportVersion] = useState<AppVersion>('3.0');
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isPhotoLibraryOpen, setIsPhotoLibraryOpen] = useState(false);
@@ -3889,33 +4000,33 @@ function CoinCollectorApp() {
               </div>
 
               {preferences.showLayoutSwitcher && (
-                <div className="flex-1 min-w-[140px]">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block">Layout</label>
-                  <div className="relative">
-                    <select 
-                      value={preferences.layoutType}
-                      onChange={(e) => setPreferences(prev => ({ ...prev, layoutType: e.target.value as any }))}
-                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-xs font-bold focus:ring-2 focus:ring-amber-500 outline-none appearance-none pr-8"
-                    >
-                      <optgroup label="Text Layouts">
-                        {preferences.enabledLayouts.card && <option value="card">Card</option>}
-                        {preferences.enabledLayouts.table && <option value="table">Table</option>}
-                        {preferences.enabledLayouts.list && <option value="list">List</option>}
-                        {preferences.enabledLayouts.compact && <option value="compact">Compact</option>}
-                      </optgroup>
-                      <optgroup label="Visual Layouts">
-                        <option value="grid">Grid</option>
-                        <option value="carousel">Carousel</option>
-                        <option value="masonry">Masonry</option>
-                        <option value="board">Board</option>
-                        <option value="timeline">Timeline</option>
-                        <option value="gallery">Gallery</option>
-                        <option value="spotlight">Spotlight</option>
-                        <option value="split">Split</option>
-                        <option value="hexagon">Hexagon</option>
-                      </optgroup>
-                    </select>
-                    <Layout className="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none" />
+                <div className="flex-1 min-w-[200px]">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block">Display Layout</label>
+                  <div className="p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl flex gap-1 shadow-inner relative overflow-hidden">
+                    {(['visual', 'text'] as const).map((category) => (
+                      <button
+                        key={category}
+                        onClick={() => {
+                          setPreferences(prev => ({ ...prev, layoutCategory: category }));
+                          setIsLayoutSheetOpen(true);
+                        }}
+                        className={cn(
+                          "flex-1 relative z-10 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.1em] transition-all",
+                          preferences.layoutCategory === category 
+                            ? "bg-white dark:bg-slate-700 text-amber-500 shadow-sm" 
+                            : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                        )}
+                      >
+                        <div className="flex items-center justify-center gap-2">
+                          {category === 'visual' ? <ImageIcon className="w-3 h-3" /> : <TypeIcon className="w-3 h-3" />}
+                          {category}
+                        </div>
+                      </button>
+                    ))}
+                    <button 
+                      onClick={() => setIsLayoutSheetOpen(true)}
+                      className="absolute inset-0 z-0 opacity-0 w-full h-full cursor-pointer" 
+                    />
                   </div>
                 </div>
               )}
@@ -6734,6 +6845,102 @@ function CoinCollectorApp() {
                   >
                     Cancel
                   </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* Layout Selection Bottom Sheet */}
+        <AnimatePresence>
+          {isLayoutSheetOpen && (
+            <div className="fixed inset-0 z-[150] flex items-end justify-center pointer-events-none">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsLayoutSheetOpen(false)}
+                className="absolute inset-0 bg-black/40 backdrop-blur-sm pointer-events-auto"
+              />
+              <motion.div
+                initial={{ y: "100%" }}
+                animate={{ y: 0 }}
+                exit={{ y: "100%" }}
+                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                className={cn(
+                  "relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-t-[40px] shadow-2xl p-8 pb-12 pointer-events-auto overflow-hidden",
+                  preferences.themeTexture === 'glass' && "glass-card"
+                )}
+              >
+                {/* Handle */}
+                <div className="w-12 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full mx-auto mb-8" />
+                
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h2 className="text-2xl font-black tracking-tight capitalize">{preferences.layoutCategory} Layouts</h2>
+                    <p className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-widest mt-1">Select your preferred view mode</p>
+                  </div>
+                  <button 
+                    onClick={() => setIsLayoutSheetOpen(false)}
+                    className="p-3 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  {(preferences.layoutCategory === 'visual' ? [
+                    { id: 'grid', label: 'Grid', icon: LayoutGrid, type: 'grid' },
+                    { id: 'carousel', label: 'Carousel', icon: Columns, type: 'carousel' },
+                    { id: 'masonry', label: 'Masonry', icon: LayoutDashboard, type: 'masonry' },
+                    { id: 'gallery', label: 'Gallery', icon: GalleryHorizontal, type: 'gallery' },
+                    { id: 'timeline', label: 'Timeline', icon: Clock, type: 'timeline' },
+                    { id: 'board', label: 'Board', icon: Presentation, type: 'board' },
+                    { id: 'spotlight', label: 'Spotlight', icon: Maximize2, type: 'spotlight' },
+                    { id: 'split', label: 'Split', icon: Split, type: 'split' },
+                    { id: 'hexagon', label: 'Hexagon', icon: Hexagon, type: 'hexagon' },
+                  ] : [
+                    { id: 'card', label: 'Card', icon: CreditCard, type: 'card' },
+                    { id: 'table', label: 'Table', icon: Table, type: 'table' },
+                    { id: 'list', label: 'List', icon: ListIcon, type: 'list' },
+                    { id: 'compact', label: 'Compact', icon: Rows, type: 'compact' },
+                  ]).filter(opt => opt.id === 'grid' || preferences.enabledLayouts[opt.id]).map((option) => (
+                    <button
+                      key={option.id}
+                      onClick={() => {
+                        setPreferences(prev => ({ ...prev, layoutType: option.id as any }));
+                        setIsLayoutSheetOpen(false);
+                      }}
+                      className={cn(
+                        "group p-4 rounded-[2.5rem] border-2 transition-all flex items-center gap-4 relative overflow-hidden",
+                        preferences.layoutType === option.id
+                          ? "bg-amber-500 border-amber-500 text-white shadow-xl shadow-amber-500/20"
+                          : "bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-800 hover:border-amber-500/50"
+                      )}
+                    >
+                      <div className={cn(
+                        "w-12 h-12 rounded-2xl flex items-center justify-center transition-all",
+                        preferences.layoutType === option.id ? "bg-white/20" : "bg-white dark:bg-slate-800 shadow-sm group-hover:scale-110"
+                      )}>
+                        <option.icon className={cn("w-6 h-6", preferences.layoutType === option.id ? "text-white" : "text-amber-500")} />
+                      </div>
+                      <div className="text-left flex-1 min-w-0">
+                        <p className="font-black tracking-tight line-clamp-1">{option.label}</p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <LayoutPreview type={option.id} />
+                          <span className={cn(
+                            "text-[10px] font-black uppercase tracking-widest",
+                            preferences.layoutType === option.id ? "text-white/60" : "text-slate-400"
+                          )}>Style</span>
+                        </div>
+                      </div>
+                      {preferences.layoutType === option.id && (
+                        <motion.div layoutId="layout-check" className="absolute right-4">
+                          <Check className="w-5 h-5 text-white" />
+                        </motion.div>
+                      )}
+                    </button>
+                  ))}
                 </div>
               </motion.div>
             </div>

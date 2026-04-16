@@ -101,6 +101,7 @@ export interface UserPreferences {
     condition: boolean;
   };
   scrollOrientation: 'vertical' | 'horizontal';
+  layoutCategory: 'visual' | 'text';
 }
 
 export interface StoryChapter {
