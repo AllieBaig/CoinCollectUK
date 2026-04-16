@@ -960,7 +960,16 @@ function CoinCollectorApp() {
   const [isBulkPriceModalOpen, setIsBulkPriceModalOpen] = useState(false);
   const [spotlightIndex, setSpotlightIndex] = useState(0);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [scrollY, setScrollY] = useState(0);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const longPressTimer = useRef<any>(null);
+
+  const isSmallScreenHeight = windowSize.height < 700;
+  const isHeaderCollapsed = scrollY > 20;
+
+  const handleContentScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    setScrollY(e.currentTarget.scrollTop);
+  };
 
   const toggleCoinSelection = (id: string) => {
     setSelectedCoinIds(prev => {
@@ -3455,56 +3464,123 @@ function CoinCollectorApp() {
         </AnimatePresence>
 
         {/* Header */}
-        <header className="fixed-header bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 safe-top">
-          <div className="apple-container py-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-amber-500 rounded-full flex items-center justify-center shadow-lg shadow-amber-500/20">
-                <span className="text-white font-bold text-xl">£</span>
+        <header className={cn(
+          "fixed-header bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-all duration-300 relative z-50",
+          isSmallScreenHeight && (isHeaderCollapsed ? "py-1 shadow-sm" : "py-2"),
+          !isSmallScreenHeight && (isHeaderCollapsed ? "py-2 shadow-md" : "py-4"),
+          isSmallScreenHeight && "safe-top"
+        )}>
+          <div className={cn(
+            "apple-container flex flex-col transition-all duration-300",
+            isHeaderCollapsed && isSmallScreenHeight ? "gap-1" : "gap-3"
+          )}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className={cn(
+                  "bg-amber-500 rounded-full flex items-center justify-center shadow-lg shadow-amber-500/20 transition-all duration-500",
+                  isHeaderCollapsed && isSmallScreenHeight ? "w-6 h-6" : "w-10 h-10"
+                )}>
+                  <span className={cn("text-white font-bold transition-all duration-500", isHeaderCollapsed && isSmallScreenHeight ? "text-xs" : "text-xl")}>£</span>
+                </div>
+                <h1 className={cn(
+                  "font-bold tracking-tight transition-all duration-500",
+                  isSmallScreenHeight ? "text-lg" : "text-xl",
+                  isHeaderCollapsed && isSmallScreenHeight ? "hidden" : "block",
+                  "truncate max-w-[120px] sm:max-w-none"
+                )}>
+                  UK Coin Collector
+                </h1>
+                {isHeaderCollapsed && isSmallScreenHeight && (
+                  <span className="text-[10px] font-black uppercase tracking-widest text-amber-500 animate-in fade-in slide-in-from-left-2">My Collection</span>
+                )}
               </div>
-              <h1 className="text-xl font-bold tracking-tight hidden sm:block">UK Coin Collector</h1>
+
+              <div className="flex items-center gap-1 sm:gap-2">
+                {!preferences.isPurchaseMode && (
+                  <>
+                    {preferences.enableImageLibrary && (
+                      <button 
+                        onClick={() => setIsImageLibraryOpen(true)}
+                        className={cn(
+                          "rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors",
+                          isHeaderCollapsed && isSmallScreenHeight ? "p-1.5" : "p-2"
+                        )}
+                        title="Image Library"
+                      >
+                        <Library className={cn("transition-all duration-500", isHeaderCollapsed && isSmallScreenHeight ? "w-4 h-4" : "w-5 h-5")} />
+                      </button>
+                    )}
+                    <button 
+                      onClick={() => setIsPhotoLibraryOpen(true)}
+                      className={cn(
+                        "rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors",
+                        isHeaderCollapsed && isSmallScreenHeight ? "p-1.5" : "p-2"
+                      )}
+                      title="Photo Gallery"
+                    >
+                      <ImageIcon className={cn("transition-all duration-500", isHeaderCollapsed && isSmallScreenHeight ? "w-4 h-4" : "w-5 h-5")} />
+                    </button>
+                    {!isHeaderCollapsed && (
+                      <button 
+                        onClick={() => setIsProfileOpen(true)}
+                        className={cn(
+                          "rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors",
+                          isHeaderCollapsed && isSmallScreenHeight ? "p-1.5" : "p-2"
+                        )}
+                        title="Profile"
+                      >
+                        <User className={cn("transition-all duration-500", isHeaderCollapsed && isSmallScreenHeight ? "w-4 h-4" : "w-5 h-5")} />
+                      </button>
+                    )}
+                  </>
+                )}
+                <button 
+                  onClick={() => setIsSettingsOpen(true)}
+                  className={cn(
+                    "rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors",
+                    isHeaderCollapsed && isSmallScreenHeight ? "p-1.5" : "p-2"
+                  )}
+                  title="Settings"
+                >
+                  <Settings className={cn("transition-all duration-500", isHeaderCollapsed && isSmallScreenHeight ? "w-4 h-4" : "w-5 h-5")} />
+                </button>
+              </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              {!preferences.isPurchaseMode && (
-                <>
-                  {preferences.enableImageLibrary && (
-                    <button 
-                      onClick={() => setIsImageLibraryOpen(true)}
-                      className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                      title="Image Library"
-                    >
-                      <Library className="w-5 h-5" />
-                    </button>
-                  )}
-                  <button 
-                    onClick={() => setIsPhotoLibraryOpen(true)}
-                    className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                    title="Photo Gallery"
+            {/* Compact Mode: Filters moved to header when collapsed on mobile */}
+            {isSmallScreenHeight && (
+              <div className={cn(
+                "flex gap-2 overflow-x-auto no-scrollbar transition-all duration-500 overflow-hidden",
+                isHeaderCollapsed ? "h-8 opacity-100 mt-1" : "h-0 opacity-0 pointer-events-none"
+              )}>
+                {(['all', 'collected', 'missing'] as const).map((f) => (
+                  <button
+                    key={f}
+                    onClick={() => setFilter(f)}
+                    className={cn(
+                      "whitespace-nowrap px-4 py-1 rounded-full text-[9px] font-black uppercase tracking-widest transition-all border",
+                      filter === f 
+                        ? "bg-amber-500 border-amber-500 text-white shadow-lg shadow-amber-500/10" 
+                        : "bg-white dark:bg-slate-900 text-slate-400 border-slate-100 dark:border-slate-800"
+                    )}
                   >
-                    <ImageIcon className="w-5 h-5" />
+                    {f}
                   </button>
-                  <button 
-                    onClick={() => setIsProfileOpen(true)}
-                    className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                    title="Profile"
-                  >
-                    <User className="w-5 h-5" />
-                  </button>
-                </>
-              )}
-              <button 
-                onClick={() => setIsSettingsOpen(true)}
-                className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                title="Settings"
-              >
-                <Settings className="w-5 h-5" />
-              </button>
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </header>
 
-        <main className="scroll-content no-scrollbar">
-          <div className="apple-container section-spacing pb-40">
+        <main 
+          ref={scrollRef}
+          onScroll={handleContentScroll}
+          className="scroll-content no-scrollbar"
+        >
+          <div className={cn(
+            "apple-container pb-40 transition-all duration-500",
+            isHeaderCollapsed && isSmallScreenHeight ? "pt-2" : "pt-4"
+          )}>
           {preferences.isPurchaseMode ? (
             <div className="space-y-6">
               <div className="flex items-center justify-between mb-4">
@@ -3784,7 +3860,10 @@ function CoinCollectorApp() {
           ) : (
             <>
               {/* Progress Card */}
-          <div className="mb-6 sm:mb-8">
+          <div className={cn(
+            "mb-6 sm:mb-8 transition-all duration-500",
+            isHeaderCollapsed && isSmallScreenHeight ? "opacity-0 h-0 overflow-hidden mb-0" : "opacity-100"
+          )}>
             <div className={cn(
               "bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm",
               preferences.themeTexture === 'glass' && "glass-card"
@@ -3818,7 +3897,10 @@ function CoinCollectorApp() {
           </div>
 
           {/* Folders Horizontal Scroll */}
-          <div className="mb-8 overflow-x-auto pb-4 no-scrollbar">
+          <div className={cn(
+            "mb-8 overflow-x-auto pb-4 no-scrollbar transition-all duration-500",
+            isHeaderCollapsed && isSmallScreenHeight ? "opacity-0 h-0 overflow-hidden mb-0" : "opacity-100"
+          )}>
             <div className="flex gap-4 min-w-max">
               <button
                 onClick={() => openFolder('all')}
@@ -3864,7 +3946,10 @@ function CoinCollectorApp() {
           </div>
 
           {/* Search & Filter */}
-          <div className="space-y-4 mb-8">
+          <div className={cn(
+            "space-y-4 mb-8 transition-all duration-500",
+            isHeaderCollapsed && isSmallScreenHeight ? "opacity-0 h-0 overflow-hidden mb-0" : "opacity-100"
+          )}>
             <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
               <input 
