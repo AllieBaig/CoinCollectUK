@@ -3952,7 +3952,7 @@ function CoinCollectorApp() {
             </div>
 
             {/* Sort & Group Controls */}
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-3 mb-4">
               <div className="flex-1 min-w-[140px]">
                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block">Sort By</label>
                 <select 
@@ -3998,38 +3998,65 @@ function CoinCollectorApp() {
                   {preferences.isGrouped ? "Grouped" : "Ungrouped"}
                 </button>
               </div>
+            </div>
 
-              {preferences.showLayoutSwitcher && (
-                <div className="flex-1 min-w-[200px]">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block">Display Layout</label>
-                  <div className="p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl flex gap-1 shadow-inner relative overflow-hidden">
-                    {(['visual', 'text'] as const).map((category) => (
-                      <button
-                        key={category}
-                        onClick={() => {
-                          setPreferences(prev => ({ ...prev, layoutCategory: category }));
-                          setIsLayoutSheetOpen(true);
-                        }}
-                        className={cn(
-                          "flex-1 relative z-10 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.1em] transition-all",
-                          preferences.layoutCategory === category 
-                            ? "bg-white dark:bg-slate-700 text-amber-500 shadow-sm" 
-                            : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-                        )}
-                      >
-                        <div className="flex items-center justify-center gap-2">
-                          {category === 'visual' ? <ImageIcon className="w-3 h-3" /> : <TypeIcon className="w-3 h-3" />}
-                          {category}
-                        </div>
-                      </button>
-                    ))}
-                    <button 
-                      onClick={() => setIsLayoutSheetOpen(true)}
-                      className="absolute inset-0 z-0 opacity-0 w-full h-full cursor-pointer" 
-                    />
-                  </div>
+            {/* Layout Mode - ALWAYS RENDERS ABOVE LAYOUT BUTTON */}
+            <div className="w-full space-y-3 p-4 bg-slate-50/50 dark:bg-slate-800/10 rounded-[2rem] border border-slate-100 dark:border-slate-800/50 mb-8 relative z-20 shadow-sm">
+              <div className="flex items-center justify-between px-1">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block">Display Layout Mode</label>
+                <div className="flex items-center gap-1.5 opacity-50">
+                  <span className="w-1 h-1 rounded-full bg-amber-500 animate-pulse" />
+                  <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Live View</span>
                 </div>
-              )}
+              </div>
+
+              <div className="space-y-3">
+                {/* Segmented Control */}
+                <div className="p-1 bg-slate-200/50 dark:bg-slate-800/80 rounded-2xl flex gap-1 shadow-inner overflow-hidden border border-slate-100/50 dark:border-white/5">
+                  {(['visual', 'text'] as const).map((category) => (
+                    <button
+                      key={category}
+                      onClick={() => setPreferences(prev => ({ ...prev, layoutCategory: category }))}
+                      className={cn(
+                        "flex-1 relative z-10 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300",
+                        preferences.layoutCategory === category 
+                          ? "bg-white dark:bg-slate-700 text-amber-500 shadow-lg" 
+                          : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                      )}
+                    >
+                      <div className="flex items-center justify-center gap-2.5">
+                        {category === 'visual' ? <ImageIcon className="w-4 h-4" /> : <TypeIcon className="w-4 h-4" />}
+                        {category}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Primary Layout Button - ALWAYS UNDER SEGMENTED */}
+                <button
+                  onClick={() => setIsLayoutSheetOpen(true)}
+                  className="w-full group p-4 bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-2xl flex items-center justify-between hover:border-amber-500/50 transition-all shadow-sm active:scale-[0.98]"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-500 transition-transform group-hover:scale-110">
+                      <Layout className="w-5 h-5" />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Selected Style</p>
+                      <p className="text-sm font-black capitalize tracking-tight flex items-center gap-2">
+                        {preferences.layoutType}
+                        <span className="text-[10px] font-medium text-slate-400 dark:text-slate-600">| {preferences.layoutCategory}</span>
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="p-1 bg-slate-50 dark:bg-slate-800 rounded-lg group-hover:bg-amber-50 dark:group-hover:bg-amber-900/20 transition-colors">
+                      <LayoutPreview type={preferences.layoutType} />
+                    </div>
+                    <ChevronDown className="w-4 h-4 text-slate-300 group-hover:text-amber-500 transition-colors" />
+                  </div>
+                </button>
+              </div>
             </div>
           </div>
 
