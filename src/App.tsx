@@ -4085,7 +4085,7 @@ function CoinCollectorApp() {
               </div>
             </div>
 
-            {/* Layout Mode - ALWAYS RENDERS ABOVE LAYOUT BUTTON */}
+            {/* Layout Mode - Grouped Selection */}
             <div className="w-full space-y-3 p-4 bg-slate-50/50 dark:bg-slate-800/10 rounded-[2rem] border border-slate-100 dark:border-slate-800/50 mb-8 relative z-20 shadow-sm">
               <div className="flex items-center justify-between px-1">
                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block">Display Layout Mode</label>
@@ -4096,28 +4096,6 @@ function CoinCollectorApp() {
               </div>
 
               <div className="space-y-3">
-                {/* Segmented Control */}
-                <div className="p-1 bg-slate-200/50 dark:bg-slate-800/80 rounded-2xl flex gap-1 shadow-inner overflow-hidden border border-slate-100/50 dark:border-white/5">
-                  {(['visual', 'text'] as const).map((category) => (
-                    <button
-                      key={category}
-                      onClick={() => setPreferences(prev => ({ ...prev, layoutCategory: category }))}
-                      className={cn(
-                        "flex-1 relative z-10 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300",
-                        preferences.layoutCategory === category 
-                          ? "bg-white dark:bg-slate-700 text-amber-500 shadow-lg" 
-                          : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                      )}
-                    >
-                      <div className="flex items-center justify-center gap-2.5">
-                        {category === 'visual' ? <ImageIcon className="w-4 h-4" /> : <TypeIcon className="w-4 h-4" />}
-                        {category}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-
-                {/* Primary Layout Button - ALWAYS UNDER SEGMENTED */}
                 <button
                   onClick={() => setIsLayoutSheetOpen(true)}
                   className="w-full group p-4 bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-2xl flex items-center justify-between hover:border-amber-500/50 transition-all shadow-sm active:scale-[0.98]"
@@ -6987,10 +6965,10 @@ function CoinCollectorApp() {
                 {/* Handle */}
                 <div className="w-12 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full mx-auto mb-8" />
                 
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center justify-between mb-8">
                   <div>
-                    <h2 className="text-2xl font-black tracking-tight capitalize">{preferences.layoutCategory} Layouts</h2>
-                    <p className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-widest mt-1">Select your preferred view mode</p>
+                    <h2 className="text-2xl font-black tracking-tight">Display Styles</h2>
+                    <p className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-widest mt-1">Grouped by viewing experience</p>
                   </div>
                   <button 
                     onClick={() => setIsLayoutSheetOpen(false)}
@@ -7000,59 +6978,114 @@ function CoinCollectorApp() {
                   </button>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  {(preferences.layoutCategory === 'visual' ? [
-                    { id: 'grid', label: 'Grid', icon: LayoutGrid, type: 'grid' },
-                    { id: 'carousel', label: 'Carousel', icon: Columns, type: 'carousel' },
-                    { id: 'masonry', label: 'Masonry', icon: LayoutDashboard, type: 'masonry' },
-                    { id: 'gallery', label: 'Gallery', icon: GalleryHorizontal, type: 'gallery' },
-                    { id: 'timeline', label: 'Timeline', icon: Clock, type: 'timeline' },
-                    { id: 'board', label: 'Board', icon: Presentation, type: 'board' },
-                    { id: 'spotlight', label: 'Spotlight', icon: Maximize2, type: 'spotlight' },
-                    { id: 'split', label: 'Split', icon: Split, type: 'split' },
-                    { id: 'hexagon', label: 'Hexagon', icon: Hexagon, type: 'hexagon' },
-                  ] : [
-                    { id: 'card', label: 'Card', icon: CreditCard, type: 'card' },
-                    { id: 'table', label: 'Table', icon: Table, type: 'table' },
-                    { id: 'list', label: 'List', icon: ListIcon, type: 'list' },
-                    { id: 'compact', label: 'Compact', icon: Rows, type: 'compact' },
-                  ]).filter(opt => opt.id === 'grid' || preferences.enabledLayouts[opt.id]).map((option) => (
-                    <button
-                      key={option.id}
-                      onClick={() => {
-                        setPreferences(prev => ({ ...prev, layoutType: option.id as any }));
-                        setIsLayoutSheetOpen(false);
-                      }}
-                      className={cn(
-                        "group p-4 rounded-[2.5rem] border-2 transition-all flex items-center gap-4 relative overflow-hidden",
-                        preferences.layoutType === option.id
-                          ? "bg-amber-500 border-amber-500 text-white shadow-xl shadow-amber-500/20"
-                          : "bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-800 hover:border-amber-500/50"
-                      )}
-                    >
-                      <div className={cn(
-                        "w-12 h-12 rounded-2xl flex items-center justify-center transition-all",
-                        preferences.layoutType === option.id ? "bg-white/20" : "bg-white dark:bg-slate-800 shadow-sm group-hover:scale-110"
-                      )}>
-                        <option.icon className={cn("w-6 h-6", preferences.layoutType === option.id ? "text-white" : "text-amber-500")} />
+                <div className="max-h-[60vh] overflow-y-auto no-scrollbar space-y-10 custom-scrollbar pr-1">
+                  {/* Visual Layouts Section */}
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3 ml-2">
+                      <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500">
+                        <ImageIcon className="w-4 h-4" />
                       </div>
-                      <div className="text-left flex-1 min-w-0">
-                        <p className="font-black tracking-tight line-clamp-1">{option.label}</p>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <LayoutPreview type={option.id} />
-                          <span className={cn(
-                            "text-[10px] font-black uppercase tracking-widest",
-                            preferences.layoutType === option.id ? "text-white/60" : "text-slate-400"
-                          )}>Style</span>
-                        </div>
+                      <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Visual Layouts</h3>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      {[
+                        { id: 'grid', label: 'Grid', icon: LayoutGrid, category: 'visual' },
+                        { id: 'carousel', label: 'Carousel', icon: Columns, category: 'visual' },
+                        { id: 'masonry', label: 'Masonry', icon: LayoutDashboard, category: 'visual' },
+                        { id: 'gallery', label: 'Gallery', icon: GalleryHorizontal, category: 'visual' },
+                        { id: 'timeline', label: 'Timeline', icon: Clock, category: 'visual' },
+                        { id: 'board', label: 'Board', icon: Presentation, category: 'visual' },
+                        { id: 'spotlight', label: 'Spotlight', icon: Maximize2, category: 'visual' },
+                        { id: 'split', label: 'Split', icon: Split, category: 'visual' },
+                        { id: 'hexagon', label: 'Hexagon', icon: Hexagon, category: 'visual' },
+                      ].filter(opt => opt.id === 'grid' || preferences.enabledLayouts[opt.id]).map((option) => (
+                        <button
+                          key={option.id}
+                          onClick={() => {
+                            setPreferences(prev => ({ ...prev, layoutType: option.id as any, layoutCategory: option.category as any }));
+                            setIsLayoutSheetOpen(false);
+                          }}
+                          className={cn(
+                            "group p-4 rounded-[2rem] border-2 transition-all flex flex-col items-center gap-3 relative overflow-hidden",
+                            preferences.layoutType === option.id
+                              ? "bg-amber-500 border-amber-500 text-white shadow-xl shadow-amber-500/20"
+                              : "bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-800 hover:border-amber-500/50"
+                          )}
+                        >
+                          <div className={cn(
+                            "w-12 h-12 rounded-2xl flex items-center justify-center transition-all",
+                            preferences.layoutType === option.id ? "bg-white/20" : "bg-white dark:bg-slate-800 shadow-sm group-hover:scale-110"
+                          )}>
+                            <option.icon className={cn("w-6 h-6", preferences.layoutType === option.id ? "text-white" : "text-amber-500")} />
+                          </div>
+                          <div className="text-center">
+                            <p className="text-xs font-black tracking-tight">{option.label}</p>
+                            <div className="flex items-center justify-center gap-1.5 mt-1">
+                              <LayoutPreview type={option.id as any} />
+                            </div>
+                          </div>
+                          {preferences.layoutType === option.id && (
+                            <motion.div layoutId="layout-check-visual" className="absolute top-3 right-3">
+                              <Check className="w-4 h-4 text-white" />
+                            </motion.div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Divider */}
+                  <div className="h-px bg-slate-100 dark:bg-slate-800 mx-4" />
+
+                  {/* Text Layouts Section */}
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3 ml-2">
+                      <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-500">
+                        <TypeIcon className="w-4 h-4" />
                       </div>
-                      {preferences.layoutType === option.id && (
-                        <motion.div layoutId="layout-check" className="absolute right-4">
-                          <Check className="w-5 h-5 text-white" />
-                        </motion.div>
-                      )}
-                    </button>
-                  ))}
+                      <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Text Layouts</h3>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      {[
+                        { id: 'card', label: 'Card', icon: CreditCard, category: 'text' },
+                        { id: 'table', label: 'Table', icon: Table, category: 'text' },
+                        { id: 'list', label: 'List', icon: ListIcon, category: 'text' },
+                        { id: 'compact', label: 'Compact', icon: Rows, category: 'text' },
+                      ].filter(opt => opt.id === 'card' || preferences.enabledLayouts[opt.id]).map((option) => (
+                        <button
+                          key={option.id}
+                          onClick={() => {
+                            setPreferences(prev => ({ ...prev, layoutType: option.id as any, layoutCategory: option.category as any }));
+                            setIsLayoutSheetOpen(false);
+                          }}
+                          className={cn(
+                            "group p-4 rounded-[2rem] border-2 transition-all flex flex-col items-center gap-3 relative overflow-hidden",
+                            preferences.layoutType === option.id
+                              ? "bg-amber-500 border-amber-500 text-white shadow-xl shadow-amber-500/20"
+                              : "bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-800 hover:border-amber-500/50"
+                          )}
+                        >
+                          <div className={cn(
+                            "w-12 h-12 rounded-2xl flex items-center justify-center transition-all",
+                            preferences.layoutType === option.id ? "bg-white/20" : "bg-white dark:bg-slate-800 shadow-sm group-hover:scale-110"
+                          )}>
+                            <option.icon className={cn("w-6 h-6", preferences.layoutType === option.id ? "text-white" : "text-amber-500")} />
+                          </div>
+                          <div className="text-center">
+                            <p className="text-xs font-black tracking-tight">{option.label}</p>
+                            <div className="flex items-center justify-center gap-1.5 mt-1">
+                              <LayoutPreview type={option.id as any} />
+                            </div>
+                          </div>
+                          {preferences.layoutType === option.id && (
+                            <motion.div layoutId="layout-check-text" className="absolute top-3 right-3">
+                              <Check className="w-4 h-4 text-white" />
+                            </motion.div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </motion.div>
             </div>
