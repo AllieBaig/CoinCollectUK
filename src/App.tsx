@@ -4088,10 +4088,10 @@ function CoinCollectorApp() {
             {/* Layout Mode - Grouped Selection */}
             <div className="w-full space-y-3 p-4 bg-slate-50/50 dark:bg-slate-800/10 rounded-[2rem] border border-slate-100 dark:border-slate-800/50 mb-8 relative z-20 shadow-sm">
               <div className="flex items-center justify-between px-1">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block">Display Layout Mode</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block">Personalize Experience</label>
                 <div className="flex items-center gap-1.5 opacity-50">
                   <span className="w-1 h-1 rounded-full bg-amber-500 animate-pulse" />
-                  <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Live View</span>
+                  <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Settings Sync</span>
                 </div>
               </div>
 
@@ -4101,22 +4101,23 @@ function CoinCollectorApp() {
                   className="w-full group p-4 bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-2xl flex items-center justify-between hover:border-amber-500/50 transition-all shadow-sm active:scale-[0.98]"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-500 transition-transform group-hover:scale-110">
-                      <Layout className="w-5 h-5" />
+                    <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-slate-400 group-hover:text-amber-500 transition-colors">
+                      <Layout className="w-6 h-6" />
                     </div>
                     <div className="text-left">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Selected Style</p>
-                      <p className="text-sm font-black capitalize tracking-tight flex items-center gap-2">
-                        {preferences.layoutType}
-                        <span className="text-[10px] font-medium text-slate-400 dark:text-slate-600">| {preferences.layoutCategory}</span>
-                      </p>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Interface Layout</p>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-black capitalize tracking-tight">{preferences.layoutType}</span>
+                        <div className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700" />
+                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{preferences.layoutCategory}</span>
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <div className="p-1 bg-slate-50 dark:bg-slate-800 rounded-lg group-hover:bg-amber-50 dark:group-hover:bg-amber-900/20 transition-colors">
+                    <div className="hidden sm:block">
                       <LayoutPreview type={preferences.layoutType} />
                     </div>
-                    <ChevronDown className="w-4 h-4 text-slate-300 group-hover:text-amber-500 transition-colors" />
+                    <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-amber-500 transition-all translate-x-0 group-hover:translate-x-1" />
                   </div>
                 </button>
               </div>
@@ -6944,144 +6945,156 @@ function CoinCollectorApp() {
         {/* Layout Selection Bottom Sheet */}
         <AnimatePresence>
           {isLayoutSheetOpen && (
-            <div className="fixed inset-0 z-[150] flex items-end justify-center pointer-events-none">
+            <div className="fixed inset-0 z-[150] flex items-end justify-center">
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 onClick={() => setIsLayoutSheetOpen(false)}
-                className="absolute inset-0 bg-black/40 backdrop-blur-sm pointer-events-auto"
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
               />
               <motion.div
                 initial={{ y: "100%" }}
                 animate={{ y: 0 }}
                 exit={{ y: "100%" }}
-                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                transition={{ type: 'spring', damping: 30, stiffness: 300, mass: 0.8 }}
                 className={cn(
-                  "relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-t-[40px] shadow-2xl p-8 pb-12 pointer-events-auto overflow-hidden",
+                  "relative w-full max-w-lg bg-[#f2f2f7] dark:bg-black rounded-t-[40px] shadow-2xl safe-bottom pointer-events-auto h-[85vh] flex flex-col overflow-hidden border-t border-white/20 dark:border-white/5",
                   preferences.themeTexture === 'glass' && "glass-card"
                 )}
               >
-                {/* Handle */}
-                <div className="w-12 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full mx-auto mb-8" />
-                
-                <div className="flex items-center justify-between mb-8">
+                {/* Visual Pill / Handle */}
+                <div className="flex-none pt-4 pb-2">
+                  <div className="w-10 h-1.5 bg-slate-300 dark:bg-slate-800 rounded-full mx-auto" />
+                </div>
+
+                {/* Header */}
+                <div className="flex-none px-8 py-4 flex items-center justify-between bg-inherit">
                   <div>
-                    <h2 className="text-2xl font-black tracking-tight">Display Styles</h2>
-                    <p className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-widest mt-1">Grouped by viewing experience</p>
+                    <h2 className="text-2xl font-black tracking-tight">Layout Style</h2>
+                    <p className="text-slate-500 dark:text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mt-1">Personalize your collection view</p>
                   </div>
                   <button 
                     onClick={() => setIsLayoutSheetOpen(false)}
-                    className="p-3 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                    className="w-10 h-10 bg-slate-200 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-600 dark:text-slate-400 hover:scale-110 active:scale-90 transition-all"
                   >
                     <X className="w-5 h-5" />
                   </button>
                 </div>
 
-                <div className="max-h-[60vh] overflow-y-auto no-scrollbar space-y-10 custom-scrollbar pr-1">
+                {/* Content */}
+                <div className="flex-1 overflow-y-auto px-6 py-4 space-y-10 custom-scrollbar">
                   {/* Visual Layouts Section */}
                   <div className="space-y-4">
-                    <div className="flex items-center gap-3 ml-2">
-                      <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500">
-                        <ImageIcon className="w-4 h-4" />
-                      </div>
-                      <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Visual Layouts</h3>
+                    <div className="flex items-center justify-between px-2">
+                      <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Visual Experiences</h3>
+                      <div className="h-px bg-slate-200 dark:bg-slate-800 flex-1 ml-4" />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-3">
                       {[
-                        { id: 'grid', label: 'Grid', icon: LayoutGrid, category: 'visual' },
-                        { id: 'carousel', label: 'Carousel', icon: Columns, category: 'visual' },
-                        { id: 'masonry', label: 'Masonry', icon: LayoutDashboard, category: 'visual' },
-                        { id: 'gallery', label: 'Gallery', icon: GalleryHorizontal, category: 'visual' },
-                        { id: 'timeline', label: 'Timeline', icon: Clock, category: 'visual' },
-                        { id: 'board', label: 'Board', icon: Presentation, category: 'visual' },
-                        { id: 'spotlight', label: 'Spotlight', icon: Maximize2, category: 'visual' },
-                        { id: 'split', label: 'Split', icon: Split, category: 'visual' },
-                        { id: 'hexagon', label: 'Hexagon', icon: Hexagon, category: 'visual' },
+                        { id: 'grid', label: 'Classic Grid', desc: 'Symmetrical standard view', icon: LayoutGrid, category: 'visual' },
+                        { id: 'carousel', label: 'Panoramic Carousel', desc: 'Focus on one coin at a time', icon: Columns, category: 'visual' },
+                        { id: 'masonry', label: 'Dynamic Masonry', desc: 'Artistic staggered layout', icon: LayoutDashboard, category: 'visual' },
+                        { id: 'gallery', label: 'Photo Gallery', desc: 'Image-first exploration', icon: GalleryHorizontal, category: 'visual' },
+                        { id: 'timeline', label: 'Historical Timeline', desc: 'Sort by release era', icon: Clock, category: 'visual' },
+                        { id: 'board', label: 'Kanban Board', desc: 'Grouped by folder status', icon: Presentation, category: 'visual' },
+                        { id: 'spotlight', label: 'Elite Spotlight', desc: 'Maximum focus on rarity', icon: Maximize2, category: 'visual' },
+                        { id: 'split', label: 'Immersive Split', desc: 'Large image and info', icon: Split, category: 'visual' },
+                        { id: 'hexagon', label: 'Geometric Hex', desc: 'Unique honeycomb view', icon: Hexagon, category: 'visual' },
                       ].filter(opt => opt.id === 'grid' || preferences.enabledLayouts[opt.id]).map((option) => (
                         <button
                           key={option.id}
                           onClick={() => {
                             setPreferences(prev => ({ ...prev, layoutType: option.id as any, layoutCategory: option.category as any }));
-                            setIsLayoutSheetOpen(false);
+                            setTimeout(() => setIsLayoutSheetOpen(false), 200);
                           }}
                           className={cn(
-                            "group p-4 rounded-[2rem] border-2 transition-all flex flex-col items-center gap-3 relative overflow-hidden",
+                            "group p-5 rounded-3xl transition-all flex items-center gap-5 relative border",
                             preferences.layoutType === option.id
-                              ? "bg-amber-500 border-amber-500 text-white shadow-xl shadow-amber-500/20"
-                              : "bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-800 hover:border-amber-500/50"
+                              ? "bg-amber-500 border-amber-500 text-white shadow-xl shadow-amber-500/30"
+                              : "bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 hover:border-amber-500/50"
                           )}
                         >
                           <div className={cn(
-                            "w-12 h-12 rounded-2xl flex items-center justify-center transition-all",
-                            preferences.layoutType === option.id ? "bg-white/20" : "bg-white dark:bg-slate-800 shadow-sm group-hover:scale-110"
+                            "w-14 h-14 rounded-2xl flex items-center justify-center transition-all shrink-0",
+                            preferences.layoutType === option.id ? "bg-white/20" : "bg-amber-500/10 text-amber-500"
                           )}>
-                            <option.icon className={cn("w-6 h-6", preferences.layoutType === option.id ? "text-white" : "text-amber-500")} />
+                            <option.icon className="w-7 h-7" />
                           </div>
-                          <div className="text-center">
-                            <p className="text-xs font-black tracking-tight">{option.label}</p>
-                            <div className="flex items-center justify-center gap-1.5 mt-1">
+                          
+                          <div className="text-left flex-1 min-w-0">
+                            <p className="font-black text-sm tracking-tight">{option.label}</p>
+                            <p className={cn(
+                              "text-[10px] font-bold line-clamp-1 mt-0.5",
+                              preferences.layoutType === option.id ? "text-white/70" : "text-slate-400"
+                            )}>{option.desc}</p>
+                          </div>
+
+                          <div className="flex items-center gap-3 shrink-0">
+                            <div className="scale-125 opacity-80">
                               <LayoutPreview type={option.id as any} />
                             </div>
+                            {preferences.layoutType === option.id && (
+                              <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center">
+                                <Check className="w-4 h-4 text-amber-500" />
+                              </div>
+                            )}
                           </div>
-                          {preferences.layoutType === option.id && (
-                            <motion.div layoutId="layout-check-visual" className="absolute top-3 right-3">
-                              <Check className="w-4 h-4 text-white" />
-                            </motion.div>
-                          )}
                         </button>
                       ))}
                     </div>
                   </div>
 
-                  {/* Divider */}
-                  <div className="h-px bg-slate-100 dark:bg-slate-800 mx-4" />
-
                   {/* Text Layouts Section */}
                   <div className="space-y-4">
-                    <div className="flex items-center gap-3 ml-2">
-                      <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-500">
-                        <TypeIcon className="w-4 h-4" />
-                      </div>
-                      <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Text Layouts</h3>
+                    <div className="flex items-center justify-between px-2">
+                      <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Data & Density</h3>
+                      <div className="h-px bg-slate-200 dark:bg-slate-800 flex-1 ml-4" />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-3">
                       {[
-                        { id: 'card', label: 'Card', icon: CreditCard, category: 'text' },
-                        { id: 'table', label: 'Table', icon: Table, category: 'text' },
-                        { id: 'list', label: 'List', icon: ListIcon, category: 'text' },
-                        { id: 'compact', label: 'Compact', icon: Rows, category: 'text' },
+                        { id: 'card', label: 'Standard Cards', desc: 'Balanced info and size', icon: CreditCard, category: 'text' },
+                        { id: 'table', label: 'Master Table', desc: 'Powerful desktop-style view', icon: Table, category: 'text' },
+                        { id: 'list', label: 'Smart List', icon: ListIcon, desc: 'Mobile-optimized row view', category: 'text' },
+                        { id: 'compact', label: 'Minimal Compact', icon: Rows, desc: 'Maximum items per page', category: 'text' },
                       ].filter(opt => opt.id === 'card' || preferences.enabledLayouts[opt.id]).map((option) => (
                         <button
                           key={option.id}
                           onClick={() => {
                             setPreferences(prev => ({ ...prev, layoutType: option.id as any, layoutCategory: option.category as any }));
-                            setIsLayoutSheetOpen(false);
+                            setTimeout(() => setIsLayoutSheetOpen(false), 200);
                           }}
                           className={cn(
-                            "group p-4 rounded-[2rem] border-2 transition-all flex flex-col items-center gap-3 relative overflow-hidden",
+                            "group p-5 rounded-3xl transition-all flex items-center gap-5 relative border",
                             preferences.layoutType === option.id
-                              ? "bg-amber-500 border-amber-500 text-white shadow-xl shadow-amber-500/20"
-                              : "bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-800 hover:border-amber-500/50"
+                              ? "bg-amber-500 border-amber-500 text-white shadow-xl shadow-amber-500/30"
+                              : "bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 hover:border-amber-500/50"
                           )}
                         >
                           <div className={cn(
-                            "w-12 h-12 rounded-2xl flex items-center justify-center transition-all",
-                            preferences.layoutType === option.id ? "bg-white/20" : "bg-white dark:bg-slate-800 shadow-sm group-hover:scale-110"
+                            "w-14 h-14 rounded-2xl flex items-center justify-center transition-all shrink-0",
+                            preferences.layoutType === option.id ? "bg-white/20" : "bg-indigo-500/10 text-indigo-500"
                           )}>
-                            <option.icon className={cn("w-6 h-6", preferences.layoutType === option.id ? "text-white" : "text-amber-500")} />
+                            <option.icon className="w-7 h-7" />
                           </div>
-                          <div className="text-center">
-                            <p className="text-xs font-black tracking-tight">{option.label}</p>
-                            <div className="flex items-center justify-center gap-1.5 mt-1">
+                          <div className="text-left flex-1 min-w-0">
+                            <p className="font-black text-sm tracking-tight">{option.label}</p>
+                            <p className={cn(
+                              "text-[10px] font-bold line-clamp-1 mt-0.5",
+                              preferences.layoutType === option.id ? "text-white/70" : "text-slate-400"
+                            )}>{option.desc}</p>
+                          </div>
+                          
+                          <div className="flex items-center gap-3 shrink-0">
+                            <div className="scale-125 opacity-80">
                               <LayoutPreview type={option.id as any} />
                             </div>
+                            {preferences.layoutType === option.id && (
+                              <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center">
+                                <Check className="w-4 h-4 text-amber-500" />
+                              </div>
+                            )}
                           </div>
-                          {preferences.layoutType === option.id && (
-                            <motion.div layoutId="layout-check-text" className="absolute top-3 right-3">
-                              <Check className="w-4 h-4 text-white" />
-                            </motion.div>
-                          )}
                         </button>
                       ))}
                     </div>
