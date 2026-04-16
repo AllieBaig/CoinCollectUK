@@ -75,6 +75,46 @@ import { Coin, AppState, Folder, UserPreferences, Mission, Achievement, Timeline
 import { INITIAL_COINS, INITIAL_FOLDERS, TIMELINES, GAME_MODES, ERAS, DENOMINATIONS, COUNTRIES, REGIONS } from './constants';
 import { convertToVersion, AppVersion } from './lib/schemas';
 
+const INITIAL_PREFERENCES: UserPreferences = {
+  isDarkMode: false,
+  themeMode: 'system',
+  themeTexture: 'none',
+  sortBy: 'recently-added',
+  groupBy: 'none',
+  isGrouped: false,
+  activeFolderId: 'all',
+  showBottomMenu: true,
+  isCompactUI: false,
+  isTextMode: false,
+  enableBgRemoval: true,
+  isPurchaseMode: false,
+  showPriceInNormalMode: true,
+  denominationPrices: DENOMINATIONS.reduce((acc, denom) => ({ ...acc, [denom]: 0 }), {} as Record<string, number>),
+  layoutType: 'grid',
+  showLayoutSwitcher: true,
+  showOldEuropeanCoins: true,
+  europeanCoinFilter: 'both',
+  territoryFilter: 'both',
+  activeRegion: 'all',
+  ambientMotion: true,
+  enableImageLibrary: true,
+  enabledLayouts: {
+    card: true,
+    table: true,
+    list: true,
+    compact: true,
+    grid: true
+  },
+  visibleFields: {
+    denomination: true,
+    year: true,
+    mint: true,
+    condition: true
+  },
+  scrollOrientation: 'horizontal',
+  layoutCategory: 'visual'
+};
+
 const AUTO_CORRECT_MAP: Record<string, string> = {
   'Half pnn': 'Half Penny',
   'pnn': 'Penny',
@@ -834,45 +874,7 @@ function CoinCollectorApp() {
     return 'spacious';
   }, [windowSize.width]);
 
-  const [preferences, setPreferences] = useState<UserPreferences>({
-    isDarkMode: false,
-    themeMode: 'system',
-    themeTexture: 'none',
-    sortBy: 'recently-added',
-    groupBy: 'none',
-    isGrouped: false,
-    activeFolderId: 'all',
-    showBottomMenu: true,
-    isCompactUI: false,
-    isTextMode: false,
-    enableBgRemoval: true,
-    isPurchaseMode: false,
-    showPriceInNormalMode: true,
-    denominationPrices: DENOMINATIONS.reduce((acc, denom) => ({ ...acc, [denom]: 0 }), {}),
-    layoutType: 'grid',
-    showLayoutSwitcher: true,
-    showOldEuropeanCoins: true,
-    europeanCoinFilter: 'both',
-    territoryFilter: 'both',
-    activeRegion: 'all',
-    ambientMotion: true,
-    enableImageLibrary: true,
-    enabledLayouts: {
-      card: true,
-      table: true,
-      list: true,
-      compact: true,
-      grid: true
-    },
-    visibleFields: {
-      denomination: true,
-      year: true,
-      mint: true,
-      condition: true
-    },
-    scrollOrientation: 'horizontal',
-    layoutCategory: 'visual'
-  });
+  const [preferences, setPreferences] = useState<UserPreferences>(INITIAL_PREFERENCES);
   
   const [imageLibrary, setImageLibrary] = useState<ImageLibraryItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -920,6 +922,35 @@ function CoinCollectorApp() {
   const [recoveryCode, setRecoveryCode] = useState<string>('');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
   const [openSettingSection, setOpenSettingSection] = useState<string | null>('display');
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const handleRefreshUI = () => {
+    setRefreshKey(prev => prev + 1);
+    setIsSettingsOpen(false);
+    showToast("UI refreshed", "success");
+  };
+
+  const handleClearCache = () => {
+    // Keep user coin data safe, but clear UI configs and temporary data
+    setPreferences(INITIAL_PREFERENCES);
+    setMissions([]);
+    setAchievements([]);
+    setTimelineProgress({});
+    setGameProgress({});
+    setStoryProgress({});
+    setEraProgress({});
+    setTimelinePoints(0);
+    setStoryPoints(0);
+    setGamePoints(0);
+    setIsSettingsOpen(false);
+    showToast("Cache cleared successfully", "success");
+  };
+
+  const handleResetUI = () => {
+    setPreferences(INITIAL_PREFERENCES);
+    setIsSettingsOpen(false);
+    showToast("UI settings reset to default", "success");
+  };
 
   // Gamification state
   const [streak, setStreak] = useState({ 
@@ -3437,7 +3468,7 @@ function CoinCollectorApp() {
   }
 
   return (
-    <div className={cn(
+    <div key={refreshKey} className={cn(
       "fixed-layout text-slate-900 dark:text-slate-100 transition-colors duration-500 font-sans",
       preferences.themeTexture === 'paper' && "theme-paper",
       preferences.themeTexture === 'glass' && "theme-glass",
@@ -4803,6 +4834,79 @@ function CoinCollectorApp() {
                           </div>
                         ))}
                       </div>
+                    </div>
+                  </SettingSection>
+
+                  {/* App Maintenance Settings */}
+                  <SettingSection 
+                    title="App Maintenance" 
+                    icon={RefreshCw} 
+                    isOpen={openSettingSection === 'maintenance'} 
+                    onToggle={() => setOpenSettingSection(openSettingSection === 'maintenance' ? null : 'maintenance')}
+                  >
+                    <div className="space-y-4">
+                      <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-800">
+                        <div className="flex flex-col gap-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-500">
+                                <RefreshCw className="w-5 h-5" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-bold">Refresh App UI</p>
+                                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest leading-none">Re-render layout system</p>
+                              </div>
+                            </div>
+                            <button 
+                              onClick={handleRefreshUI}
+                              className="px-4 py-2 bg-amber-500 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-amber-600 transition-colors shadow-lg shadow-amber-500/20 active:scale-95"
+                            >
+                              Refresh UI
+                            </button>
+                          </div>
+
+                          <div className="h-px bg-slate-100 dark:bg-slate-800 w-full" />
+
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-500">
+                                <Database className="w-5 h-5" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-bold">Clear Cache</p>
+                                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest leading-none">UI configs & temp data</p>
+                              </div>
+                            </div>
+                            <button 
+                              onClick={handleClearCache}
+                              className="px-4 py-2 bg-blue-500 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/20 active:scale-95"
+                            >
+                              Clear Cache
+                            </button>
+                          </div>
+
+                          <div className="h-px bg-slate-100 dark:bg-slate-800 w-full" />
+
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 bg-rose-500/10 rounded-xl flex items-center justify-center text-rose-500">
+                                <RotateCcw className="w-5 h-5" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-bold">Hard Reset UI</p>
+                                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest leading-none">Layout & theme defaults</p>
+                              </div>
+                            </div>
+                            <button 
+                              onClick={handleResetUI}
+                              className="px-4 py-2 bg-rose-500 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-rose-600 transition-colors shadow-lg shadow-rose-500/20 active:scale-95"
+                            >
+                              Reset UI Settings
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest px-2 italic text-center">User collection data is always preserved.</p>
                     </div>
                   </SettingSection>
 
