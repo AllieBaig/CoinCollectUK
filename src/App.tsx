@@ -923,6 +923,29 @@ function CoinCollectorApp() {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
   const [openSettingSection, setOpenSettingSection] = useState<string | null>('display');
   const [refreshKey, setRefreshKey] = useState(0);
+  const [swStatus, setSwStatus] = useState<'None' | 'Active' | 'Installing' | 'Waiting'>('None');
+
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      const checkStatus = () => {
+        navigator.serviceWorker.getRegistration().then(registration => {
+          if (!registration) {
+            setSwStatus('None');
+          } else if (registration.installing) {
+            setSwStatus('Installing');
+          } else if (registration.waiting) {
+            setSwStatus('Waiting');
+          } else if (registration.active) {
+            setSwStatus('Active');
+          }
+        });
+      };
+      
+      checkStatus();
+      const interval = setInterval(checkStatus, 2000);
+      return () => clearInterval(interval);
+    }
+  }, []);
 
   const handleRefreshUI = () => {
     setRefreshKey(prev => prev + 1);
@@ -950,6 +973,79 @@ function CoinCollectorApp() {
     setPreferences(INITIAL_PREFERENCES);
     setIsSettingsOpen(false);
     showToast("UI settings reset to default", "success");
+  };
+
+  const handleResetSW = async () => {
+    if (confirm('Unregister all service workers? This will reload the app to clear stale state.')) {
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (let registration of registrations) {
+          await registration.unregister();
+        }
+        window.location.reload();
+      } else {
+        showToast('Service Workers not supported', 'info');
+      }
+    }
+  };
+
+  const handleClearCacheStorage = async () => {
+    if (confirm('Clear all cache storage? This might cause a slower reload as assets are re-downloaded.')) {
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        for (let key of keys) {
+          await caches.delete(key);
+        }
+        showToast('Cache storage cleared', 'success');
+      } else {
+        showToast('Cache storage not supported', 'info');
+      }
+    }
+  };
+
+  const handleClearIndexedDB = async () => {
+    if (confirm('Clear all IndexedDB databases? This might remove temporary cached data.')) {
+      if ('indexedDB' in window) {
+        // Fallback for browsers not supporting databases()
+        // @ts-ignore
+        if ('databases' in indexedDB) {
+          // @ts-ignore
+          const dbs = await indexedDB.databases();
+          for (let db of dbs) {
+            if (db.name) indexedDB.deleteDatabase(db.name);
+          }
+        } else {
+          // Hardcore delete known databases if any, or just inform
+          showToast('Partial IndexedDB clear (browser limited)', 'info');
+        }
+        showToast('IndexedDB expansion cleared', 'success');
+      }
+    }
+  };
+
+  const handleHardReload = () => {
+    window.location.reload();
+  };
+
+  const handleFullReset = async () => {
+    if (confirm('Perform a full diagnostic reset? This will unregister service workers, clear all caches, and reload the app.')) {
+      // Unregister SW
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (let registration of registrations) {
+          await registration.unregister();
+        }
+      }
+      // Clear Cache
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        for (let key of keys) {
+          await caches.delete(key);
+        }
+      }
+      // Reload
+      window.location.reload();
+    }
   };
 
   // Gamification state
@@ -5116,6 +5212,77 @@ function CoinCollectorApp() {
                           <span className="text-xs font-bold">Restore Safe</span>
                         </button>
                       </div>
+                    </div>
+                  </SettingSection>
+
+                  {/* Advanced Settings */}
+                  <SettingSection 
+                    title="Advanced" 
+                    icon={Settings} 
+                    isOpen={openSettingSection === 'advanced'} 
+                    onToggle={() => setOpenSettingSection(openSettingSection === 'advanced' ? null : 'advanced')}
+                  >
+                    <div className="space-y-4">
+                      <div className="p-4 bg-slate-100/50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-indigo-500/10 rounded-xl flex items-center justify-center text-indigo-500">
+                              <Zap className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-bold">Service Worker</p>
+                              <div className="flex items-center gap-1.5">
+                                <div className={cn(
+                                  "w-1.5 h-1.5 rounded-full",
+                                  swStatus === 'Active' ? "bg-emerald-500" : 
+                                  swStatus === 'None' ? "bg-slate-400" : "bg-amber-500"
+                                )} />
+                                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">{swStatus}</p>
+                              </div>
+                            </div>
+                          </div>
+                          <button 
+                            onClick={handleHardReload}
+                            className="p-2 bg-white dark:bg-slate-900 rounded-lg shadow-sm text-slate-400 hover:text-amber-500 transition-colors"
+                            title="Hard Reload"
+                          >
+                            <RefreshCw className="w-4 h-4" />
+                          </button>
+                        </div>
+
+                        <div className="space-y-2">
+                          <button 
+                            onClick={handleResetSW}
+                            className="w-full flex items-center justify-between p-3 bg-white dark:bg-slate-900 rounded-xl text-xs font-bold hover:bg-slate-50 transition-colors border border-slate-100 dark:border-slate-800"
+                          >
+                            <span>Unregister Service Worker</span>
+                            <ChevronRight className="w-4 h-4 text-slate-300" />
+                          </button>
+                          <button 
+                            onClick={handleClearCacheStorage}
+                            className="w-full flex items-center justify-between p-3 bg-white dark:bg-slate-900 rounded-xl text-xs font-bold hover:bg-slate-50 transition-colors border border-slate-100 dark:border-slate-800"
+                          >
+                            <span>Clear Cache Storage</span>
+                            <ChevronRight className="w-4 h-4 text-slate-300" />
+                          </button>
+                          <button 
+                            onClick={handleClearIndexedDB}
+                            className="w-full flex items-center justify-between p-3 bg-white dark:bg-slate-900 rounded-xl text-xs font-bold hover:bg-slate-50 transition-colors border border-slate-100 dark:border-slate-800"
+                          >
+                            <span>Clear IndexedDB Cache</span>
+                            <ChevronRight className="w-4 h-4 text-slate-300" />
+                          </button>
+                          <div className="pt-2">
+                            <button 
+                              onClick={handleFullReset}
+                              className="w-full py-4 bg-rose-500 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-rose-600 transition-colors shadow-lg shadow-rose-500/20 active:scale-[0.98] transition-all"
+                            >
+                              Diagnostic Full Reset
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest px-2 italic text-center">Use these tools if the app seems stuck or shows a white screen.</p>
                     </div>
                   </SettingSection>
 
